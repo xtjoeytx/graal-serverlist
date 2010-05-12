@@ -1,0 +1,93 @@
+MySQL NOTE:
+	MySQL's myISAM database engine doesn't support ON DELETE.  Therefore, if you
+	use MySQL and use the myISAM database engine, you must code in support for
+	your Web site to manually delete entries.  If you don't, you may potentially
+	have dead entries in your database.
+
+NOTE about graal_users:
+	On the Graal Reborn serverlist, the id field is the same as the forum account
+	id.  If you aren't linking your user database to a forum database, replace
+	the id declaration with:
+	id int NOT NULL auto_increment,
+
+----------------------------------------
+
+CREATE TABLE graal_users (
+	id int NOT NULL,
+	account varchar(100) UNIQUE NOT NULL,
+	password varchar(32) NOT NULL,
+	salt char(3) NOT NULL,
+	password2 varchar(32) NOT NULL,
+	salt2 char(3) NOT NULL,
+	transaction int NOT NULL,
+	activated tinyint NOT NULL,
+	banned tinyint NOT NULL,
+	profile_name varchar(100) NOT NULL default '(unknown)',
+	profile_age int NOT NULL,
+	profile_sex varchar(10) NOT NULL default '(unknown)',
+	profile_country varchar(30) NOT NULL default '(unknown)',
+	profile_icq varchar(20) NOT NULL,
+	profile_email varchar(250) NOT NULL,
+	profile_url varchar(250) NOT NULL,
+	profile_hangout varchar(100) NOT NULL,
+	profile_quote varchar(250) NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE TABLE graal_servers (
+	id int NOT NULL auto_increment,
+	name varchar(255) UNIQUE NOT NULL,
+	ip varchar(43) NOT NULL,
+	port int NOT NULL,
+	playercount int NOT NULL,
+	maxplayers int NOT NULL,
+	description varchar(255) NOT NULL,
+	url varchar(255) NOT NULL default 'http://www.graal.in/',
+	language varchar(255) NOT NULL default 'English',
+	type char(2) NOT NULL default '',
+	version varchar(255) NOT NULL,
+	uptime int(255) NOT NULL default '0',
+	lastconnected datetime NOT NULL default '0',
+	playerlist text NOT NULL default '',
+	PRIMARY KEY (id)
+);
+
+CREATE TABLE graal_servershq (
+	id int NOT NULL,
+	name varchar(100) UNIQUE NOT NULL,
+	maxplayers int NOT NULL,
+	maxlevel int NOT NULL default '1',
+	curlevel int NOT NULL default '1',
+	password varchar(32) NOT NULL,
+	salt char(3) NOT NULL,
+	activated int NOT NULL default '1',
+	userid int NOT NULL,
+	parked int NOT NULL default '0',
+	uptime int(255) NOT NULL default '0',
+	lastconnected datetime NOT NULL default '0',
+	FOREIGN KEY (userid) REFERENCES graal_users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE graal_ipban (
+	id int NOT NULL auto_increment,
+	server_ip varchar(24) NOT NULL,
+	PRIMARY KEY (id)
+);
+
+CREATE TABLE graal_guilds (
+	name varchar(50) NOT NULL,
+	status tinyint NOT NULL,
+	restrictnick tinyint NOT NULL,
+	PRIMARY KEY (name)
+);
+
+CREATE TABLE graal_guilds_members (
+	id int NOT NULL auto_increment,
+	account varchar(100) NOT NULL,
+	guild varchar(50) NOT NULL,
+	nickname varchar(200) NOT NULL,
+	rank int NOT NULL default '1',
+	PRIMARY KEY (id),
+	FOREIGN KEY (account) REFERENCES graal_users(account) ON DELETE CASCADE,
+	FOREIGN KEY (guild) REFERENCES graal_guilds(name) ON DELETE CASCADE
+);
