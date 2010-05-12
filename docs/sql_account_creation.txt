@@ -1,0 +1,29 @@
+Account passwords are stored using and MD5 + salt method; The password is run
+through MD5, the salt is appended to the end, and the result is run through
+MD5 again.  md5(md5(password) + salt)
+
+------------------------------------------
+ Example PHP code to generate a password:
+
+ NOTE: This will not work if you just
+	copy/paste.  Please don't try.
+------------------------------------------
+
+$gr_sql = mysql_connect( "localhost", "SQL_username", "SQL_password" );
+if (!$gr_sql) die('Could not connect: ' . mysql_error());
+mysql_select_db("graal_gserver", $gr_sql);
+
+$gr_result = mysql_query("SELECT * FROM graal_users WHERE account='" . $username . "'");
+$gr_salt = substr(md5(uniqid(rand(), true)), 0, 3);
+$gr_pass = md5(md5($_POST['gr_password']) . $gr_salt);
+
+if ( mysql_num_rows($gr_result) == 0  )
+{
+	# Insert new account.
+	mysql_query( "INSERT INTO graal_users (id, account, password, salt, activated) VALUES ('" . $userid . "', '" . $username . "', '" . $gr_pass . "', '" . $gr_salt . "', '1')" );
+}
+else
+{
+	# Update existing account.
+	mysql_query( "UPDATE graal_users SET password='" . $gr_pass . "', salt='" . $gr_salt . "' WHERE account='" . $username . "'" );
+}
