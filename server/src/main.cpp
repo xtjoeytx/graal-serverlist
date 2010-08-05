@@ -145,6 +145,10 @@ int main(int argc, char *argv[])
 					<< "List server started..\n"
 					<< "Client port: " << CString(settings->getInt("clientport")) << "\n"
 					<< "GServer port: " << CString(settings->getInt("gserverport")) << "\n" );
+#ifdef NO_MYSQL
+	// Notify the user that they are running in No MySQL mode
+	serverlog.out( CString() << "Running in No MySQL mode, all account and guild checks are disabled.\n");
+#endif
 
 	// Main Loop
 	time_t t5min = time(0);
