@@ -9,11 +9,10 @@ extern CSettings *settings;
 
 bool getProfile( const CString& pAccountName, CString &pPacket)
 {
-#ifdef NO_MYSQL
-	return true;
-#else
-	CString query;
 	pPacket.clear();
+
+#ifndef NO_MYSQL
+	CString query;
 
 	query << "SELECT profile_name, profile_age, profile_sex, profile_country, profile_icq, profile_email, profile_url, profile_hangout, profile_quote FROM " << settings->getStr("userlist") << " WHERE account='" << pAccountName.escape().text() << "' LIMIT 1";
 	std::vector<CString> result;
@@ -38,13 +37,13 @@ bool getProfile( const CString& pAccountName, CString &pPacket)
 		//pPacket << (char)strlen(row[0]) << row[0] << (char)strlen(row[1]) << row[1] << (char)strlen(row[2]) << row[2] << (char)strlen(row[3]) << row[3] << (char)strlen(row[4]) << row[4] << (char)strlen(row[5]) << row[5] << (char)strlen(row[6]) << row[6] << (char)strlen(row[7]) << row[7] << (char)strlen(row[8]) << row[8];
 		return true;
 	}
+#endif
 
 	// Blank profile.
 	for (unsigned int i = 0; i < 9; ++i)
 		pPacket >> (char)0;
 
 	return true;
-#endif
 }
 
 bool setProfile( const CString& pAccountName, CString &pPacket)
