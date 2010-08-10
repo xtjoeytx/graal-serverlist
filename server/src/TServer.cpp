@@ -228,7 +228,7 @@ void TServer::updatePlayers()
 	{
 		int ANY_CLIENT = (int)(1 << 0) | (int)(1 << 4) | (int)(1 << 5);
 		player* p = *i;
-		if ((p->type & ANY_CLIENT) != 0) playerlist << (*i)->account << ",";
+		if ((p->type & ANY_CLIENT) != 0) playerlist << (*i)->account << "," << (*i)->nick << "\n";
 	}
 	SQLupdate("playerlist", playerlist);
 
@@ -972,10 +972,11 @@ bool TServer::msgSVI_SERVERHQLEVEL(CString& pPacket)
 	mySQL->query(query, &result);
 
 	// If the password was wrong, limit ourselves to the bronze tab.
+	// Update: Now hides unregistered servers as UC
 	if (result.size() == 0)
 	{
 		if (serverhq_level != 0)
-			serverhq_level = 1;
+			serverhq_level = 0;
 	}
 	else isServerHQ = true;
 
