@@ -53,6 +53,7 @@ void createSVFunctions()
 	svfunc[SVI_SERVERINFO] = &TServer::msgSVI_SERVERINFO;
 	svfunc[SVI_REQUESTLIST] = &TServer::msgSVI_REQUESTLIST;
 	svfunc[SVI_REQUESTSVRINFO] = &TServer::msgSVI_REQUESTSVRINFO;
+	svfunc[SVI_REQUESTLIST2] = &TServer::msgSVI_REQUESTLIST2;
 }
 
 /*
@@ -1064,6 +1065,76 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 
 		p << p2 << "\n";
 	}
+	p.gtokenizeI();
+
+	// Send the serverlist back to the server.
+	sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << data << "," << p);
+	return true;
+}
+
+bool TServer::msgSVI_REQUESTLIST2(CString& pPacket)
+{
+	unsigned short pid = pPacket.readGUShort();
+	CString data = pPacket.readString("");
+
+	// Assemble the serverlist.
+	CString p;
+	CString st0;
+	CString st1;
+	CString st2;
+	CString nn;
+	nn << "0\n";
+	nn << "0\n";
+	nn << "0\n";
+	nn.gtokenizeI();
+
+	for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+	{
+		TServer* server = *i;
+		if (server == 0) continue;
+		if (server->getTypeVal() == TYPE_HIDDEN) continue;
+
+		CString p2;
+		p2 << server->getName() << "\n";
+		p2 << server->getName() << "\n";
+		p2 << CString((int)server->getPCount()) << "\n";
+		p2.gtokenizeI();
+		
+		if (server->getTypeVal() == TYPE_3D)
+			st0 << p2 << "\n";
+		else if (server->getTypeVal() == TYPE_GOLD)
+			st0 << p2 << "\n";
+		else if (server->getTypeVal() == TYPE_SILVER)
+			st1 << p2 << "\n";
+		else if (server->getTypeVal() == TYPE_BRONZE)
+			st2 << p2 << "\n";
+	}
+	
+	if (st0.length() == 0)
+	{
+		st0 << nn << "\n";
+	}
+
+	st0.gtokenizeI();
+
+	if (st1.length() == 0)
+	{
+		st1 << nn << "\n";
+	}
+
+	st1.gtokenizeI();
+
+	if (st2.length() == 0)
+	{
+		st2 << nn << "\n";
+	}
+
+	st2.gtokenizeI();
+
+	p << st0 << "\n";
+	p << st1 << "\n";
+	p << st2 << "\n";
+
 	p.gtokenizeI();
 
 	// Send the serverlist back to the server.
