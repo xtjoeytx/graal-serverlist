@@ -20,14 +20,10 @@ extern CFileSystem filesystem[5];
 /*
 	Pointer-Functions for Packets
 */
-std::vector<TSVSock> svfunc;
+std::vector<TSVSock> svfunc(256, &TServer::msgSVI_NULL);
 
 void createSVFunctions()
 {
-	// kinda like a memset-ish thing y'know
-	for (int i = 0; i < 26; i++)
-		svfunc.push_back(&TServer::msgSVI_NULL);
-
 	// now set non-nulls
 	svfunc[SVI_SETNAME] = &TServer::msgSVI_SETNAME;
 	svfunc[SVI_SETDESC] = &TServer::msgSVI_SETDESC;
@@ -55,6 +51,8 @@ void createSVFunctions()
 	svfunc[SVI_SERVERHQPASS] = &TServer::msgSVI_SERVERHQPASS;
 	svfunc[SVI_SERVERHQLEVEL] = &TServer::msgSVI_SERVERHQLEVEL;
 	svfunc[SVI_SERVERINFO] = &TServer::msgSVI_SERVERINFO;
+	svfunc[SVI_REQUESTLIST] = &TServer::msgSVI_REQUESTLIST;
+	svfunc[SVI_REQUESTSVRINFO] = &TServer::msgSVI_REQUESTSVRINFO;
 }
 
 /*
@@ -376,10 +374,6 @@ bool TServer::parsePacket(CString& pPacket)
 {
 	// read id & packet
 	unsigned char id = pPacket.readGUChar();
-
-	// id exists?
-	if (id >= (unsigned char)svfunc.size())
-		return true;
 
 	// valid packet, call function
 	return (*this.*svfunc[id])(pPacket);
@@ -1024,20 +1018,82 @@ bool TServer::msgSVI_SERVERHQLEVEL(CString& pPacket)
 
 bool TServer::msgSVI_SERVERINFO(CString& pPacket)
 {
-	int pid = pPacket.readGUShort();
+	unsigned short pid = pPacket.readGUShort();
 	CString servername = pPacket.readString("");
 
-	int id = 0;
+	//int id = 0;
 	for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
 	{
 		TServer* server = *i;
 		if (server == 0) continue;
 		if (servername.comparei(server->getName()))
 		{
-			sendPacket(CString() >> (char)SVO_SERVERINFO >> (short)pid << "playerworld" << CString((int)id) << ",\"" << server->getName() << "\"," << server->getIp() << "," << server->getPort());
+			//sendPacket(CString() >> (char)SVO_SERVERINFO >> (short)pid << "playerworld" << CString((int)id) << ",\"" << server->getName() << "\"," << server->getIp() << "," << server->getPort());
+			sendPacket(CString() >> (char)SVO_SERVERINFO >> (short)pid << (CString() << server->getName() << "\n" << server->getName() << "\n" << server->getIp() << "\n" << server->getPort()).gtokenizeI());
 			return true;
 		}
-		++id;
+		//++id;
+	}
+
+	return true;
+}
+
+bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
+{
+	unsigned short pid = pPacket.readGUShort();
+	CString data = pPacket.readString("");
+
+	// Assemble the serverlist.
+	CString p;
+	for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+	{
+		TServer* server = *i;
+		if (server == 0) continue;
+
+		CString p2;
+		p2 << server->getName() << "\n";
+		p2 << server->getName() << "\n";
+		p2 << CString((int)server->getPCount()) << "\n";
+		p2.gtokenizeI();
+
+		p << "\"" << p2 << "\",";
+	}
+	p.removeI(p.length() - 1);
+
+	// Send the serverlist back to the server.
+	sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << data << "," << p);
+	return true;
+}
+
+bool TServer::msgSVI_REQUESTSVRINFO(CString& pPacket)
+{
+	unsigned short pid = pPacket.readGUShort();
+	CString data = pPacket.readString("");
+
+	CString data2 = data.guntokenize();
+	CString weapon = data2.readString("\n");
+	CString type = data2.readString("\n");
+	CString option = data2.readString("\n");
+
+	// Find the server.
+	for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+	{
+		TServer* server = *i;
+		if (server == 0) continue;
+		if (option.comparei(server->getName()))
+		{
+			CString p;
+			p << server->getName() << "\n";
+			p << server->getDescription() << "\n";
+			p << server->getLanguage() << "\n";
+			p << server->getVersion() << "\n";
+			p << server->getUrl() << "\n";
+			p.gtokenizeI();
+
+			// Send the server info back to the server.
+			sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << data << "," << p);
+			return true;
+		}
 	}
 
 	return true;
