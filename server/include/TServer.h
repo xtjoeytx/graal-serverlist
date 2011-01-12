@@ -114,6 +114,7 @@ class TServer
 		const int getPCount();
 		const CString& getPort();
 		const CString getType(int PLVER);
+		int getTypeVal();
 		const CString& getUrl();
 		const CString& getVersion();
 		const CString getServerPacket(int PLVER, const CString& pIp = "");

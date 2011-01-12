@@ -312,6 +312,11 @@ const CString TServer::getType(int PLVER)
 	return ret;
 }
 
+int TServer::getTypeVal()
+{
+	return serverhq_level;
+}
+
 const CString& TServer::getUrl()
 {
 	return url;
@@ -1049,6 +1054,7 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 	{
 		TServer* server = *i;
 		if (server == 0) continue;
+		if (server->getTypeVal() == TYPE_HIDDEN) continue;
 
 		CString p2;
 		p2 << server->getName() << "\n";
