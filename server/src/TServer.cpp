@@ -1056,9 +1056,9 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 		p2 << CString((int)server->getPCount()) << "\n";
 		p2.gtokenizeI();
 
-		p << "\"" << p2 << "\",";
+		p << p2 << "\n";
 	}
-	p.removeI(p.length() - 1);
+	p.gtokenizeI();
 
 	// Send the serverlist back to the server.
 	sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << data << "," << p);
