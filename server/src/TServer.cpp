@@ -1074,15 +1074,23 @@ bool TServer::msgSVI_REQUESTSVRINFO(CString& pPacket)
 	CString weapon = data2.readString("\n");
 	CString type = data2.readString("\n");
 	CString option = data2.readString("\n");
+	CString params = data2.readString("\n");
+	
+	// Untokenize our params.
+	params.guntokenizeI();
 
 	// Find the server.
+	CString servername = params.readString("\n");
 	for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
 	{
 		TServer* server = *i;
 		if (server == 0) continue;
-		if (option.comparei(server->getName()))
+		if (servername.comparei(server->getName()))
 		{
 			CString p;
+			p << weapon << "\n";
+			p << type << "\n";
+			p << option << "\n";
 			p << server->getName() << "\n";
 			p << server->getDescription() << "\n";
 			p << server->getLanguage() << "\n";
@@ -1091,7 +1099,7 @@ bool TServer::msgSVI_REQUESTSVRINFO(CString& pPacket)
 			p.gtokenizeI();
 
 			// Send the server info back to the server.
-			sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << data << "," << p);
+			sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << p);
 			return true;
 		}
 	}
