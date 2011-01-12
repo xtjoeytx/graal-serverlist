@@ -1052,7 +1052,7 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 
 		CString p2;
 		p2 << server->getName() << "\n";
-		p2 << server->getName() << "\n";
+		p2 << server->getType(PLV_POST22) << server->getName() << "\n";
 		p2 << CString((int)server->getPCount()) << "\n";
 		p2.gtokenizeI();
 
@@ -1092,6 +1092,7 @@ bool TServer::msgSVI_REQUESTSVRINFO(CString& pPacket)
 			p << type << "\n";
 			p << option << "\n";
 			p << server->getName() << "\n";
+			p << server->getType(PLV_POST22) << server->getName() << "\n";
 			p << server->getDescription() << "\n";
 			p << server->getLanguage() << "\n";
 			p << server->getVersion() << "\n";
