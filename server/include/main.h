@@ -37,6 +37,7 @@
 
 CString getAccountError(int pErrorId);
 CString getServerList(int PLVER, const CString& pIp = "");
+CString getBuddies(CString& pAccount);
 int getPlayerCount();
 int getServerCount();
 int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer = false);

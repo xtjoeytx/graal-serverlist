@@ -22,6 +22,7 @@ typedef void (*sighandler_t)(int);
 bool running = true;
 #ifndef NO_MYSQL
 	CMySQL *mySQL = NULL;
+	CMySQL *vBmySQL = NULL;
 #endif
 CSettings *settings = NULL;
 std::vector<TPlayer *> playerList;
@@ -122,6 +123,7 @@ int main(int argc, char *argv[])
 	// MySQL-Connect
 #ifndef NO_MYSQL
 	mySQL = new CMySQL(settings->getStr("server").text(), settings->getStr("user").text(), settings->getStr("password").text(), settings->getStr("database").text(), settings->getStr("sockfile").text());
+	vBmySQL =  new CMySQL(settings->getStr("server").text(), settings->getStr("vbuser").text(), settings->getStr("vbpassword").text(), settings->getStr("vbdatabase").text(), settings->getStr("sockfile").text());
 	if (!mySQL->ping())
 	{
 		serverlog.out( "[Error] No response from MySQL.\n" );
@@ -313,6 +315,32 @@ int getPlayerCount()
 int getServerCount()
 {
 	return (int)serverList.size();
+}
+
+CString getBuddies(CString& pAccount)
+{
+#ifdef NO_MYSQL
+	return "";
+#else
+	CString query;
+	std::vector<CString> result;
+	query << "SELECT user2.username as buddy FROM user LEFT JOIN userlist ON (user.userid=userlist.userid) LEFT JOIN user as user2 ON  (userlist.relationid=user2.userid) WHERE user.username LIKE '" << pAccount.escape() << "' AND userlist.type LIKE 'buddy' AND userlist.friend LIKE 'yes';";
+	vBmySQL->query(query, &result);
+
+	CString buddies;
+	// does the player have any vBulletin friends?
+	if (result.size() == 0)
+		return "";
+	else
+	{
+		for (int i = 0;i < result.size();i++)
+			buddies << result[i] <<"\n";
+
+		buddies.gtokenizeI();
+
+		return buddies;
+	}
+#endif
 }
 
 int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer)

@@ -33,6 +33,7 @@ enum
 	SVI_SERVERINFO		= 25,
 	SVI_REQUESTLIST		= 26,
 	SVI_REQUESTSVRINFO	= 27,
+	SVI_REQUESTBUDDIES  = 28,
 };
 
 enum
@@ -157,6 +158,7 @@ class TServer
 		bool msgSVI_REQUESTLIST(CString& pPacket);
 		bool msgSVI_REQUESTSVRINFO(CString& pPacket);
 		bool msgSVI_REQUESTLIST2(CString& pPacket);
+		bool msgSVI_REQUESTBUDDIES(CString& pPacket);
 
 	private:
 		CSocket *sock;
