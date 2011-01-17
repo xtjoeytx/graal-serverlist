@@ -1047,7 +1047,7 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 {
 	unsigned short pid = pPacket.readGUShort();
 	CString packet = pPacket.readString("");
-	CString data = packet.guntokenizeI();
+	CString data = packet.guntokenize();
 
 	CString weapon = data.readString("\n");
 	CString type = data.readString("\n");
