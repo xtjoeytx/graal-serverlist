@@ -1197,10 +1197,13 @@ bool TServer::msgSVI_REQUESTBUDDIES(CString& pPacket)
 	CString option = data.readString("\n");
 
 	CString p;
+	p << weapon << "\n";
+	p << type << "\n";
+	p << "buddylist" << "\n";
+	p.gtokenizeI();
+	p << "," << getBuddies(account);
 
-	p << getBuddies(account);
-
-	sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << weapon << "," << type << ",buddylist," << p);
+	sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << p);
 
 	return true;
 }
