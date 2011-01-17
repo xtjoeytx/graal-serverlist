@@ -323,9 +323,9 @@ CString getBuddies(CString& pAccount)
 	return "";
 #else
 	CString query;
-	std::vector<CString> result;
+	std::vector<std::vector<CString> > result;
 	query << "SELECT user2.username as buddy FROM user LEFT JOIN userlist ON (user.userid=userlist.userid) LEFT JOIN user as user2 ON  (userlist.relationid=user2.userid) WHERE user.username LIKE '" << pAccount.escape() << "' AND userlist.type LIKE 'buddy' AND userlist.friend LIKE 'yes';";
-	vBmySQL->query(query, &result);
+	vBmySQL->query_rows(query, &result);
 
 	CString buddies;
 	// does the player have any vBulletin friends?
@@ -333,8 +333,11 @@ CString getBuddies(CString& pAccount)
 		return "";
 	else
 	{
-		for (int i = 0;i < result.size();i++)
-			buddies << result[i] <<"\n";
+		for (unsigned int i = 0; i < result.size(); i++)
+		{
+			if (!result[i].empty())
+				buddies << result[i][0] <<"\n";
+		}
 
 		buddies.gtokenizeI();
 
