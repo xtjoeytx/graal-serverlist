@@ -53,6 +53,7 @@ void createSVFunctions()
 	svfunc[SVI_SERVERINFO] = &TServer::msgSVI_SERVERINFO;
 	svfunc[SVI_REQUESTLIST] = &TServer::msgSVI_REQUESTLIST;
 	svfunc[SVI_REQUESTSVRINFO] = &TServer::msgSVI_REQUESTSVRINFO;
+	svfunc[SVI_REQUESTBUDDIES] = &TServer::msgSVI_REQUESTBUDDIES;
 }
 
 /*
@@ -1093,7 +1094,7 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 			p2 << server->getName() << "\n";
 			p2 << CString((int)server->getPCount()) << "\n";
 			p2.gtokenizeI();
-		
+
 			// Put it in the proper category.
 			if (server->getTypeVal() == TYPE_3D)
 				cat0 << p2 << "\n";
@@ -1151,7 +1152,7 @@ bool TServer::msgSVI_REQUESTSVRINFO(CString& pPacket)
 	CString type = data2.readString("\n");
 	CString option = data2.readString("\n");
 	CString params = data2.readString("\n");
-	
+
 	// Untokenize our params.
 	params.guntokenizeI();
 
@@ -1180,6 +1181,26 @@ bool TServer::msgSVI_REQUESTSVRINFO(CString& pPacket)
 			return true;
 		}
 	}
+
+	return true;
+}
+
+bool TServer::msgSVI_REQUESTBUDDIES(CString& pPacket)
+{
+	unsigned short pid = pPacket.readGUShort();
+	CString packet = pPacket.readString("");
+	CString data = packet.guntokenize();
+
+	CString account = data.readString("\n");
+	CString weapon = data.readString("\n");
+	CString type = data.readString("\n");
+	CString option = data.readString("\n");
+
+	CString p;
+
+	p << getBuddies(account);
+
+	sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << weapon << "," << type << ",buddylist," << p);
 
 	return true;
 }
