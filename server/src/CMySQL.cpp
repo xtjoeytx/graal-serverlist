@@ -81,6 +81,54 @@ int CMySQL::query(const CString& pQuery, std::vector<CString> *pResult)
 		return 0;
 }
 
+int CMySQL::query_rows(const CString& pQuery, std::vector<std::vector<CString> > *pResult)
+{
+	// run query
+	if (mysql_query(mysql, pQuery.text()))
+		return 0;
+
+	if (pResult == 0)
+		return 0;
+
+	// store result
+	if (!(res = mysql_store_result(mysql)))
+		return 0;
+
+	int row_count = 0;
+	pResult->clear();
+
+	// fetch row
+	MYSQL_ROW row = 0;
+	while ((row = mysql_fetch_row(res)))
+	{
+		unsigned long* lengths = mysql_fetch_lengths(res);
+		if (lengths == 0 || row == 0)
+		{
+			mysql_free_result(res);
+			return row_count;
+		}
+
+		// Grab the full value and add it to the vector.
+		std::vector<CString> r;
+		for (unsigned int i = 0; i < mysql_num_fields(res); i++)
+		{
+			char* temp = new char[lengths[i] + 1];
+			memcpy(temp, row[i], lengths[i]);
+			temp[lengths[i]] = '\0';
+			r.push_back(CString(temp));
+			delete temp;
+		}
+
+		// Push back the row.
+		pResult->push_back(r);
+		++row_count;
+	}
+
+	// cleanup
+	mysql_free_result(res);
+	return row_count;
+}
+
 const char* CMySQL::error()
 {
 	return mysql_error(mysql);

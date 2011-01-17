@@ -24,6 +24,7 @@ class CMySQL
 		bool ping();
 		const char* error();
 		int query(const CString& pQuery, std::vector<CString> *pResult = NULL);
+		int query_rows(const CString& pQuery, std::vector<std::vector<CString> > *pResult = NULL);
 
 	private:
 		const char *database, *external, *password, *server, *username;
