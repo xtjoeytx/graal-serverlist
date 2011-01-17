@@ -1130,8 +1130,8 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 			if (server == 0) continue;
 			if (server->getTypeVal() == TYPE_HIDDEN) continue;
 
-			CString p2;
-			p2 << server->getName();
+			CString p2(server->getName());
+			p2.gtokenizeI();
 
 			p << p2 << "\n";
 		}
@@ -1139,7 +1139,8 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 	}
 
 	// Send the serverlist back to the server.
-	sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << packet << "," << p);
+	if (!p.isEmpty())
+		sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << packet << "," << p);
 	return true;
 }
 

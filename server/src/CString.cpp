@@ -1,8 +1,10 @@
 #include "CString.h"
 
-#ifdef _WIN32
-	#define strncasecmp _strnicmp
-	#define snprintf _snprintf
+#if defined(_WIN32) || defined(_WIN64)
+	#ifdef _MSC_VER
+		#define strncasecmp _strnicmp
+		#define snprintf _snprintf
+	#endif
 #endif
 
 /*
@@ -124,8 +126,36 @@ bool CString::load(const CString& pString)
 {
 	char buff[65535];
 	FILE *file = 0;
+
+#if defined(WIN32) || defined(WIN64)
+	wchar_t* wcstr = 0;
+
+	// Determine if the filename is UTF-8 encoded.
+	int wcsize = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, pString.text(), pString.length(), 0, 0);
+	if (wcsize != 0)
+	{
+		wcstr = new wchar_t[wcsize + 1];
+		memset((void *)wcstr, 0, (wcsize + 1) * sizeof(wchar_t));
+		MultiByteToWideChar(CP_UTF8, 0, pString.text(), pString.length(), wcstr, wcsize);
+	}
+	else
+	{
+		wcstr = new wchar_t[pString.length() + 1];
+		for (int i = 0; i < pString.length(); ++i)
+			wcstr[i] = (unsigned char)pString[i];
+		wcstr[pString.length()] = 0;
+	}
+
+	// Open the file now.
+	file = _wfopen(wcstr, L"rb");
+	delete[] wcstr;
+	if (file == 0)
+		return false;
+#else
+	// Linux uses UTF-8 filenames.
 	if ((file = fopen(pString.text(), "rb")) == 0)
 		return false;
+#endif
 
 	int size = 0;
 	clear();
@@ -138,9 +168,39 @@ bool CString::load(const CString& pString)
 bool CString::save(const CString& pString) const
 {
 	FILE *file = 0;
+
+#if defined(WIN32) || defined(WIN64)
+	wchar_t* wcstr = 0;
+
+	// Determine if the filename is UTF-8 encoded.
+	int wcsize = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, pString.text(), pString.length(), 0, 0);
+	if (wcsize != 0)
+	{
+		wcstr = new wchar_t[wcsize + 1];
+		memset((void *)wcstr, 0, (wcsize + 1) * sizeof(wchar_t));
+		MultiByteToWideChar(CP_UTF8, 0, pString.text(), pString.length(), wcstr, wcsize);
+	}
+	else
+	{
+		wcstr = new wchar_t[pString.length() + 1];
+		for (int i = 0; i < pString.length(); ++i)
+			wcstr[i] = (unsigned char)pString[i];
+		wcstr[pString.length()] = 0;
+	}
+
+	// Open the file now.
+	file = _wfopen(wcstr, L"wb");
+	delete[] wcstr;
+	if (file == 0)
+		return false;
+#else
+	// Linux uses UTF-8 filenames.
 	if ((file = fopen(pString.text(), "wb")) == 0)
 		return false;
+#endif
+
 	fwrite(buffer, 1, sizec, file);
+	fflush(file);
 	fclose(file);
 	return true;
 }
@@ -202,8 +262,9 @@ int CString::write(const char *pSrc, int pSize)
 
 	memcpy(&buffer[writec], pSrc, pSize);
 	writec += pSize;
+	buffer[writec] = 0;
 	sizec = (writec > sizec ? writec : sizec);
-	buffer[sizec] = 0;
+	//buffer[sizec] = 0;
 	return pSize;
 }
 
@@ -633,12 +694,16 @@ CString CString::gtokenize() const
 	while ((pos[0] = self.find("\n", pos[1])) != -1)
 	{
 		CString temp(self.subString(pos[1], pos[0] - pos[1]));
-		temp.replaceAllI( "\"", "\"\"" );	// Change all " to ""
 		temp.removeAllI("\r");
-		if (temp.length() != 0)
-			retVal << "\"" << temp << "\",";
-		else
-			retVal << ",";
+		if (temp.find(" ") != -1 || temp[0] == '"')
+		{
+			temp.replaceAllI( "\"", "\"\"" );	// Change all " to ""
+			if (temp.length() != 0)
+				retVal << "\"" << temp << "\",";
+			else
+				retVal << ",";
+		}
+		else retVal << temp << ",";
 		pos[1] = pos[0] + 1;
 	}
 
@@ -650,104 +715,59 @@ CString CString::gtokenize() const
 CString CString::guntokenize() const
 {
 	CString retVal;
-	std::vector<CString> temp;
-	int pos[] = {0, 1};
+	retVal.clear(length() + 5);
+	bool is_paren = false;
 
-	// Copy the buffer data to a working copy and trim it.
-	CString nData(*this);
-	nData.trimI();
-
-	// Check to see if it starts with a quotation mark.  If not, set pos[1] to 0.
-	if (nData[0] != '\"') pos[1] = 0;
+	// Check to see if we are starting with a quotation mark.
+	int i = 0;
+	if (buffer[0] == '"')
+	{
+		is_paren = true;
+		++i;
+	}
 
 	// Untokenize.
-	while ((pos[0] = nData.find(",", pos[1])) != -1)
+	for (; i < length(); ++i)
 	{
-		// Empty blocks are blank lines.
-		if (pos[0] == pos[1])
+		// If we encounter a comma not inside a quoted string, we are encountering
+		// a new index.  Replace the comma with a newline.
+		if (buffer[i] == ',' && !is_paren)
 		{
-			pos[1]++;
-			temp.push_back(CString("\r"));	// Workaround strtok() limitation.
-			continue;
-		}
-
-		// ,"", blank lines.
-		if (pos[0] - pos[1] == 1 && nData[pos[1]] == '\"')
-		{
-			pos[1] += 2;
-			temp.push_back(CString("\r"));
-			continue;
-		}
-
-		// Check for ,,"""blah"
-		if (nData[pos[1]] == '\"' && nData[pos[1]+1] != '\"')
-		{
-			// Check to make sure it isn't ,"",
-			if (!(pos[1] + 2 < nData.length() && nData[pos[1]+2] == ','))
-				pos[1]++;
-		}
-
-		// Check and see if the comma is outside or inside of the thing string.
-		// If pos[1] points to a quotation mark we have to find the closing quotation mark.
-		if (pos[1] > 0 && nData[pos[1] - 1] == '\"')
-		{
-			while (true)
+			retVal << "\n";
+			
+			// Check to see if the next string is quoted.
+			if (i + 1 < length() && buffer[i + 1] == '"')
 			{
-				if ( pos[0] == -1 ) break;
-				if ((nData[pos[0]-1] != '\"') ||
-					(nData[pos[0]-1] == '\"' && nData[pos[0]-2] == '\"') )
-					pos[0] = nData.find( ",", pos[0] + 1 );
-				else
-					break;
+				is_paren = true;
+				++i;
 			}
 		}
-
-		// Exit out if we previously failed to find the end.
-		if (pos[0] == -1) break;
-
-		// "test",test
-		CString t2;
-		if (pos[0] > 0 && nData[pos[0] - 1] == '\"')
-			t2 = nData.subString(pos[1], pos[0] - pos[1] - 1);
-		else
-			t2 = nData.subString(pos[1], pos[0] - pos[1]);
-
-		// Check if the string is valid and if it is, copy it.
-		t2.replaceAllI( "\"\"", "\"" );
-		t2.removeAllI("\n");
-		t2.removeAllI("\r");
-
-		// Add it.
-		temp.push_back(t2);
-
-		// Move forward the correct number of spaces.
-		if (pos[0] + 1 != nData.length() && nData[pos[0] + 1] == '\"')
-			pos[1] = pos[0] + (int)strlen(",\"");	// test,"test
-		else
-			pos[1] = pos[0] + (int)strlen(",");		// test,test
-	}
-
-	// Try and grab the very last element.
-	if (pos[1] < nData.length())
-	{
-		// If the end is a quotation mark, remove it.
-		if (nData[nData.length() - 1] == '\"')
-			nData.removeI(nData.length() - 1, 1);
-
-		// Sanity check.
-		if (pos[1] != nData.length())
+		// We need to handle quotation marks as they have different behavior in quoted strings.
+		else if (buffer[i] == '"')
 		{
-			CString buf(nData.subString(pos[1]));
-			buf.replaceAllI("\"\"", "\"");	// Replace "" with "
-			buf.removeAllI("\n");
-			buf.removeAllI("\r");
-			temp.push_back(buf);
+			// If we are encountering a quotation mark in a quoted string, we are either
+			// ending the quoted string or escaping a quotation mark.
+			if (is_paren)
+			{
+				if (i + 1 < length())
+				{
+					// Escaping a quotation mark.
+					if (buffer[i + 1] == '"')
+					{
+						retVal << "\"";
+						++i;
+					}
+					// Ending the quoted string.
+					else if (buffer[i + 1] == ',')
+						is_paren = false;
+				}
+			}
+			// A quotation mark in a non-quoted string.
+			else retVal << buffer[i];
 		}
+		// Anything else gets put to the output.
+		else retVal << buffer[i];
 	}
-
-	// Write the correct string out.
-	for ( unsigned int i = 0; i < temp.size(); ++i )
-		retVal << temp[i] << "\n";
 
 	return retVal;
 }
@@ -801,7 +821,7 @@ bool CString::comparei(const CString& pOther) const
 	return false;
 }
 
-bool CString::isNumber()
+bool CString::isNumber() const
 {
 	const char numbers[] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.' };
 	char periodCount = 0;
@@ -859,6 +879,11 @@ CString CString::operator+(const CString& pString)
 {
 	return CString(*this) << pString;
 }
+
+//CString::operator const char*() const
+//{
+//	return buffer;
+//}
 
 char& CString::operator[](int pIndex)
 {
@@ -1021,6 +1046,7 @@ CString& CString::writeGInt5(const long long pData)
 	return *this;
 }
 
+// max: 0xDF 223
 char CString::readGChar()
 {
 	char val;
@@ -1028,6 +1054,7 @@ char CString::readGChar()
 	return val-32;
 }
 
+// max: 0x2FDF 12255
 short CString::readGShort()
 {
 	unsigned char val[2];
@@ -1035,6 +1062,7 @@ short CString::readGShort()
 	return ((val[0]-32) << 7) + val[1]-32;
 }
 
+// max: 0x17EFDF 1568735
 int CString::readGInt()
 {
 	unsigned char val[3];
@@ -1042,6 +1070,7 @@ int CString::readGInt()
 	return ((val[0]-32) << 14) + ((val[1]-32) << 7) + val[2]-32;
 }
 
+// max: 0xBF7EFDF 200798175
 int CString::readGInt4()
 {
 	unsigned char val[4];
@@ -1049,6 +1078,7 @@ int CString::readGInt4()
 	return ((val[0]-32) << 21) + ((val[1]-32) << 14) + ((val[2]-32) << 7) + val[3]-32;
 }
 
+// max: 0x5FBF7EFDF 25702166495
 int CString::readGInt5()
 {
 	unsigned char val[5];
