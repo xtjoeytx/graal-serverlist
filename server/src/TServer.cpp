@@ -1121,6 +1121,22 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 		p << cat0 << "\n" << cat1 << "\n" << cat2 << "\n";
 		p.gtokenizeI();
 	}
+	else if (type == "pmservers")
+	{
+		// Assemble the serverlist.
+		for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+		{
+			TServer* server = *i;
+			if (server == 0) continue;
+			if (server->getTypeVal() == TYPE_HIDDEN) continue;
+
+			CString p2;
+			p2 << server->getName();
+
+			p << p2 << "\n";
+		}
+		p.gtokenizeI();
+	}
 
 	// Send the serverlist back to the server.
 	sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << packet << "," << p);
