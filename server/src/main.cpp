@@ -82,10 +82,10 @@ int main(int argc, char *argv[])
 	// Server sock.
 	serverSock.setType( SOCKET_TYPE_SERVER );
 	serverSock.setProtocol( SOCKET_PROTOCOL_TCP );
-	serverSock.setOptions( SOCKET_OPTION_NONBLOCKING );
 	serverSock.setDescription( "serverSock" );
-	CString empty;
-	if ( serverSock.init( empty, settings->getStr("gserverPort") ) )
+	CString serverInterface = settings->getStr("gserverInterface");
+	if (serverInterface == "AUTO") serverInterface.clear();
+	if ( serverSock.init( (serverInterface.isEmpty() ? 0 : serverInterface.text()), settings->getStr("gserverPort").text() ) )
 	{
 		serverlog.out( "[Error] Could not initialize sockets.\n" );
 		return ERR_LISTEN;
@@ -94,9 +94,10 @@ int main(int argc, char *argv[])
 	// Player sock.
 	playerSock.setType( SOCKET_TYPE_SERVER );
 	playerSock.setProtocol( SOCKET_PROTOCOL_TCP );
-	playerSock.setOptions( SOCKET_OPTION_NONBLOCKING );
 	playerSock.setDescription( "playerSock" );
-	if ( playerSock.init( empty, settings->getStr("clientPort") ) )
+	CString playerInterface = settings->getStr("clientInterface");
+	if (playerInterface == "AUTO") playerInterface.clear();
+	if ( playerSock.init( (playerInterface.isEmpty() ? 0 : playerInterface.text()), settings->getStr("clientPort").text() ) )
 	{
 		serverlog.out( "[Error] Could not initialize sockets.\n" );
 		return ERR_LISTEN;
@@ -105,9 +106,8 @@ int main(int argc, char *argv[])
 	// Player sock.
 	playerSockOld.setType( SOCKET_TYPE_SERVER );
 	playerSockOld.setProtocol( SOCKET_PROTOCOL_TCP );
-	playerSockOld.setOptions( SOCKET_OPTION_NONBLOCKING );
 	playerSockOld.setDescription( "playerSockOld" );
-	if ( playerSockOld.init( empty, settings->getStr("clientPortOld") ) )
+	if ( playerSockOld.init( (playerInterface.isEmpty() ? 0 : playerInterface.text()), settings->getStr("clientPortOld").text() ) )
 	{
 		serverlog.out( "[Error] Could not initialize sockets.\n" );
 		return ERR_LISTEN;
@@ -243,7 +243,7 @@ void acceptSock(CSocket& pSocket, int pType)
 	// Server ip bans.
 	if (pType == SOCK_SERVER)
 	{
-		CString ip(newSock->tcpIp());
+		CString ip(newSock->getRemoteIp());
 		for (std::vector<CString>::const_iterator i = ipBans.begin(); i != ipBans.end(); ++i)
 		{
 			if (ip.match(*i))
@@ -257,7 +257,7 @@ void acceptSock(CSocket& pSocket, int pType)
 	}
 
 	//newSock->setOptions( SOCKET_OPTION_NONBLOCKING );
-	serverlog.out(CString() << "New Connection: " << CString(newSock->tcpIp()) << " -> " << ((pType == SOCK_PLAYER) ? "Player" : "Server") << "\n");
+	serverlog.out(CString() << "New Connection: " << CString(newSock->getRemoteIp()) << " -> " << ((pType == SOCK_PLAYER) ? "Player" : "Server") << "\n");
 	if (pType == SOCK_PLAYER || pType == SOCK_PLAYEROLD)
 		playerList.push_back(new TPlayer(newSock, (pType == SOCK_PLAYEROLD ? true : false)));
 	else serverList.push_back(new TServer(newSock));

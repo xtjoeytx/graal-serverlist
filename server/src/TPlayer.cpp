@@ -40,7 +40,7 @@ TPlayer::TPlayer(CSocket *pSocket, bool pIsOld)
 	if (isOld)
 	{
 		if (getServerCount() > 0)
-			sendPacket(CString() >> (char)PLO_SVRLIST << getServerList(version, sock->tcpIp()), true);
+			sendPacket(CString() >> (char)PLO_SVRLIST << getServerList(version, sock->getRemoteIp()), true);
 	}
 }
 
@@ -55,19 +55,19 @@ TPlayer::~TPlayer()
 bool TPlayer::doMain()
 {
 	// sock exist?
-	if (sock == NULL)
+	if (sock == NULL || sock->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
 
 	// definitions
 	CString unBuffer;
 
-	// receive
-	if ( sock->getData() == -1 )
+	// Grab the data from the socket and put it into our receive buffer.
+	unsigned int size = 0;
+	char* data = sock->getData(&size);
+	if (size != 0)
+		sockBuffer.write(data, size);
+	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
-
-	// append new data
-	sockBuffer.write( sock->getBuffer().text(), sock->getBuffer().length() );
-	sock->getBuffer().clear();
 
 	// parse data
 	sockBuffer.setRead(0);
@@ -146,7 +146,10 @@ void TPlayer::sendCompress()
 	{
 		// If we still have some data in the out buffer, try sending it again.
 		if (outBuffer.isEmpty() == false)
-			sock->sendData(outBuffer);
+		{
+			unsigned int dsize = outBuffer.length();
+			outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
+		}
 		return;
 	}
 
@@ -172,7 +175,8 @@ void TPlayer::sendCompress()
 		outBuffer << (short)(sendBuffer.length() + 1) << (char)compressionType << sendBuffer;
 
 		// Send outBuffer.
-		sock->sendData(outBuffer);
+		unsigned int dsize = outBuffer.length();
+		outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
 	}
 	else if (version == PLV_PRE22)
 	{
@@ -181,7 +185,8 @@ void TPlayer::sendCompress()
 		outBuffer << (short)sendBuffer.length() << sendBuffer;
 
 		// Send outBuffer.
-		sock->sendData(outBuffer);
+		unsigned int dsize = outBuffer.length();
+		outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
 	}
 	else if (version == PLV_22)
 	{
@@ -193,7 +198,8 @@ void TPlayer::sendCompress()
 		outBuffer << (short)sendBuffer.length() << sendBuffer;
 
 		// Send outBuffer.
-		sock->sendData(outBuffer);
+		unsigned int dsize = outBuffer.length();
+		outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
 	}
 
 	// Clear the send buffer.
@@ -284,7 +290,7 @@ bool TPlayer::msgPLI_SERVERLIST(CString& pPacket)
 	{
 		case ACCSTAT_NORMAL:
 			if (getServerCount() > 0)
-				sendPacket(CString() >> (char)PLO_SVRLIST << getServerList(version, sock->tcpIp()), true);
+				sendPacket(CString() >> (char)PLO_SVRLIST << getServerList(version, sock->getRemoteIp()), true);
 			sendPacket(CString() >> (char)PLO_STATUS << "Welcome to " << settings->getStr("name") << ", " << account << "." << "\r" << "There are " << CString(getServerCount()) << " server(s) online.");
 			sendPacket(CString() >> (char)PLO_SITEURL << settings->getStr("url"));
 			sendPacket(CString() >> (char)PLO_UPGURL << settings->getStr("donateUrl"));
