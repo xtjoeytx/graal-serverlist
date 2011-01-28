@@ -109,13 +109,13 @@ bool TServer::doMain()
 	CString line, unBuffer;
 	int lineEnd;//, size;
 
-	// receive
-	if ( sock->getData() == -1 )
+	// Grab the data from the socket and put it into our receive buffer.
+	unsigned int size = 0;
+	char* data = sock->getData(&size);
+	if (size != 0)
+		sockBuffer.write(data, size);
+	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
-
-	// append new data
-	sockBuffer.write( sock->getBuffer().text(), sock->getBuffer().length() );
-	sock->getBuffer().clear();
 
 	if (!sockBuffer.length())
 		return true;
@@ -345,7 +345,10 @@ void TServer::sendCompress()
 	{
 		// If we still have some data in the out buffer, try sending it again.
 		if (outBuffer.isEmpty() == false)
-			sock->sendData(outBuffer);
+		{
+			unsigned int dsize = outBuffer.length();
+			outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
+		}
 		return;
 	}
 
@@ -353,7 +356,8 @@ void TServer::sendCompress()
 	outBuffer << sendBuffer;
 
 	// send buffer
-	sock->sendData(outBuffer);
+	unsigned int dsize = outBuffer.length();
+	outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
 
 	// clear buffer
 	sendBuffer.clear();
@@ -430,7 +434,7 @@ dupCheck:
 
 			// If the IP addresses are the same, something happened and this server is reconnecting.
 			// Delete the old server.
-			if (server->getSock() == 0 || strcmp(server->getSock()->tcpIp(), sock->tcpIp()) == 0)
+			if (server->getSock() == 0 || strcmp(server->getSock()->getRemoteIp(), sock->getRemoteIp()) == 0)
 			{
 				name = server->getName();
 				server->kill();
@@ -535,7 +539,7 @@ bool TServer::msgSVI_SETURL(CString& pPacket)
 bool TServer::msgSVI_SETIP(CString& pPacket)
 {
 	ip = pPacket.readString("");
-	ip = (ip == "AUTO" ? sock->tcpIp() : ip);
+	ip = (ip == "AUTO" ? sock->getRemoteIp() : ip);
 	SQLupdate("ip", ip);
 	return true;
 }
