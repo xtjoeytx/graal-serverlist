@@ -103,7 +103,10 @@ bool TServer::doMain()
 {
 	// sock exist?
 	if (sock == NULL)
+	{
+		serverlog.out("Socket does not exist for server %s!\n", getName().text());
 		return false;
+	}
 
 	// definitions
 	CString line, unBuffer;
@@ -115,7 +118,10 @@ bool TServer::doMain()
 	if (size != 0)
 		sockBuffer.write(data, size);
 	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
+	{
+		serverlog.out("Socket is disconnected for server %s.\n", getName.text());
 		return false;
+	}
 
 	if (!sockBuffer.length())
 		return true;
@@ -386,7 +392,9 @@ bool TServer::parsePacket(CString& pPacket)
 	unsigned char id = pPacket.readGUChar();
 
 	// valid packet, call function
-	return (*this.*svfunc[id])(pPacket);
+	bool ret = (*this.*svfunc[id])(pPacket);
+	if (!ret) serverlog.out("Packet %d failed for server %s.\n", (int)id, getName().text());
+	return ret;
 }
 
 bool TServer::msgSVI_NULL(CString& pPacket)

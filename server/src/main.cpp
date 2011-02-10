@@ -195,15 +195,27 @@ int main(int argc, char *argv[])
 				continue;
 			}
 
-			if ((int)server->getLastData() >= 300 || server->doMain() == false)
+			// Check for a timed out server.
+			if ((int)server->getLastData() >= 300)
+			{
+				serverlog.out(CString() << "Server disconnected: " << server->getName() << " [Timed out]\n");
+				server->sendCompress();
+				delete server;
+				iter = serverList.erase(iter);
+				continue;
+			}
+
+			// Execute server stuff.
+			if (server->doMain() == false)
 			{
 				serverlog.out(CString() << "Server disconnected: " << server->getName() << "\n");
 				server->sendCompress();
 				delete server;
-				iter = serverList.erase( iter );
+				iter = serverList.erase(iter);
+				continue;
 			}
-			else
-				++iter;
+			
+			++iter;
 		}
 
 		// Every 5 minutes...
