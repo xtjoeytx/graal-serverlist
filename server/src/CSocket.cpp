@@ -430,10 +430,7 @@ int CSocket::sendData(char* data, unsigned int* dsize)
 				disconnect();
 				return 0;
 				break;
-#if !(defined(WIN32) || defined(WIN64))
 			case EAGAIN:
-#endif
-			case EWOULDBLOCK:
 				return 0;
 				break;
 		}
@@ -498,7 +495,7 @@ char* CSocket::getData(unsigned int* dsize)
 	}
 
 	// If size is 0, the socket was disconnected.
-	if (size == 0 && (intError != EAGAIN && intError != EWOULDBLOCK))
+	if (size == 0 && intError != EAGAIN)
 		disconnect();
 
 	// Set dsize to how much data was returned.
