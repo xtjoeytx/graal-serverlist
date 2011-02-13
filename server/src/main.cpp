@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
 	serverList.clear();
 
 	// Load Settings
-	settings = new CSettings("settings.ini");
+	settings = new CSettings(homepath + "settings.ini");
 	if (!settings->isOpened())
 	{
 		serverlog.out( "[Error] Could not load settings.\n" );
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	}
 
 	// Load ip bans.
-	ipBans = CString::loadToken("ipbans.txt", "\n", true);
+	ipBans = CString::loadToken(homepath + "ipbans.txt", "\n", true);
 	serverlog.out("Loaded following IP bans:\n");
 	for (std::vector<CString>::iterator i = ipBans.begin(); i != ipBans.end(); ++i)
 		serverlog.out("\t%s\n", i->text());

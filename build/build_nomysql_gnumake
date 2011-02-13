@@ -1,2 +1,2 @@
 #!/bin/bash
-premake --target gnu --no-mysql
+premake4 --no-mysql gmake
