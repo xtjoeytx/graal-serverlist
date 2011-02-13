@@ -1,2 +1,2 @@
-premake --target cb-gcc --no-mysql
+premake4.exe --no-mysql %* codeblocks
 pause

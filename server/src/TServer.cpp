@@ -119,7 +119,7 @@ bool TServer::doMain()
 		sockBuffer.write(data, size);
 	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
 	{
-		serverlog.out("Socket is disconnected for server %s.\n", getName().text());
+		serverlog.out("Socket is disconnected for server %s.\n", name.text());
 		return false;
 	}
 

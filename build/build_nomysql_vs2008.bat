@@ -1,2 +1,2 @@
-premake --target vs2008 --no-mysql
+premake4.exe --no-mysql %* vs2008
 pause
