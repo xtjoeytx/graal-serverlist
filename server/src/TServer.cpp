@@ -995,7 +995,8 @@ bool TServer::msgSVI_SERVERHQLEVEL(CString& pPacket)
 	// Limit ourselves to our max level.
 	if (isServerHQ)
 	{
-		int maxlevel = strtoint(result[2]);
+		int maxlevel = 0;
+		if (result.size() > 2) maxlevel = strtoint(result[2]);
 		if (serverhq_level > maxlevel) serverhq_level = maxlevel;
 
 		// Update our uptime.
