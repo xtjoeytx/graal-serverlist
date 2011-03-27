@@ -133,9 +133,9 @@ int main(int argc, char *argv[])
 	// Truncate servers table from MySQL.
 	CString query;
 	query << "TRUNCATE TABLE " << settings->getStr("serverlist");
-	mySQL->query(query);
+	mySQL->add_simple_query(query);
 	query = CString("TRUNCATE TABLE ") << settings->getStr("securelogin");
-	mySQL->query(query);
+	mySQL->add_simple_query(query);
 #endif
 
 	// Create Packet-Functions
@@ -159,10 +159,8 @@ int main(int argc, char *argv[])
 		// Make sure MySQL is active
 #ifndef NO_MYSQL
 		if (!mySQL->ping())
-		{
 			serverlog.out( "[Error] No response from MySQL.\n" );
-			return ERR_MYSQL;
-		}
+		mySQL->update();
 #endif
 
 		// Accept New Connections
@@ -294,6 +292,9 @@ CString getAccountError(int pErrorId)
 		case ACCSTAT_INVALID:
 		return "Account name or password is invalid.";
 
+		case ACCSTAT_ERROR:
+		return "There was a problem verifying your account.  The SQL server is probably down.";
+
 		default:
 		return "Invalid Error Id";
 	}
@@ -337,11 +338,11 @@ CString getBuddies(CString& pAccount)
 	CString query;
 	std::vector<std::vector<CString> > result;
 	query << "SELECT user2.username as buddy FROM user LEFT JOIN userlist ON (user.userid=userlist.userid) LEFT JOIN user as user2 ON  (userlist.relationid=user2.userid) WHERE user.username LIKE '" << pAccount.escape() << "' AND userlist.type LIKE 'buddy' AND userlist.friend LIKE 'yes';";
-	vBmySQL->query_rows(query, &result);
+	int ret = vBmySQL->try_query_rows(query, result);
 
 	CString buddies;
 	// does the player have any vBulletin friends?
-	if (result.size() == 0)
+	if (ret == -1 || result.size() == 0)
 		return "";
 	else
 	{
@@ -382,10 +383,12 @@ int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer)
 		// Try our password.
 		result.clear();
 		query = CString() << "SELECT activated, banned, account FROM `" << settings->getStr("userlist") << "` WHERE account='" << pAccount.escape() << "' AND transaction='" << transaction.escape() << "' AND password2='" << md5password.escape() << "' LIMIT 1";
-		mySQL->query(query, &result);
+		int err = mySQL->try_query(query, result);
 
 		// account/password correct?
-		if (result.size() == 0)
+		if (err == -1)
+			ret = ACCSTAT_ERROR;
+		else if (result.size() == 0)
 			ret = ACCSTAT_INVALID;
 		else if (result.size() >= 1 && result[0] == "0")
 			ret = ACCSTAT_NONREG;
@@ -395,7 +398,7 @@ int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer)
 			ret = ACCSTAT_NORMAL;
 
 		// Should we expire the password now?
-		if (ret != ACCSTAT_INVALID)
+		if (ret != ACCSTAT_INVALID && ret != ACCSTAT_ERROR)
 		{
 			unsigned char login_type = (char)(atoi(transaction.text()) & 0xFF);
 
@@ -408,7 +411,7 @@ int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer)
 					<< "salt2='',"
 					<< "password2='' "
 					<< "WHERE account='" << pAccount.escape() << "'";
-				mySQL->query(query);
+				mySQL->add_simple_query(query);
 			}
 		}
 
@@ -419,13 +422,18 @@ int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer)
 		return ret;
 	}
 
+	// If our ret is ACCSTAT_ERROR, that means there was a SQL error.
+	if (ret == ACCSTAT_ERROR)
+		return ret;
+
 	// Either the secure login failed or we didn't try a secure login.
 	// Try the old login method.
 	if (ret == ACCSTAT_INVALID)
 	{
 		result.clear();
 		query = CString() << "SELECT password, salt, activated, banned, account FROM `" << settings->getStr("userlist") << "` WHERE account='" << pAccount.escape() << "' AND password=" << "MD5(CONCAT(MD5('" << pPassword.escape() << "'), `salt`)) LIMIT 1";
-		mySQL->query(query, &result);
+		int err = mySQL->try_query(query, result);
+		if (err == -1) return ACCSTAT_ERROR;
 
 		// account/password correct?
 		if (result.size() == 0)
@@ -467,7 +475,8 @@ int verifyGuild(const CString& pAccount, const CString& pNickname, const CString
 	query << "SELECT * FROM " << settings->getStr("guild_names") << " WHERE name='" << pGuild.escape() << "' AND status='1'";
 
 	// Send the query.
-	if (mySQL->query(query, &result) != 0)
+	int err = mySQL->try_query(query, result);
+	if (err != -1)
 	{
 		// Get the nick restriction.
 		int restrictNick = 0;
@@ -478,7 +487,8 @@ int verifyGuild(const CString& pAccount, const CString& pNickname, const CString
 		if (restrictNick != 0)
 			query << " AND nickname='" << pNickname.escape() << "'";
 
-		return (mySQL->query(query, &result) == 0 ? GUILDSTAT_DISALLOWED : GUILDSTAT_ALLOWED);
+		err = mySQL->try_query(query, result);
+		return ((err == -1 || err == 0) ? GUILDSTAT_DISALLOWED : GUILDSTAT_ALLOWED);
 	}
 
 	return GUILDSTAT_DISALLOWED;

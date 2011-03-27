@@ -8,7 +8,15 @@ CMySQL::CMySQL(const char *pServer, const char *pUsername, const char *pPassword
 	mysql = NULL;
 	res   = NULL;
 
-	connect(pServer, pUsername, pPassword, pDatabase, pExternal);
+	database = pDatabase;
+	external = pExternal;
+	password = pPassword;
+	server   = pServer;
+	username = pUsername;
+
+	isConnected = false;
+
+	connect();
 }
 
 CMySQL::~CMySQL()
@@ -16,86 +24,105 @@ CMySQL::~CMySQL()
 	mysql_close(mysql);
 }
 
-bool CMySQL::connect(const char *pServer, const char *pUsername, const char *pPassword, const char *pDatabase, const char *pExternal)
+bool CMySQL::connect()
 {
-	database = pDatabase;
-	external = pExternal;
-	password = pPassword;
-	server   = pServer;
-	username = pUsername;
+	isConnected = false;
 
 	if ((mysql = mysql_init(mysql)) == NULL)
 		return false;
 
-	if (!mysql_real_connect(mysql, server, username, password, database, 0, external, 0))
+	if (!mysql_real_connect(mysql, server.text(), username.text(), password.text(), database.text(), 0, external.text(), 0))
 		return false;
 
+	isConnected = true;
 	return ping();
 }
 
 bool CMySQL::ping()
 {
-	return (mysql_ping(mysql) == 0);
+	isConnected = (mysql_ping(mysql) == 0);
+	return isConnected;
 }
 
-int CMySQL::query(const CString& pQuery, std::vector<CString> *pResult)
+const char* CMySQL::error()
 {
-	// run query
-	if (mysql_query(mysql, pQuery.text()))
-		return 0;
+	return mysql_error(mysql);
+}
 
-	// no result wanted?
-	if (pResult != 0)
+void CMySQL::update()
+{
+	while (!queued_commands.empty())
 	{
-		// store result
-		if (!(res = mysql_store_result(mysql)))
-			return 0;
-
-		// fetch row
-		MYSQL_ROW row = mysql_fetch_row(res);
-		unsigned long* lengths = mysql_fetch_lengths(res);
-		if (lengths == 0 || row == 0)
+		int ret = mysql_query(mysql, queued_commands.front().text());
+		if (ret == 0)
 		{
-			mysql_free_result(res);
-			return 0;
+			queued_commands.pop();
+			continue;
 		}
 
-		// empty old result
-		pResult->clear();
-
-		// Grab the full value and add it to the vector.
-		for (unsigned int i = 0; i < mysql_num_fields(res); i++)
-		{
-			char* temp = new char[lengths[i] + 1];
-			memcpy(temp, row[i], lengths[i]);
-			temp[lengths[i]] = '\0';
-			pResult->push_back(CString(temp));
-			delete temp;
-		}
-
-		// cleanup
-		mysql_free_result(res);
-		return pResult->size();
+		isConnected = false;
+		break;
 	}
-	else
-		return 0;
+
+	if (!isConnected)
+		connect();
 }
 
-int CMySQL::query_rows(const CString& pQuery, std::vector<std::vector<CString> > *pResult)
+void CMySQL::add_simple_query(const CString& query)
+{
+	queued_commands.push(query);
+	update();
+}
+
+int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 {
 	// run query
-	if (mysql_query(mysql, pQuery.text()))
-		return 0;
-
-	if (pResult == 0)
-		return 0;
+	if (mysql_query(mysql, query.text()))
+		return -1;
 
 	// store result
 	if (!(res = mysql_store_result(mysql)))
-		return 0;
+		return -1;
+
+	// fetch row
+	MYSQL_ROW row = mysql_fetch_row(res);
+	unsigned long* lengths = mysql_fetch_lengths(res);
+	if (lengths == 0 || row == 0)
+	{
+		mysql_free_result(res);
+		return -1;
+	}
+
+	// empty old result
+	result.clear();
+
+	// Grab the full value and add it to the vector.
+	for (unsigned int i = 0; i < mysql_num_fields(res); i++)
+	{
+		char* temp = new char[lengths[i] + 1];
+		memcpy(temp, row[i], lengths[i]);
+		temp[lengths[i]] = '\0';
+		result.push_back(CString(temp));
+		delete temp;
+	}
+
+	// cleanup
+	mysql_free_result(res);
+	return result.size();
+}
+
+int CMySQL::try_query_rows(const CString& query, std::vector<std::vector<CString> >& result)
+{
+	// run query
+	if (mysql_query(mysql, query.text()))
+		return -1;
+
+	// store result
+	if (!(res = mysql_store_result(mysql)))
+		return -1;
 
 	int row_count = 0;
-	pResult->clear();
+	result.clear();
 
 	// fetch row
 	MYSQL_ROW row = 0;
@@ -120,7 +147,7 @@ int CMySQL::query_rows(const CString& pQuery, std::vector<std::vector<CString> >
 		}
 
 		// Push back the row.
-		pResult->push_back(r);
+		result.push_back(r);
 		++row_count;
 	}
 
@@ -129,8 +156,4 @@ int CMySQL::query_rows(const CString& pQuery, std::vector<std::vector<CString> >
 	return row_count;
 }
 
-const char* CMySQL::error()
-{
-	return mysql_error(mysql);
-}
 #endif

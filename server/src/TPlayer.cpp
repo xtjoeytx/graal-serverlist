@@ -374,7 +374,7 @@ bool TPlayer::msgPLI_GRSECURELOGIN(CString& pPacket)
 		<< "salt2='" << salt.escape() << "',"
 		<< "password2=MD5(CONCAT(MD5('" << password.escape() << "'), '" << salt.escape() << "')) "
 		<< "WHERE account='" << account.escape() << "'";
-	mySQL->query(query);
+	mySQL->add_simple_query(query);
 
 	// Send the secure login info back to the player.
 	sendPacket(CString() >> (char)PLO_GRSECURELOGIN >> (long long)transaction << salt);
