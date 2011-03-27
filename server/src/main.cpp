@@ -136,6 +136,7 @@ int main(int argc, char *argv[])
 	mySQL->add_simple_query(query);
 	query = CString("TRUNCATE TABLE ") << settings->getStr("securelogin");
 	mySQL->add_simple_query(query);
+	mySQL->update();
 #endif
 
 	// Create Packet-Functions
