@@ -90,7 +90,7 @@ int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 	if (lengths == 0 || row == 0)
 	{
 		mysql_free_result(res);
-		return -1;
+		return 0;
 	}
 
 	// empty old result
