@@ -76,13 +76,22 @@ void CMySQL::add_simple_query(const CString& query)
 
 int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 {
+	if (!isConnected)
+		return -1;
+
 	// run query
 	if (mysql_query(mysql, query.text()))
+	{
+		isConnected = false;
 		return -1;
+	}
 
 	// store result
 	if (!(res = mysql_store_result(mysql)))
+	{
+		isConnected = false;
 		return -1;
+	}
 
 	// fetch row
 	MYSQL_ROW row = mysql_fetch_row(res);
@@ -113,13 +122,22 @@ int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 
 int CMySQL::try_query_rows(const CString& query, std::vector<std::vector<CString> >& result)
 {
+	if (!isConnected)
+		return -1;
+
 	// run query
 	if (mysql_query(mysql, query.text()))
+	{
+		isConnected = false;
 		return -1;
+	}
 
 	// store result
 	if (!(res = mysql_store_result(mysql)))
+	{
+		isConnected = false;
 		return -1;
+	}
 
 	int row_count = 0;
 	result.clear();
