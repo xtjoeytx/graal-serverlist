@@ -79,17 +79,15 @@ TServer::~TServer()
 	if (isServerHQ)
 	{
 		int uptime = (int)difftime(time(0), lastUptimeCheck);
-		CString query;
-		query << "UPDATE `" << settings->getStr("serverhq") << "` SET uptime=uptime+" << CString((int)uptime) << " WHERE name='" << name.escape() << "'";
-		mySQL->query(query);
+		CString query = CString("UPDATE `") << settings->getStr("serverhq") << "` SET uptime=uptime+" << CString((int)uptime) << " WHERE name='" << name.escape() << "'";
+		mySQL->add_simple_query(query);
 	}
 #endif
 
 	// Delete server from SQL serverlist.
 #ifndef NO_MYSQL
-	CString query;
-	query << "DELETE FROM " << settings->getStr("serverlist") << " WHERE name='" << name.escape() << "'";
-	mySQL->query(query);
+	CString query = CString("DELETE FROM ") << settings->getStr("serverlist") << " WHERE name='" << name.escape() << "'";
+	mySQL->add_simple_query(query);
 #endif
 
 	// delete socket
@@ -159,13 +157,13 @@ bool TServer::doMain()
 		CString query;
 		query << "UPDATE `" << settings->getStr("serverlist") << "`";
 		query << " SET uptime=uptime+" << CString((int)uptime) << " WHERE name='" << name.escape() << "'";
-		mySQL->query(query);
+		mySQL->add_simple_query(query);
 		if (isServerHQ)
 		{
 			query.clear();
 			query << "UPDATE `" << settings->getStr("serverhq") << "`";
 			query << " SET uptime=uptime+" << CString((int)uptime) << " WHERE name='" << name.escape() << "'";
-			mySQL->query(query);
+			mySQL->add_simple_query(query);
 		}
 	}
 #endif
@@ -197,7 +195,7 @@ void TServer::SQLupdate(CString tblval, const CString& newVal)
 	query << "UPDATE `" << settings->getStr("serverlist") << "` SET "
 		<< tblval.escape() << "='" << newVal.escape() << "' "
 		<< "WHERE name='" << name.escape() << "'";
-	mySQL->query(query);
+	mySQL->add_simple_query(query);
 #endif
 }
 
@@ -208,7 +206,7 @@ void TServer::SQLupdateHQ(CString tblval, const CString& newVal)
 	query << "UPDATE `" << settings->getStr("serverhq") << "` SET "
 		<< tblval.escape() << "='" << newVal.escape() << "' "
 		<< "WHERE name='" << name.escape() << "'";
-	mySQL->query(query);
+	mySQL->add_simple_query(query);
 #endif
 }
 
@@ -217,11 +215,11 @@ void TServer::updatePlayers()
 #ifndef NO_MYSQL
 	// Set our lastconnected.
 	CString query = CString() << "UPDATE `" << settings->getStr("serverlist") << "` SET lastconnected=NOW() " << "WHERE name='" << name.escape() << "'";
-	mySQL->query(query);
+	mySQL->add_simple_query(query);
 	if (isServerHQ)
 	{
 		query = CString() << "UPDATE `" << settings->getStr("serverhq") << "` SET lastconnected=NOW() " << "WHERE name='" << name.escape() << "'";
-		mySQL->query(query);
+		mySQL->add_simple_query(query);
 	}
 
 	// Update our playercount.
@@ -240,10 +238,10 @@ void TServer::updatePlayers()
 	// Check to see if we can increase our maxplayers.
 	std::vector<CString> result;
 	query = CString() << "SELECT maxplayers FROM `" << settings->getStr("serverlist") << "` WHERE name='" << name.escape() << "' LIMIT 1";
-	mySQL->query(query, &result);
+	int ret = mySQL->try_query(query, result);
 
-	// If we got no maxplayers back, wtf.
-	if (result.size() == 0) return;
+	// Check for errors.
+	if (ret == -1 || result.size() == 0) return;
 
 	// Check if we can increase our maxplayers.
 	int maxplayers = strtoint(result[0]);
@@ -418,12 +416,16 @@ bool TServer::msgSVI_SETNAME(CString& pPacket)
 	CString query;
 	std::vector<CString> result;
 	query = CString() << "SELECT activated FROM `" << settings->getStr("serverhq") << "` WHERE name='" << name.escape() << "' LIMIT 1";
-	mySQL->query(query, &result);
+	int ret = mySQL->try_query(query, result);
+	if (ret == -1) return false;
+
 	if (result.size() != 0)
 	{
 		result.clear();
 		query = CString() << "SELECT activated FROM `" << settings->getStr("serverhq") << "` WHERE name='" << name.escape() << "' AND activated='1' AND password=" << "MD5(CONCAT(MD5('" << serverhq_pass.escape() << "'), `salt`)) LIMIT 1";
-		mySQL->query(query, &result);
+		ret = mySQL->try_query(query, result);
+		if (ret == -1) return false;
+
 		if (result.size() == 0)
 			name << " (unofficial)";
 	}
@@ -577,7 +579,7 @@ bool TServer::msgSVI_SETPORT(CString& pPacket)
 				<< getType(4).escape() << "','"
 				<< version.escape() << "'"
 				<< ")";
-			mySQL->query(query);
+			mySQL->add_simple_query(query);
 			addedToSQL = true;
 		}
 	}
@@ -981,7 +983,8 @@ bool TServer::msgSVI_SERVERHQLEVEL(CString& pPacket)
 	CString query;
 	std::vector<CString> result;
 	query = CString() << "SELECT maxplayers, uptime, maxlevel FROM `" << settings->getStr("serverhq") << "` WHERE name='" << name.escape() << "' AND activated='1' AND password=" << "MD5(CONCAT(MD5('" << serverhq_pass.escape() << "'), `salt`)) LIMIT 1";
-	mySQL->query(query, &result);
+	int ret = mySQL->try_query(query, result);
+	if (ret == -1) return false;
 
 	// If the password was wrong, limit ourselves to the bronze tab.
 	// Update: Now hides unregistered servers as UC
@@ -1005,7 +1008,7 @@ bool TServer::msgSVI_SERVERHQLEVEL(CString& pPacket)
 			// Update our uptime.
 			CString query2;
 			query2 << "UPDATE `" << settings->getStr("serverlist") << "` SET uptime=" << result[1] << " WHERE name='" << name.escape() << "'";
-			mySQL->query(query2);
+			mySQL->add_simple_query(query2);
 		}
 
 		// If we got max players, update the graal_servers table.
@@ -1016,8 +1019,8 @@ bool TServer::msgSVI_SERVERHQLEVEL(CString& pPacket)
 			// Check to see if the graal_servers table has a larger max players.
 			std::vector<CString> result2;
 			CString query2 = CString() << "SELECT maxplayers FROM `" << settings->getStr("serverlist") << "` WHERE name='" << name.escape() << "' LIMIT 1";
-			mySQL->query(query2, &result2);
-			if (result2.size() != 0)
+			int ret = mySQL->try_query(query2, result2);
+			if (ret != -1 && result2.size() != 0)
 			{
 				int s_maxp = strtoint(result2[0]);
 				if (maxplayers > s_maxp) SQLupdate("maxplayers", CString((int)maxplayers));

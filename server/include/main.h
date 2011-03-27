@@ -71,6 +71,7 @@ enum // Account Status
 	ACCSTAT_NONREG		= 1,
 	ACCSTAT_BANNED		= 2,
 	ACCSTAT_INVALID		= 3,
+	ACCSTAT_ERROR		= 4,
 };
 
 enum // Guild Status
