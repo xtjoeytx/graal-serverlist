@@ -60,7 +60,7 @@ void CMySQL::update()
 			continue;
 		}
 
-		printf("[update] mysql_query failed.\n");
+		printf("[update] mysql_query failed: %s\n", queued_commands.front().text());
 		isConnected = false;
 		break;
 	}
