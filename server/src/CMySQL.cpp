@@ -60,8 +60,9 @@ void CMySQL::update()
 			continue;
 		}
 
-		printf("[update] mysql_query failed: %s\n", queued_commands.front().text());
-		isConnected = false;
+		if (ret == 2006 || ret == 2013)
+			isConnected = false;
+		else queued_commands.pop();
 		break;
 	}
 
@@ -83,7 +84,6 @@ int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 	// run query
 	if (mysql_query(mysql, query.text()) != 0)
 	{
-		printf("[try_query] mysql_query failed.\n");
 		isConnected = false;
 		return -1;
 	}
@@ -91,7 +91,6 @@ int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 	// store result
 	if (!(res = mysql_store_result(mysql)))
 	{
-		printf("[try_query] mysql_store_result failed.\n");
 		isConnected = false;
 		return -1;
 	}
@@ -131,7 +130,6 @@ int CMySQL::try_query_rows(const CString& query, std::vector<std::vector<CString
 	// run query
 	if (mysql_query(mysql, query.text()))
 	{
-		printf("[try_query_rows] mysql_query failed.\n");
 		isConnected = false;
 		return -1;
 	}
@@ -139,7 +137,6 @@ int CMySQL::try_query_rows(const CString& query, std::vector<std::vector<CString
 	// store result
 	if (!(res = mysql_store_result(mysql)))
 	{
-		printf("[try_query_rows] mysql_store_result failed.\n");
 		isConnected = false;
 		return -1;
 	}
