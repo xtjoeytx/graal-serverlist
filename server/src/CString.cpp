@@ -1047,6 +1047,10 @@ int CString::readInt()
 */
 CString& CString::writeGChar(const char pData)
 {
+#ifndef min
+#define min(a,b)  ((a < b) ? a : b)
+#endif
+
 	unsigned char val = min((unsigned char)pData, 223) + 32;
 	write((char*)&val, 1);
 	return *this;
