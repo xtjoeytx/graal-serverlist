@@ -992,7 +992,7 @@ bool TServer::msgSVI_SERVERHQLEVEL(CString& pPacket)
 	if (result.size() == 0)
 	{
 		if (serverhq_level != 0)
-			serverhq_level = 0;
+			serverhq_level = settings->getInt("defaultServerLevel", 1);
 	}
 	else isServerHQ = true;
 
