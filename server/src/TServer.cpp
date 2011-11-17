@@ -117,7 +117,7 @@ bool TServer::doMain()
 		sockBuffer.write(data, size);
 	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
 	{
-		serverlog.out("Socket is disconnected for server %s.\n", name.text());
+		serverlog.out(CString("Socket is disconnected for server ") << name << ".\n");
 		return false;
 	}
 
@@ -391,14 +391,15 @@ bool TServer::parsePacket(CString& pPacket)
 
 	// valid packet, call function
 	bool ret = (*this.*svfunc[id])(pPacket);
-	if (!ret) serverlog.out("Packet %d failed for server %s.\n", (int)id, getName().text());
+	if (!ret) serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, getName().text());
 	return ret;
 }
 
 bool TServer::msgSVI_NULL(CString& pPacket)
 {
 	pPacket.setRead(0);
-	serverlog.out("Unknown Server Packet: %i (%s)\n", pPacket.readGUChar(), pPacket.text()+1);
+	unsigned char id = pPacket.readGUChar();
+	serverlog.out("Unknown Server Packet: %u (%s)\n", (unsigned int)id, pPacket.text()+1);
 	return true;
 }
 
