@@ -999,7 +999,7 @@ bool TServer::msgSVI_SERVERHQLEVEL(CString& pPacket)
 	// Limit ourselves to our max level.
 	if (isServerHQ)
 	{
-		int maxlevel = 0;
+		int maxlevel = settings->getInt("defaultServerLevel", 1);
 		if (result.size() > 2) maxlevel = strtoint(result[2]);
 		if (serverhq_level > maxlevel) serverhq_level = maxlevel;
 
