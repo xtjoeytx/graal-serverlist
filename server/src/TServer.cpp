@@ -987,22 +987,17 @@ bool TServer::msgSVI_SERVERHQLEVEL(CString& pPacket)
 	int ret = mySQL->try_query(query, result);
 	if (ret == -1) return false;
 
-	// If the password was wrong, limit ourselves to the bronze tab.
-	// Update: Now hides unregistered servers as UC
-	if (result.size() == 0)
-	{
-		if (serverhq_level != 0)
-			serverhq_level = settings->getInt("defaultServerLevel", 1);
-	}
-	else isServerHQ = true;
+	// Adjust the server level to the max allowed.
+	int maxlevel = settings->getInt("defaultServerLevel", 1);
+	if (result.size() > 2) maxlevel = strtoint(result[2]);
+	if (serverhq_level > maxlevel) serverhq_level = maxlevel;
 
-	// Limit ourselves to our max level.
+	// If we got results, we have server hq support.
+	if (result.size() != 0) isServerHQ = true;
+
+	// If we got valid SQL results, deal with them now.
 	if (isServerHQ)
 	{
-		int maxlevel = settings->getInt("defaultServerLevel", 1);
-		if (result.size() > 2) maxlevel = strtoint(result[2]);
-		if (serverhq_level > maxlevel) serverhq_level = maxlevel;
-
 		// Update our uptime.
 		if (result.size() > 1)
 		{
