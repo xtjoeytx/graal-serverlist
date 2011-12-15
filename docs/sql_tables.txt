@@ -52,7 +52,7 @@ CREATE TABLE graal_servers (
 	PRIMARY KEY (id)
 );
 
-CREATE TABLE graal_servershq (
+CREATE TABLE graal_serverhq (
 	id int NOT NULL,
 	name varchar(100) UNIQUE NOT NULL,
 	maxplayers int NOT NULL,
