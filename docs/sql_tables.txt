@@ -47,7 +47,7 @@ CREATE TABLE graal_servers (
 	type char(2) NOT NULL default '',
 	version varchar(255) NOT NULL,
 	uptime int(255) NOT NULL default '0',
-	lastconnected datetime NOT NULL default '0',
+	lastconnected datetime NOT NULL default '0000-00-00 00:00:00',
 	playerlist text NOT NULL default '',
 	PRIMARY KEY (id)
 );
@@ -64,7 +64,7 @@ CREATE TABLE graal_servershq (
 	userid int NOT NULL,
 	parked int NOT NULL default '0',
 	uptime int(255) NOT NULL default '0',
-	lastconnected datetime NOT NULL default '0',
+	lastconnected datetime NOT NULL default '0000-00-00 00:00:00',
 	FOREIGN KEY (userid) REFERENCES graal_users(id) ON DELETE CASCADE
 );
 
