@@ -31,6 +31,11 @@ solution "serverlist2"
 		includedirs { "../dependencies/zlib" }
 		includedirs { "../dependencies/bzip2" }
 		
+		-- Global defines.
+		if _OPTIONS["no-mysql"] then
+			defines { "NO_MYSQL" }
+		end
+
 		-- Libraries.
 		libdirs { "../dependencies/" }
 		if not _OPTIONS["no-mysql"] then
@@ -38,11 +43,6 @@ solution "serverlist2"
 		end
 		configuration "windows"
 			links { "ws2_32" }
-		
-		-- Global defines.
-		if _OPTIONS["no-mysql"] then
-			defines { "NO_MYSQL" }
-		end
 		
 		-- Windows defines.
 		configuration "windows"
