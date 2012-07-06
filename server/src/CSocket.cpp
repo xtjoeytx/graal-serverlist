@@ -44,7 +44,7 @@
 	#define SHUT_RDWR			SD_BOTH
 
 	#define sleep Sleep
-	#define snprintf _snprintf
+	//#define snprintf _snprintf
 #else
 	#include <netdb.h>
 	#include <errno.h>
