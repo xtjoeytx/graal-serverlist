@@ -348,14 +348,17 @@ CString getOwnedServers(CString& pAccount)
 	else
 	{
 		TServer * srv;
-
+		CString srv1;
 		for (unsigned int i = 0; i < result.size(); i++)
 		{
 			if (!result[i].empty())
 			{
-				servers << result[i][1] <<"\n";
-				servers << srv->getType(result[i][3].readInt()) << result[i][1] <<"\n";
-				servers << result[i][2] <<"\n";
+				srv1 << result[i][1] <<"\n";
+				srv1 << srv->getType(result[i][3].readInt()) << result[i][1] <<"\n";
+				srv1 << result[i][2] <<"\n";
+				srv1.gtokenizeI();
+
+				servers << srv1 << "\n";
 			}
 		}
 
