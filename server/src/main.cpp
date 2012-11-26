@@ -347,12 +347,14 @@ CString getOwnedServers(CString& pAccount)
 		return "";
 	else
 	{
+		TServer * srv;
+
 		for (unsigned int i = 0; i < result.size(); i++)
 		{
 			if (!result[i].empty())
 			{
 				servers << result[i][1] <<"\n";
-				servers << TServer::getType(result[i][3].readInt()) << result[i][1] <<"\n";
+				servers << srv->getType(result[i][3].readInt()) << result[i][1] <<"\n";
 				servers << result[i][2] <<"\n";
 			}
 		}
