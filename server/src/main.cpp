@@ -331,6 +331,39 @@ int getServerCount()
 	return (int)serverList.size();
 }
 
+CString getOwnedServers(CString& pAccount)
+{
+#ifdef NO_MYSQL
+	return "";
+#else
+	CString query;
+	std::vector<std::vector<CString> > result;
+	query << "SELECT off.id as id, off.name as name, onn.playercount as playercount, off.curlevel as curlevel, uid.account as account, coalesce(onn.online, 0) as isOnline FROM graal_serverhq as off LEFT JOIN graal_servers as onn ON (off.name=onn.name) LEFT JOIN graal_users as uid ON (off.userid=uid.id) WHERE onn.online = 1 AND curlevel = 0 AND account = '" << pAccount.escape() << "' ORDER BY off.name ASC;";
+	int ret = mySQL->try_query_rows(query, result);
+
+	CString servers;
+	// does the player have any vBulletin friends?
+	if (ret == -1 || result.size() == 0)
+		return "";
+	else
+	{
+		for (unsigned int i = 0; i < result.size(); i++)
+		{
+			if (!result[i].empty())
+			{
+				servers << result[i][1] <<"\n";
+				servers << TServer::getType(result[i][3].readInt()) << result[i][1] <<"\n";
+				servers << result[i][2] <<"\n";
+			}
+		}
+
+		//buddies.gtokenizeI();
+
+		return servers;
+	}
+#endif
+}
+
 CString getBuddies(CString& pAccount)
 {
 #ifdef NO_MYSQL

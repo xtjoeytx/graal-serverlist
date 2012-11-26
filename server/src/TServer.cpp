@@ -1062,6 +1062,7 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 	CString packet = pPacket.readString("");
 	CString data = packet.guntokenize();
 
+	CString account = data.readString("\n");
 	CString weapon = data.readString("\n");
 	CString type = data.readString("\n");
 	CString option = data.readString("\n");
@@ -1082,6 +1083,7 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 			p2 << server->getName() << "\n";
 			p2 << server->getType(PLV_POST22) << server->getName() << "\n";
 			p2 << CString((int)server->getPCount()) << "\n";
+			p2 << getOwnedServers(account);
 			p2.gtokenizeI();
 
 			p << p2 << "\n";
