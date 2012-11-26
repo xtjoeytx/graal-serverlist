@@ -1083,11 +1083,11 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 			p2 << server->getName() << "\n";
 			p2 << server->getType(PLV_POST22) << server->getName() << "\n";
 			p2 << CString((int)server->getPCount()) << "\n";
-			p2 << getOwnedServers(account);
 			p2.gtokenizeI();
 
 			p << p2 << "\n";
 		}
+		p << getOwnedServers(account);
 		p.gtokenizeI();
 	}
 	else if (option == "rebornlist")
@@ -1152,7 +1152,7 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 
 	// Send the serverlist back to the server.
 	if (!p.isEmpty())
-		sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << packet << "," << p);
+		sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << CString(weapon << "\n" << type << "\n" << option << "\n").gtokenizeI() << "," << p);
 	return true;
 }
 
