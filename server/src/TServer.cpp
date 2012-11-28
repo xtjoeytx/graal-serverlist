@@ -1069,72 +1069,74 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 
 	// Output.
 	CString p;
-
-	if (option == "simpleserverlist")
+	if (type == "lister")
 	{
-		// Assemble the serverlist.
-		for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+		if (option == "simpleserverlist")
 		{
-			TServer* server = *i;
-			if (server == 0) continue;
-			if (server->getTypeVal() == TYPE_HIDDEN) continue;
+			// Assemble the serverlist.
+			for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+			{
+				TServer* server = *i;
+				if (server == 0) continue;
+				if (server->getTypeVal() == TYPE_HIDDEN) continue;
 
-			CString p2;
-			p2 << server->getName() << "\n";
-			p2 << server->getType(PLV_POST22) << server->getName() << "\n";
-			p2 << CString((int)server->getPCount()) << "\n";
-			p2.gtokenizeI();
+				CString p2;
+				p2 << server->getName() << "\n";
+				p2 << server->getType(PLV_POST22) << server->getName() << "\n";
+				p2 << CString((int)server->getPCount()) << "\n";
+				p2.gtokenizeI();
 
-			p << p2 << "\n";
+				p << p2 << "\n";
+			}
+			p << getOwnedServers(account);
+			p.gtokenizeI();
 		}
-		p << getOwnedServers(account);
-		p.gtokenizeI();
-	}
-	else if (option == "rebornlist")
-	{
-		CString cat0;
-		CString cat1;
-		CString cat2;
-
-		for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+		else if (option == "rebornlist")
 		{
-			TServer* server = *i;
-			if (server == 0) continue;
-			if (server->getTypeVal() == TYPE_HIDDEN) continue;
+			CString cat0;
+			CString cat1;
+			CString cat2;
 
-			// Assemble the server packet.
-			CString p2;
-			p2 << server->getName() << "\n";
-			p2 << server->getName() << "\n";
-			p2 << CString((int)server->getPCount()) << "\n";
-			p2.gtokenizeI();
+			for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+			{
+				TServer* server = *i;
+				if (server == 0) continue;
+				if (server->getTypeVal() == TYPE_HIDDEN) continue;
 
-			// Put it in the proper category.
-			if (server->getTypeVal() == TYPE_3D)
-				cat0 << p2 << "\n";
-			else if (server->getTypeVal() == TYPE_GOLD)
-				cat0 << p2 << "\n";
-			else if (server->getTypeVal() == TYPE_SILVER)
-				cat1 << p2 << "\n";
-			else if (server->getTypeVal() == TYPE_BRONZE)
-				cat2 << p2 << "\n";
+				// Assemble the server packet.
+				CString p2;
+				p2 << server->getName() << "\n";
+				p2 << server->getName() << "\n";
+				p2 << CString((int)server->getPCount()) << "\n";
+				p2.gtokenizeI();
+
+				// Put it in the proper category.
+				if (server->getTypeVal() == TYPE_3D)
+					cat0 << p2 << "\n";
+				else if (server->getTypeVal() == TYPE_GOLD)
+					cat0 << p2 << "\n";
+				else if (server->getTypeVal() == TYPE_SILVER)
+					cat1 << p2 << "\n";
+				else if (server->getTypeVal() == TYPE_BRONZE)
+					cat2 << p2 << "\n";
+			}
+
+			// If a category is empty after traversing through the serverlist, use empty.
+			CString empty("0\n0\n0\n");
+			empty.gtokenizeI();
+
+			// Tokenize the categories.
+			if (cat0.isEmpty()) cat0 << empty << "\n";
+			cat0.gtokenizeI();
+			if (cat1.isEmpty()) cat1 << empty << "\n";
+			cat1.gtokenizeI();
+			if (cat2.isEmpty()) cat2 << empty << "\n";
+			cat2.gtokenizeI();
+
+			// Assembly the packet.
+			p << cat0 << "\n" << cat1 << "\n" << cat2 << "\n";
+			p.gtokenizeI();
 		}
-
-		// If a category is empty after traversing through the serverlist, use empty.
-		CString empty("0\n0\n0\n");
-		empty.gtokenizeI();
-
-		// Tokenize the categories.
-		if (cat0.isEmpty()) cat0 << empty << "\n";
-		cat0.gtokenizeI();
-		if (cat1.isEmpty()) cat1 << empty << "\n";
-		cat1.gtokenizeI();
-		if (cat2.isEmpty()) cat2 << empty << "\n";
-		cat2.gtokenizeI();
-
-		// Assembly the packet.
-		p << cat0 << "\n" << cat1 << "\n" << cat2 << "\n";
-		p.gtokenizeI();
 	}
 	else if (type == "pmservers")
 	{
@@ -1147,7 +1149,7 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 
 			p << server->getName() << "\n";
 		}
-		p << getOwnedServers(account);
+		p << getOwnedServersPM(account);
 		p.gtokenizeI();
 	}
 
