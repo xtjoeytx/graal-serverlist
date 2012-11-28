@@ -353,6 +353,7 @@ CString getOwnedServers(CString& pAccount)
 		{
 			if (!result[i].empty())
 			{
+				srv1 = "";
 				srv1 << result[i][1] <<"\n";
 				srv1 << srv->getType(result[i][3].readInt()) << result[i][1] <<"\n";
 				srv1 << result[i][2] <<"\n";
