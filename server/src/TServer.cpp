@@ -1147,6 +1147,7 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 
 			p << server->getName() << "\n";
 		}
+		p << getOwnedServers(account);
 		p.gtokenizeI();
 	}
 

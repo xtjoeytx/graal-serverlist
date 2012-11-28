@@ -714,7 +714,7 @@ CString CString::gtokenize() const
 			}
 			else retVal << temp << ",";
 		}
-		else retVal << ",";
+		else retVal << "\"\",";
 		pos[1] = pos[0] + 1;
 	}
 
