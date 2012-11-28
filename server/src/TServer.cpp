@@ -1152,7 +1152,7 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 
 	// Send the serverlist back to the server.
 	if (!p.isEmpty())
-		sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << CString(weapon << "\n" << type << "\n" << "\"\"" << "\n").gtokenizeI() << "," << p);
+		sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << CString(weapon << "\n" << type << "\n" << option << "\n").gtokenizeI() << "," << p);
 	return true;
 }
 
