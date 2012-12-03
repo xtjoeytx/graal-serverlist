@@ -210,6 +210,20 @@ void TServer::SQLupdateHQ(CString tblval, const CString& newVal)
 #endif
 }
 
+const CString& TServer::getPlayers()
+{
+	// Update our player list.
+	CString playerlist;
+	for (std::vector<player*>::iterator i = playerList.begin(); i != playerList.end(); ++i)
+	{
+		int ANY_CLIENT = (int)(1 << 0) | (int)(1 << 4) | (int)(1 << 5);
+		player* p = *i;
+		if ((p->type & ANY_CLIENT) != 0) playerlist << (*i)->account.gtokenize() << "," << (*i)->nick.gtokenize() << "\n";
+	}
+
+	return playerlist.gtokenizeI();
+}
+
 void TServer::updatePlayers()
 {
 #ifndef NO_MYSQL
@@ -1151,6 +1165,10 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 		}
 		p << getOwnedServersPM(account);
 		p.gtokenizeI();
+	}
+	else if (type == "pmserverplayers")
+	{
+		p << getServerPlayers(option);
 	}
 
 	// Send the serverlist back to the server.

@@ -321,6 +321,26 @@ CString getServerList(int PLVER, const CString& pIp)
 	return packet;
 }
 
+CString getServerPlayers(CString& servername)
+{
+	// definitions
+	CString packet;
+
+	// serverlist count
+	//packet.writeGChar(serverList.size());
+
+	// get servers
+	for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+	{
+		TServer* server = (TServer*)*i;
+		if (server == 0) continue;
+
+		if (server->getName() == servername)
+			packet << server->getPlayers();
+	}
+	return packet;
+}
+
 int getPlayerCount()
 {
 	return (int)playerList.size();
