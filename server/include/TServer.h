@@ -112,7 +112,7 @@ class TServer
 		const CString getIp(const CString& pIp = "");
 		const CString& getLanguage();
 		const CString& getName();
-		const CString& getPlayers();
+		const CString getPlayers();
 		const int getPCount();
 		const CString& getPort();
 		const CString getType(int PLVER);
