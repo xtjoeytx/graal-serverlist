@@ -218,7 +218,7 @@ const CString& TServer::getPlayers()
 	{
 		int ANY_CLIENT = (int)(1 << 0) | (int)(1 << 4) | (int)(1 << 5);
 		player* p = *i;
-		if ((p->type & ANY_CLIENT) != 0) playerlist << (*i)->account.gtokenize() << "," << (*i)->nick.gtokenize() << "\n";
+		if ((p->type & ANY_CLIENT) != 0) playerlist << CString(CString() << (*i)->account << "\n" << (*i)->nick << "\n").gtokenizeI() << "\n";
 	}
 	playerlist.gtokenizeI();
 
