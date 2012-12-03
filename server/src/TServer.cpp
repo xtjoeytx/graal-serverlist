@@ -220,8 +220,9 @@ const CString& TServer::getPlayers()
 		player* p = *i;
 		if ((p->type & ANY_CLIENT) != 0) playerlist << (*i)->account.gtokenize() << "," << (*i)->nick.gtokenize() << "\n";
 	}
+	playerlist.gtokenizeI();
 
-	return playerlist.gtokenizeI();
+	return playerlist;
 }
 
 void TServer::updatePlayers()
