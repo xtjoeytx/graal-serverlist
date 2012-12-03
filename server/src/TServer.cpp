@@ -210,7 +210,7 @@ void TServer::SQLupdateHQ(CString tblval, const CString& newVal)
 #endif
 }
 
-const CString& TServer::getPlayers()
+const CString TServer::getPlayers()
 {
 	// Update our player list.
 	CString playerlist;
