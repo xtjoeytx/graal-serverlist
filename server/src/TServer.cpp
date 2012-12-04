@@ -1078,8 +1078,6 @@ bool TServer::msgSVI_PMPLAYER(CString& pPacket)
 	CString packet = pPacket.readString("");
 	CString data = packet.guntokenize();
 
-	serverlog.out(packet << "\n");
-
 	CString servername = data.readString("\n");
 	CString account = data.readString("\n");
 	CString nick = data.readString("\n");
@@ -1092,12 +1090,12 @@ bool TServer::msgSVI_PMPLAYER(CString& pPacket)
 	{
 		TServer* server = *i;
 		if (server == 0) continue;
-		if (server->getTypeVal() == TYPE_HIDDEN) continue;
-	
+			
 		//p << server->getName() << "\n";
-
+		
 		if (server->getName() == servername)
 		{
+			serverlog.out(CString() << "Sending PM to " << account2 << " on " << servername << "\n");
 			// Send the pm to the appropriate server.
 			server->sendPacket(CString() >> (char)SVO_PMPLAYER << CString(name << "\n" << account << "\n" << nick << "\n" << weapon << "\n" << type << "\n" << account2 << "\n" << message << "\n").gtokenizeI());
 		}
