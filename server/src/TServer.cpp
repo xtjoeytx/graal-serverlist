@@ -1084,7 +1084,7 @@ bool TServer::msgSVI_PMPLAYER(CString& pPacket)
 	CString weapon = data.readString("\n");
 	CString type = data.readString("\n");
 	CString account2 = data.readString("\n");
-	CString message = data.readString("\n");
+	CString message = data.readString("");
 	
 	for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
 	{
@@ -1097,7 +1097,7 @@ bool TServer::msgSVI_PMPLAYER(CString& pPacket)
 		{
 			serverlog.out(CString() << "Sending PM to " << account2 << " on " << servername << "\n");
 			// Send the pm to the appropriate server.
-			server->sendPacket(CString() >> (char)SVO_PMPLAYER << CString(name << "\n" << account << "\n" << nick << "\n" << weapon << "\n" << type << "\n" << account2 << "\n" << message.gtokenizeI() << "\n").gtokenizeI());
+			server->sendPacket(CString() >> (char)SVO_PMPLAYER << CString(name << "\n" << account << "\n" << nick << "\n" << weapon << "\n" << type << "\n" << account2 << "\n").gtokenizeI() << "," << message.gtokenizeI());
 		}
 	}
 
