@@ -1074,11 +1074,11 @@ bool TServer::msgSVI_SERVERINFO(CString& pPacket)
 
 bool TServer::msgSVI_PMPLAYER(CString& pPacket)
 {
-	
-	
 	unsigned short pid = pPacket.readGUShort();
 	CString packet = pPacket.readString("");
 	CString data = packet.guntokenize();
+
+	serverlog.out(packet << "\n");
 
 	CString servername = data.readString("\n");
 	CString account = data.readString("\n");
