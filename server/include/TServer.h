@@ -34,6 +34,7 @@ enum
 	SVI_REQUESTLIST		= 26,
 	SVI_REQUESTSVRINFO	= 27,
 	SVI_REQUESTBUDDIES  = 28,
+	SVI_PMPLAYER		= 29,
 };
 
 enum
@@ -58,6 +59,7 @@ enum
 	SVO_FILEEND3		= 17,
 	SVO_SERVERINFO		= 18,
 	SVO_REQUESTTEXT		= 19,
+	SVO_PMPLAYER		= 29,
 	SVO_PING			= 99,
 	SVO_RAWDATA			= 100,
 };
@@ -160,6 +162,7 @@ class TServer
 		bool msgSVI_REQUESTSVRINFO(CString& pPacket);
 		bool msgSVI_REQUESTLIST2(CString& pPacket);
 		bool msgSVI_REQUESTBUDDIES(CString& pPacket);
+		bool msgSVI_PMPLAYER(CString& pPacket);
 
 	private:
 		CSocket *sock;
