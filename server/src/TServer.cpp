@@ -54,6 +54,7 @@ void createSVFunctions()
 	svfunc[SVI_REQUESTLIST] = &TServer::msgSVI_REQUESTLIST;
 	svfunc[SVI_REQUESTSVRINFO] = &TServer::msgSVI_REQUESTSVRINFO;
 	svfunc[SVI_REQUESTBUDDIES] = &TServer::msgSVI_REQUESTBUDDIES;
+	svfunc[SVI_PMPLAYER] = &TServer::msgSVI_PMPLAYER;
 }
 
 /*
@@ -1071,6 +1072,41 @@ bool TServer::msgSVI_SERVERINFO(CString& pPacket)
 	return true;
 }
 
+bool TServer::msgSVI_PMPLAYER(CString& pPacket)
+{
+	
+	
+	unsigned short pid = pPacket.readGUShort();
+	CString packet = pPacket.readString("");
+	CString data = packet.guntokenize();
+
+	CString servername = data.readString("\n");
+	CString account = data.readString("\n");
+	CString nick = data.readString("\n");
+	CString weapon = data.readString("\n");
+	CString type = data.readString("\n");
+	CString account2 = data.readString("\n");
+	CString message = data.readString("\n");
+	
+	for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+	{
+		TServer* server = *i;
+		if (server == 0) continue;
+		if (server->getTypeVal() == TYPE_HIDDEN) continue;
+	
+		//p << server->getName() << "\n";
+
+		if (server->getName() == servername)
+		{
+			// Send the pm to the appropriate server.
+			server->sendPacket(CString() >> (char)SVO_PMPLAYER << CString(name << "\n" << account << "\n" << nick << "\n" << weapon << "\n" << type << "\n" << account2 << "\n" << message << "\n").gtokenizeI());
+		}
+	}
+
+
+	return true;
+}
+
 bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 {
 	unsigned short pid = pPacket.readGUShort();
@@ -1170,6 +1206,12 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 	else if (type == "pmserverplayers")
 	{
 		p << getServerPlayers(option);
+	}
+	else if (type == "pmguilds")
+	{
+		// Assemble the serverlist.
+		//p << getGuilds(account);
+		p.gtokenizeI();
 	}
 
 	// Send the serverlist back to the server.
