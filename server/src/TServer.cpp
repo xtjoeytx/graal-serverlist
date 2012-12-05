@@ -1098,6 +1098,7 @@ bool TServer::msgSVI_PMPLAYER(CString& pPacket)
 			serverlog.out(CString() << "Sending PM (" << message << ") to " << account2 << " on " << servername << "\n");
 			// Send the pm to the appropriate server.
 			server->sendPacket(CString() >> (char)SVO_PMPLAYER << CString(name << "\n" << account << "\n" << nick << "\n" << weapon << "\n" << type << "\n" << account2 << "\n" << message).gtokenizeI() << "\n");
+			break;
 		}
 	}
 
