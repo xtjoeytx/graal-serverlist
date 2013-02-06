@@ -7,7 +7,7 @@
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 	#include <windows.h>
-
+	#define snprintf _snprintf
 #ifndef __GNUC__ // rain
 	#pragma comment(lib, "ws2_32.lib")
 #endif
@@ -44,7 +44,7 @@
 	#define SHUT_RDWR			SD_BOTH
 
 	#define sleep Sleep
-	//#define snprintf _snprintf
+	
 #else
 	#include <netdb.h>
 	#include <errno.h>
