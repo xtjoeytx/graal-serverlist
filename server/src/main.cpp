@@ -478,7 +478,7 @@ int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer)
 
 		// Try our password.
 		result.clear();
-		query = CString() << "SELECT activated, banned, account FROM `" << settings->getStr("userlist") << "` WHERE account='" << pAccount.escape() << "' AND transaction='" << transaction.escape() << "' AND password2='" << md5password.escape() << "' LIMIT 1";
+		query = CString() << "SELECT activated, banned, account FROM `" << settings->getStr("userlist") << "` WHERE account='" << pAccount.escape() << "' AND transactionnr='" << transaction.escape() << "' AND password2='" << md5password.escape() << "' LIMIT 1";
 		int err = mySQL->try_query(query, result);
 
 		// account/password correct?
@@ -503,7 +503,7 @@ int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer)
 			{
 				query.clear();
 				query << "UPDATE `" << settings->getStr("userlist") << "` SET "
-					<< "transaction='0',"
+					<< "transactionnr='0',"
 					<< "salt2='',"
 					<< "password2='' "
 					<< "WHERE account='" << pAccount.escape() << "'";
