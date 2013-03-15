@@ -370,7 +370,7 @@ bool TPlayer::msgPLI_GRSECURELOGIN(CString& pPacket)
 	// Add the transaction to the database.
 	CString query;
 	query << "UPDATE `" << settings->getStr("userlist") << "` SET "
-		<< "transaction='" << CString((int)transaction).escape() << "',"
+		<< "transactionnr='" << CString((int)transaction).escape() << "',"
 		<< "salt2='" << salt.escape() << "',"
 		<< "password2=MD5(CONCAT(MD5('" << password.escape() << "'), '" << salt.escape() << "')) "
 		<< "WHERE account='" << account.escape() << "'";
