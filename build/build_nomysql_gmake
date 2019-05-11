@@ -1,2 +1,0 @@
-#!/bin/bash
-premake4 --no-mysql gmake
