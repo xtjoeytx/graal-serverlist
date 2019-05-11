@@ -70,7 +70,7 @@ bool setProfile( const CString& pAccountName, CString &pPacket)
 	<< " profile_url='"		<< items[6].escape() << "',"
 	<< " profile_hangout='"	<< items[7].escape() << "',"
 	<< " profile_quote='"	<< items[8].escape() << "'"
-	<< " WHERE account='"	<< pAccountName.escape() << "' LIMIT 1";
+	<< " WHERE account='"	<< pAccountName.escape().text() << "' LIMIT 1";
 	mySQL->add_simple_query(query);
 
 	return true;
