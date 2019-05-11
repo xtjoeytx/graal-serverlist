@@ -1,0 +1,11 @@
+bin/startuplog.txt
+bin/listserver
+bin/ListServer.exe
+build*/*
+cmake-build-*/*
+.idea/*
+bin/Debug/
+lib/
+..gitignore.swp
+.vs/
+dependencies/.cipd/

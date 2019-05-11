@@ -1,0 +1,159 @@
+#
+#  server/src/CMakeLists.txt
+#
+#  Copyright 2019 死体
+#
+#  This file is part of GS2Emu.
+#
+#  GS2Emu is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  GS2Emu is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with GS2Emu.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+include(CheckFunctionExists)
+include(CheckSymbolExists)
+
+set(
+    SOURCES
+    CFileSystem.cpp
+    CLog.cpp
+    CMySQL.cpp
+    codec.cpp
+    CSettings.cpp
+    CSocket.cpp
+    CString.cpp
+    FProfile.cpp
+    main.cpp
+    TPlayer.cpp
+    TServer.cpp
+)
+
+set(
+    HEADERS
+    ${PROJECT_BINARY_DIR}/server/include/IConfig.h
+    ../include/CFileSystem.h
+    ../include/CString.h
+    ../include/TPlayer.h
+    ../include/zconf.h
+    ../include/codec.h
+    ../include/CSettings.h
+    ../include/FProfile.h
+    ../include/bzlib.h
+    ../include/CMySQL.h
+    ../include/zlib.h
+    ../include/TServer.h
+    ../include/CLog.h
+    ../include/main.h
+    ../include/CSocket.h
+)
+
+include_directories(
+    # Include the CMake-generated version header from the build directory
+    ${PROJECT_BINARY_DIR}/server/include
+    ${PROJECT_SOURCE_DIR}/server/include
+    ${PROJECT_SOURCE_DIR}/dependencies/include
+)
+
+# Set target names for the executables
+if(APPLE OR WIN32)
+    # OS X and Windows get a mixed-case binary name
+    set(TARGET_NAME ${PROJECT_NAME})
+elseif(EMSCRIPTEN)
+    set(TARGET_NAME ${PROJECT_NAME_LOWER}.html)
+else()
+    # Linux/other UNIX get a lower-case binary name
+    set(TARGET_NAME ${PROJECT_NAME_LOWER})
+endif()
+
+if(NOT ZLIB_FOUND)
+	include_directories(${PROJECT_BINARY_DIR}/dependencies/zlib ${PROJECT_SOURCE_DIR}/dependencies/zlib)
+endif()
+
+if(NOT BZip2_FOUND)
+	include_directories(${PROJECT_SOURCE_DIR}/dependencies/bzip2)
+endif()
+
+check_symbol_exists(inet_pton "ws2tcpip.h" HAVE_INET_PTON)
+if (NOT HAVE_INET_PTON)
+	check_function_exists(inet_pton HAVE_INET_PTON)
+endif()
+
+if (HAVE_INET_PTON)
+	add_definition(-DHAVE_INET_PTON)
+endif()
+
+if(APPLE)
+	add_executable(${TARGET_NAME} ${SOURCES} ${HEADERS})
+
+    # Enable ARC (automatic reference counting) for OS X build
+    set_property(
+        TARGET ${TARGET_NAME} APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc"
+    )
+elseif(WIN32)
+    add_executable(${TARGET_NAME} ${SOURCES} ${HEADERS})
+	if(MSVC)
+		set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE")
+		set_target_properties(${TARGET_NAME} PROPERTIES COMPILE_DEFINITIONS_DEBUG "_CONSOLE")
+		set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS_RELWITHDEBINFO "/SUBSYSTEM:CONSOLE")
+		set_target_properties(${TARGET_NAME} PROPERTIES COMPILE_DEFINITIONS_RELWITHDEBINFO "_CONSOLE")
+		set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:CONSOLE")
+		set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS_MINSIZEREL "/SUBSYSTEM:CONSOLE")
+		set_target_properties(${TARGET_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
+
+		if(V8NPCSERVER)
+			target_link_libraries(${TARGET_NAME} v8.dll.lib v8_libbase.dll.lib v8_libplatform.dll.lib)
+		endif()
+	endif()
+elseif(EMSCRIPTEN)
+	add_executable(${TARGET_NAME} ${SOURCES} ${HEADERS})
+else()
+	add_executable(${TARGET_NAME} ${SOURCES} ${HEADERS})
+endif()
+
+if(NOT ZLIB_FOUND AND NOT NOSTATIC)
+	add_dependencies(${TARGET_NAME} zlibstatic)
+	target_link_libraries(${TARGET_NAME} zlibstatic)
+elseif(NOT ZLIB_FOUND AND NOSTATIC)
+	add_dependencies(${TARGET_NAME} zlib)
+	target_link_libraries(${TARGET_NAME} zlib)
+else()
+	target_link_libraries(${TARGET_NAME} ${ZLIB_LIBRARIES})
+endif()
+
+if(NOT BZip2_FOUND)
+	add_dependencies(${TARGET_NAME} bzip2)
+	target_link_libraries(${TARGET_NAME} bzip2)
+else()
+	target_link_libraries(${TARGET_NAME} ${BZIP2_LIBRARIES})
+endif()
+
+if(MYSQL_FOUND)
+	target_link_libraries(${TARGET_NAME} ${MYSQL_LIBRARY})
+endif()
+
+target_link_libraries(${TARGET_NAME} ${CMAKE_THREAD_LIBS_INIT})
+
+if(WIN32)
+	target_link_libraries(${TARGET_NAME} ws2_32 wsock32 iphlpapi)
+endif()
+
+file(GLOB TEXT
+    "${PROJECT_NAME_LOWER}.wasm"
+)
+
+set(INSTALL_DEST ".")
+
+install(FILES ${TEXT} DESTINATION ${INSTALL_DEST})
+
+set(INSTALL_DEST .)
+
+install(TARGETS ${TARGET_NAME} DESTINATION ${INSTALL_DEST})
