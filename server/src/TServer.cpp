@@ -1055,17 +1055,18 @@ bool TServer::msgSVI_SERVERINFO(CString& pPacket)
 	unsigned short pid = pPacket.readGUShort();
 	CString servername = pPacket.readString("");
 
-	int id = 0;
+	//int id = 0;
 	for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
 	{
 		TServer* server = *i;
 		if (server == 0) continue;
 		if (servername.comparei(server->getName()))
 		{
-			sendPacket((CString() >> (char)SVO_SERVERINFO >> (short)pid << "playerworld" >> (int)id << "\n" << server->getName() << "\n" << server->getIp() << "\n" << server->getPort()).gtokenizeI());
+			//sendPacket(CString() >> (char)SVO_SERVERINFO >> (short)pid << "playerworld" << CString((int)id) << ",\"" << server->getName() << "\"," << server->getIp() << "," << server->getPort());
+			sendPacket(CString() >> (char)SVO_SERVERINFO >> (short)pid << (CString() << server->getName() << "\n" << server->getName() << "\n" << server->getIp() << "\n" << server->getPort()).gtokenizeI());
 			return true;
 		}
-		++id;
+		//++id;
 	}
 
 	return true;
@@ -1126,7 +1127,6 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 		if (option == "simpleserverlist")
 		{
 			// Assemble the serverlist.
-			int id = 0;
 			for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
 			{
 				TServer* server = *i;
@@ -1134,13 +1134,12 @@ bool TServer::msgSVI_REQUESTLIST(CString& pPacket)
 				if (server->getTypeVal() == TYPE_HIDDEN) continue;
 
 				CString p2;
-				p2 << "playerworld" >> (int)id << "\n";
+				p2 << server->getName() << "\n";
 				p2 << server->getType(PLV_POST22) << server->getName() << "\n";
 				p2 << CString((int)server->getPCount()) << "\n";
 				p2.gtokenizeI();
 
 				p << p2 << "\n";
-				++id;
 			}
 			p << getOwnedServers(account);
 			p.gtokenizeI();
