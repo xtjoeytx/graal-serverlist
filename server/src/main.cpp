@@ -5,6 +5,7 @@
 #include "TServer.h"
 #include "CLog.h"
 #include "CFileSystem.h"
+#include "IConfig.h"
 
 #ifdef _WIN32
 	#ifndef WIN32_LEAN_AND_MEAN
@@ -144,7 +145,7 @@ int main(int argc, char *argv[])
 	createSVFunctions();
 
 	// Flavor text
-	serverlog.out( CString() << "Graal Reborn - List Server V2\n"
+	serverlog.out( CString() << "Graal Reborn - List Server v" << LISTSERVER_VERSION <<"\n"
 					<< "List server started..\n"
 					<< "Client port: " << CString(settings->getInt("clientport")) << "\n"
 					<< "GServer port: " << CString(settings->getInt("gserverport")) << "\n" );
