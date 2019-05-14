@@ -184,7 +184,8 @@ void TServer::kill()
 
 	// Delete
 	std::vector<TServer*>::iterator iter = std::find(serverList.begin(), serverList.end(), this);
-	if (iter != serverList.end()) *iter = 0;
+	if (iter != serverList.end())
+		serverList.erase(iter);
 	delete this;
 }
 

@@ -177,6 +177,7 @@ if(NOT NOSTATIC)
 	set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -Wl,--no-as-needed -ldl")
 endif()
 
+add_definitions(-DNO_MYSQL)
 find_package(MySQL)
 
 find_package(ZLIB)

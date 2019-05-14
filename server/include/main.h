@@ -47,7 +47,6 @@ int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer =
 int verifyGuild(const CString& pAccount, const CString& pNickname, const CString& pGuild);
 void acceptSock(CSocket& pSocket, int pType);
 void shutdownServer( int signal );
-int main(int argc, char *argv[]);
 
 /*
 	Definitions

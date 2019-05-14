@@ -188,6 +188,7 @@ int main(int argc, char *argv[])
 		for ( std::vector<TServer*>::iterator iter = serverList.begin(); iter != serverList.end() ; )
 		{
 			TServer* server = (TServer*)*iter;
+			// THIS SHOULD NOT BE CALLED ANYMORE, AND CAN LIKELY BE REMOVED.
 			if (server == 0)
 			{
 				serverlog.out(CString() << "Server disconnected: [Orphaned server]\n");
