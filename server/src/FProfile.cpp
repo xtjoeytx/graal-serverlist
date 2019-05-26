@@ -15,8 +15,8 @@ bool getProfile( const CString& pAccountName, CString &pPacket)
 	CString query;
 
 	query << "SELECT profile_name, profile_age, profile_sex, profile_country, profile_icq, profile_email, profile_url, profile_hangout, profile_quote FROM " << settings->getStr("userlist") << " WHERE account='" << pAccountName.escape().text() << "' LIMIT 1";
-	std::vector<CString> result;
-	int err = mySQL->try_query(query, result);
+	std::vector<std::string> result;
+	int err = mySQL->try_query(query.text(), result);
 
 	if (err != -1 && result.size() != 0)
 	{
@@ -71,7 +71,7 @@ bool setProfile( const CString& pAccountName, CString &pPacket)
 	<< " profile_hangout='"	<< items[7].escape() << "',"
 	<< " profile_quote='"	<< items[8].escape() << "'"
 	<< " WHERE account='"	<< pAccountName.escape().text() << "' LIMIT 1";
-	mySQL->add_simple_query(query);
+	mySQL->add_simple_query(query.text());
 
 	return true;
 #endif

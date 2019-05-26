@@ -5,7 +5,8 @@
 
 #include <vector>
 #include <queue>
-#include "CString.h"
+#include <string>
+
 #ifdef _WIN32
 	#ifndef WIN32_LEAN_AND_MEAN
 		#define WIN32_LEAN_AND_MEAN
@@ -23,24 +24,32 @@ class CMySQL
 
 		bool connect();
 		int ping();
-		const char* error();
-
 		void update();
 
-		void add_simple_query(const CString& query);
-		int try_query(const CString& query, std::vector<CString>& result);
-		int try_query_rows(const CString& query, std::vector<std::vector<CString> >& result);
+		void add_simple_query(const std::string& query);
+		int try_query(const std::string& query, std::vector<std::string>& result);
+		int try_query_rows(const std::string& query, std::vector<std::vector<std::string> >& result);
 
-		bool connected() const	{ return isConnected; }
+		bool connected() const;
+		const char * error() const;
 
-	private:
+private:
+		bool isConnected;
 		MYSQL *mysql;
 		MYSQL_RES *res;
-		CString database, external, password, server, port, username;
+		std::string server, port, external;
+		std::string database, username, password;
 
-		bool isConnected;
-		std::queue<CString> queued_commands;
+		std::queue<std::string> queued_commands;
 };
+
+inline bool CMySQL::connected() const {
+	return isConnected;
+}
+
+inline const char * CMySQL::error() const {
+	return mysql_error(mysql);
+}
 
 #endif
 

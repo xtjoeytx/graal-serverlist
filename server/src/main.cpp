@@ -136,9 +136,9 @@ int main(int argc, char *argv[])
 	// Truncate servers table from MySQL.
 	CString query;
 	query << "TRUNCATE TABLE " << settings->getStr("serverlist");
-	mySQL->add_simple_query(query);
+	mySQL->add_simple_query(query.text());
 	query = CString("TRUNCATE TABLE ") << settings->getStr("securelogin");
-	mySQL->add_simple_query(query);
+	mySQL->add_simple_query(query.text());
 	mySQL->update();
 #endif
 
@@ -374,9 +374,9 @@ CString getOwnedServers(CString& pAccount)
 	return "";
 #else
 	CString query;
-	std::vector<std::vector<CString> > result;
+	std::vector<std::vector<std::string> > result;
 	query << "SELECT off.id as id, off.name as name, onn.playercount as playercount, off.curlevel as curlevel, uid.account as account, coalesce(onn.online, 0) as isOnline FROM graal_serverhq as off LEFT JOIN graal_servers as onn ON (off.name=onn.name) LEFT JOIN graal_users as uid ON (off.userid=uid.id) WHERE onn.online = 1 AND curlevel = 0 AND account = '" << pAccount.escape() << "' ORDER BY off.name ASC;";
-	int ret = mySQL->try_query_rows(query, result);
+	int ret = mySQL->try_query_rows(query.text(), result);
 
 	CString servers;
 	// does the player have any vBulletin friends?
@@ -390,9 +390,10 @@ CString getOwnedServers(CString& pAccount)
 		{
 			if (!result[i].empty())
 			{
+				// TODO(joey): unsure if my change worked, ill have to check back at it
 				srv1 = "";
 				srv1 << result[i][1] <<"\n";
-				srv1 << srv->getType(result[i][3].readInt()) << result[i][1] <<"\n";
+				srv1 << srv->getType(std::stoi(result[i][3])) << result[i][1] <<"\n";
 				srv1 << result[i][2] <<"\n";
 				srv1.gtokenizeI();
 
@@ -413,9 +414,9 @@ CString getOwnedServersPM(CString& pAccount)
 	return "";
 #else
 	CString query;
-	std::vector<std::vector<CString> > result;
+	std::vector<std::vector<std::string> > result;
 	query << "SELECT off.id as id, off.name as name, onn.playercount as playercount, off.curlevel as curlevel, uid.account as account, coalesce(onn.online, 0) as isOnline FROM graal_serverhq as off LEFT JOIN graal_servers as onn ON (off.name=onn.name) LEFT JOIN graal_users as uid ON (off.userid=uid.id) WHERE onn.online = 1 AND curlevel = 0 AND account = '" << pAccount.escape() << "' ORDER BY off.name ASC;";
-	int ret = mySQL->try_query_rows(query, result);
+	int ret = mySQL->try_query_rows(query.text(), result);
 
 	CString servers;
 	// does the player have any vBulletin friends?
@@ -449,9 +450,9 @@ CString getBuddies(CString& pAccount)
 	return "";
 #else
 	CString query;
-	std::vector<std::vector<CString> > result;
+	std::vector<std::vector<std::string> > result;
 	query << "SELECT user2.username as buddy FROM user LEFT JOIN userlist ON (user.userid=userlist.userid) LEFT JOIN user as user2 ON  (userlist.relationid=user2.userid) WHERE user.username LIKE '" << pAccount.escape() << "' AND userlist.type LIKE 'buddy' AND userlist.friend LIKE 'yes';";
-	int ret = vBmySQL->try_query_rows(query, result);
+	int ret = vBmySQL->try_query_rows(query.text(), result);
 
 	CString buddies;
 	// does the player have any vBulletin friends?
@@ -479,7 +480,7 @@ int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer)
 #else
 	// definitions
 	CString query;
-	std::vector<CString> result;
+	std::vector<std::string> result;
 	CString password(pPassword);
 
 	// make sure its not empty.
@@ -496,7 +497,7 @@ int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer)
 		// Try our password.
 		result.clear();
 		query = CString() << "SELECT activated, banned, account FROM `" << settings->getStr("userlist") << "` WHERE account='" << pAccount.escape() << "' AND transactionnr='" << transaction.escape() << "' AND password2='" << md5password.escape() << "' LIMIT 1";
-		int err = mySQL->try_query(query, result);
+		int err = mySQL->try_query(query.text(), result);
 
 		// account/password correct?
 		if (err == -1)
@@ -524,7 +525,7 @@ int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer)
 					<< "salt2='',"
 					<< "password2='' "
 					<< "WHERE account='" << pAccount.escape() << "'";
-				mySQL->add_simple_query(query);
+				mySQL->add_simple_query(query.text());
 			}
 		}
 
@@ -545,7 +546,7 @@ int verifyAccount(CString& pAccount, const CString& pPassword, bool fromServer)
 	{
 		result.clear();
 		query = CString() << "SELECT password, salt, activated, banned, account FROM `" << settings->getStr("userlist") << "` WHERE account='" << pAccount.escape() << "' AND password=" << "MD5(CONCAT(MD5('" << pPassword.escape() << "'), `salt`)) LIMIT 1";
-		int err = mySQL->try_query(query, result);
+		int err = mySQL->try_query(query.text(), result);
 		if (err == -1) return ACCSTAT_ERROR;
 
 		// account/password correct?
@@ -578,7 +579,7 @@ int verifyGuild(const CString& pAccount, const CString& pNickname, const CString
 	return GUILDSTAT_ALLOWED;
 #else
 	CString query;
-	std::vector<CString> result;
+	std::vector<std::string> result;
 
 	// Check parameters.
 	if (pAccount.length() < 1 || pGuild.length() < 1)
@@ -588,19 +589,19 @@ int verifyGuild(const CString& pAccount, const CString& pNickname, const CString
 	query << "SELECT * FROM " << settings->getStr("guild_names") << " WHERE name='" << pGuild.escape() << "' AND status='1'";
 
 	// Send the query.
-	int err = mySQL->try_query(query, result);
+	int err = mySQL->try_query(query.text(), result);
 	if (err != -1)
 	{
 		// Get the nick restriction.
 		int restrictNick = 0;
 		if (result.size() == 3)
-			restrictNick = atoi(result[2].text());
+			restrictNick = std::stoi(result[2]);
 
 		query = CString() << "SELECT * FROM " << settings->getStr("guild_members") << " WHERE guild='" << pGuild.escape() << "' AND account='" << pAccount.escape() << "'";
 		if (restrictNick != 0)
 			query << " AND nickname='" << pNickname.escape() << "'";
 
-		err = mySQL->try_query(query, result);
+		err = mySQL->try_query(query.text(), result);
 		return ((err == -1 || err == 0) ? GUILDSTAT_DISALLOWED : GUILDSTAT_ALLOWED);
 	}
 

@@ -4,19 +4,8 @@
 #include "CMySQL.h"
 
 CMySQL::CMySQL(const char *pServer, const char *pUsername, const char *pPassword, const char *pDatabase, const char *pPort, const char *pExternal)
+	: mysql(nullptr), res(nullptr), isConnected(false), server(pServer), port(pPort), username(pUsername), password(pPassword), database(pDatabase), external(pExternal)
 {
-	mysql = NULL;
-	res   = NULL;
-
-	database = pDatabase;
-	external = pExternal;
-	username = pUsername;
-	password = pPassword;
-	server   = pServer;
-	port	 = pPort;
-
-	isConnected = false;
-
 	connect();
 }
 
@@ -39,14 +28,15 @@ bool CMySQL::connect()
 		return false;
 
 	unsigned int sqlPort = 0;
-	if (!port.isEmpty())
-		sqlPort = strtoint(port);
+	if (!port.empty())
+		sqlPort = std::stoi(port);
 
-	if (!mysql_real_connect(mysql, server.text(), username.text(), password.text(), database.text(), sqlPort, external.text(), 0))
+	if (!mysql_real_connect(mysql, server.c_str(), username.c_str(), password.c_str(), database.c_str(), sqlPort, external.c_str(), 0))
 		return false;
 
-	isConnected = true;
-	return (ping() == 0);
+	// this will update isConnected
+	ping();
+	return isConnected;
 }
 
 int CMySQL::ping()
@@ -56,16 +46,11 @@ int CMySQL::ping()
 	return result;
 }
 
-const char* CMySQL::error()
-{
-	return mysql_error(mysql);
-}
-
 void CMySQL::update()
 {
 	while (!queued_commands.empty())
 	{
-		int ret = mysql_query(mysql, queued_commands.front().text());
+		int ret = mysql_query(mysql, queued_commands.front().c_str());
 		if (ret == 0)
 		{
 			queued_commands.pop();
@@ -82,13 +67,13 @@ void CMySQL::update()
 		connect();
 }
 
-void CMySQL::add_simple_query(const CString& query)
+void CMySQL::add_simple_query(const std::string& query)
 {
 	queued_commands.push(query);
 	update();
 }
 
-int CMySQL::try_query(const CString& query, std::vector<CString>& result)
+int CMySQL::try_query(const std::string& query, std::vector<std::string>& result)
 {
 	if (!isConnected)
 	{
@@ -97,7 +82,7 @@ int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 	}
 
 	// run query
-	if (mysql_query(mysql, query.text()) != 0)
+	if (mysql_query(mysql, query.c_str()) != 0)
 	{
 		isConnected = false;
 		return -1;
@@ -128,7 +113,7 @@ int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 		char* temp = new char[lengths[i] + 1];
 		memcpy(temp, row[i], lengths[i]);
 		temp[lengths[i]] = '\0';
-		result.emplace_back(CString(temp));
+		result.emplace_back(std::string(temp));
 		delete[] temp;
 	}
 
@@ -137,7 +122,7 @@ int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 	return result.size();
 }
 
-int CMySQL::try_query_rows(const CString& query, std::vector<std::vector<CString> >& result)
+int CMySQL::try_query_rows(const std::string& query, std::vector<std::vector<std::string> >& result)
 {
 	if (!isConnected)
 	{
@@ -146,7 +131,7 @@ int CMySQL::try_query_rows(const CString& query, std::vector<std::vector<CString
 	}
 
 	// run query
-	if (mysql_query(mysql, query.text()))
+	if (mysql_query(mysql, query.c_str()))
 	{
 		isConnected = false;
 		return -1;
@@ -174,13 +159,13 @@ int CMySQL::try_query_rows(const CString& query, std::vector<std::vector<CString
 		}
 
 		// Grab the full value and add it to the vector.
-		std::vector<CString> r;
+		std::vector<std::string> r;
 		for (unsigned int i = 0; i < mysql_num_fields(res); i++)
 		{
 			char* temp = new char[lengths[i] + 1];
 			memcpy(temp, row[i], lengths[i]);
 			temp[lengths[i]] = '\0';
-			r.emplace_back(CString(temp));
+			r.emplace_back(std::string(temp));
 			delete[] temp;
 		}
 
