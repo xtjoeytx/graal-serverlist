@@ -18,7 +18,7 @@
 class CMySQL
 {
 	public:
-		CMySQL(const char *pServer, const char *pUsername, const char *pPassword, const char *pDatabase, const char *pExternal = "");
+		CMySQL(const char *pServer, const char *pUsername, const char *pPassword, const char *pDatabase, const char *pPort, const char *pExternal = "");
 		~CMySQL();
 
 		bool connect();
@@ -36,7 +36,7 @@ class CMySQL
 	private:
 		MYSQL *mysql;
 		MYSQL_RES *res;
-		CString database, external, password, server, username;
+		CString database, external, password, server, port, username;
 
 		bool isConnected;
 		std::queue<CString> queued_commands;
