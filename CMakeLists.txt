@@ -167,10 +167,11 @@ else()
 	endif()
 
 	add_definitions(-D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=1)
-	
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
 endif()
 
-# Prefer static linkage under OS X for libraries located with find_package()
+# Prefer static linkage
 if(NOT NOSTATIC)
 	set(SUFFIXES_ORIG ${CMAKE_FIND_LIBRARY_SUFFIXES})
 	set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
