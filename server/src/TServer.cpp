@@ -409,7 +409,7 @@ bool TServer::parsePacket(CString& pPacket)
 	// valid packet, call function
 	bool ret = (*this.*svfunc[id])(pPacket);
 	if (!ret) {
-		serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, pPacket.text() + 1);
+		serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, name.text());
 	}
 	return ret;
 }
