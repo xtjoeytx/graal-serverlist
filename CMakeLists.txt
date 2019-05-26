@@ -174,7 +174,6 @@ endif()
 if(NOT NOSTATIC)
 	set(SUFFIXES_ORIG ${CMAKE_FIND_LIBRARY_SUFFIXES})
 	set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
-	set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -Wl,--no-as-needed -ldl")
 endif()
 
 find_package(MySQL)
