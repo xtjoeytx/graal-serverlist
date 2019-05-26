@@ -23,7 +23,7 @@ class CLog
 			Outputs text to a file.  Use like a standard printf() command.
 			\param format Format string.
 		*/
-		void out( const CString& format, ... );
+		void out( const CString format, ... );
 
 		//! Clears the output file.
 		void clear();

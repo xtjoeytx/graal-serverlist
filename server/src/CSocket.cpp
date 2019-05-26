@@ -7,7 +7,6 @@
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 	#include <windows.h>
-	#define snprintf _snprintf
 #ifndef __GNUC__ // rain
 	#pragma comment(lib, "ws2_32.lib")
 #endif
