@@ -29,12 +29,6 @@
 /*
 	Defiine Functions
 */
-#if defined(_WIN32)
-	#define wait(a) Sleep(a)
-#else
-	#define wait(a) usleep(a*1000)
-#endif
-
 CString getAccountError(int pErrorId);
 CString getServerList(int PLVER, const CString& pIp = "");
 CString getBuddies(CString& pAccount);

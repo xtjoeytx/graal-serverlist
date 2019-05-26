@@ -1,7 +1,7 @@
+#include <time.h>
 #include "main.h"
 #include "TPlayer.h"
 #include "CLog.h"
-#include <time.h>
 
 #ifndef NO_MYSQL
 	extern CMySQL *mySQL;

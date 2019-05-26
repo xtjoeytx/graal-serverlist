@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <signal.h>
+#include <chrono>
+#include <thread>
 #include "main.h"
 #include "TPlayer.h"
 #include "TServer.h"
@@ -245,7 +247,7 @@ int main(int argc, char *argv[])
 		}
 
 		// Wait
-		wait(100);
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
 	// Remove all servers.

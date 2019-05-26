@@ -39,12 +39,9 @@ set(
     ${PROJECT_BINARY_DIR}/server/include/IConfig.h
     ../include/CFileSystem.h
     ../include/TPlayer.h
-    ../include/zconf.h
     ../include/codec.h
     ../include/FProfile.h
-    ../include/bzlib.h
     ../include/CMySQL.h
-    ../include/zlib.h
     ../include/TServer.h
     ../include/main.h
     ../include/CSocket.h
