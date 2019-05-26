@@ -1,3 +1,4 @@
-[submodule "dependencies/zlib"]
-	path = dependencies/zlib
-	url = https://github.com/madler/zlib.git
+[submodule "dependencies/gs2lib"]
+	path = dependencies/gs2lib
+	url = https://github.com/xtjoeytx/gs2lib.git
+	branch = master
