@@ -123,8 +123,8 @@ int main(int argc, char *argv[])
 
 	// MySQL-Connect
 #ifndef NO_MYSQL
-	mySQL = new CMySQL(settings->getStr("server").text(), settings->getStr("user").text(), settings->getStr("password").text(), settings->getStr("database").text(), settings->getStr("sockfile").text());
-	vBmySQL = new CMySQL(settings->getStr("server").text(), settings->getStr("vbuser").text(), settings->getStr("vbpassword").text(), settings->getStr("vbdatabase").text(), settings->getStr("sockfile").text());
+	mySQL = new CMySQL(settings->getStr("server").text(), settings->getStr("user").text(), settings->getStr("password").text(), settings->getStr("database").text(), settings->getStr("port").text(), settings->getStr("sockfile").text());
+	vBmySQL = new CMySQL(settings->getStr("server").text(), settings->getStr("vbuser").text(), settings->getStr("vbpassword").text(), settings->getStr("vbdatabase").text(), settings->getStr("vbport").text(), settings->getStr("sockfile").text());
 	if (!mySQL->ping())
 	{
 		serverlog.out( "[Error] No response from MySQL.\n" );

@@ -3,16 +3,17 @@
 #include "CString.h"
 #include "CMySQL.h"
 
-CMySQL::CMySQL(const char *pServer, const char *pUsername, const char *pPassword, const char *pDatabase, const char *pExternal)
+CMySQL::CMySQL(const char *pServer, const char *pUsername, const char *pPassword, const char *pDatabase, const char *pPort, const char *pExternal)
 {
 	mysql = NULL;
 	res   = NULL;
 
 	database = pDatabase;
 	external = pExternal;
+	username = pUsername;
 	password = pPassword;
 	server   = pServer;
-	username = pUsername;
+	port	 = pPort;
 
 	isConnected = false;
 
@@ -31,7 +32,11 @@ bool CMySQL::connect()
 	if ((mysql = mysql_init(mysql)) == NULL)
 		return false;
 
-	if (!mysql_real_connect(mysql, server.text(), username.text(), password.text(), database.text(), 0, external.text(), 0))
+	unsigned int sqlPort = 0;
+	if (!port.isEmpty())
+		sqlPort = strtoint(port);
+
+	if (!mysql_real_connect(mysql, server.text(), username.text(), password.text(), database.text(), sqlPort, external.text(), 0))
 		return false;
 
 	isConnected = true;
