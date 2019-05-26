@@ -25,12 +25,9 @@ include(CheckSymbolExists)
 set(
     SOURCES
     CFileSystem.cpp
-    CLog.cpp
     CMySQL.cpp
     codec.cpp
-    CSettings.cpp
     CSocket.cpp
-    CString.cpp
     FProfile.cpp
     main.cpp
     TPlayer.cpp
@@ -41,17 +38,14 @@ set(
     HEADERS
     ${PROJECT_BINARY_DIR}/server/include/IConfig.h
     ../include/CFileSystem.h
-    ../include/CString.h
     ../include/TPlayer.h
     ../include/zconf.h
     ../include/codec.h
-    ../include/CSettings.h
     ../include/FProfile.h
     ../include/bzlib.h
     ../include/CMySQL.h
     ../include/zlib.h
     ../include/TServer.h
-    ../include/CLog.h
     ../include/main.h
     ../include/CSocket.h
 )
@@ -113,22 +107,8 @@ else()
 	add_executable(${TARGET_NAME} ${SOURCES} ${HEADERS})
 endif()
 
-if(NOT ZLIB_FOUND AND NOT NOSTATIC)
-	add_dependencies(${TARGET_NAME} zlibstatic)
-	target_link_libraries(${TARGET_NAME} zlibstatic)
-elseif(NOT ZLIB_FOUND AND NOSTATIC)
-	add_dependencies(${TARGET_NAME} zlib)
-	target_link_libraries(${TARGET_NAME} zlib)
-else()
-	target_link_libraries(${TARGET_NAME} ${ZLIB_LIBRARIES})
-endif()
-
-if(NOT BZip2_FOUND)
-	add_dependencies(${TARGET_NAME} bzip2)
-	target_link_libraries(${TARGET_NAME} bzip2)
-else()
-	target_link_libraries(${TARGET_NAME} ${BZIP2_LIBRARIES})
-endif()
+add_dependencies(${TARGET_NAME} gs2lib)
+target_link_libraries(${TARGET_NAME} gs2lib)
 
 if(MYSQL_FOUND)
 	target_link_libraries(${TARGET_NAME} ${MYSQL_LIBRARY})

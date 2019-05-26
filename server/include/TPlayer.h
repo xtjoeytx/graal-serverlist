@@ -1,6 +1,7 @@
 #ifndef TPLAYER_H
 #define TPLAYER_H
 
+#include "CString.h"
 #include "codec.h"
 
 enum

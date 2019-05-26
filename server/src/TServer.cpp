@@ -688,7 +688,7 @@ bool TServer::msgSVI_GETFILE(CString& pPacket)
 	if (fileData.length() != 0)
 	{
 		sendPacket(CString() >> (char)SVO_FILESTART >> (char)shortName.length() << shortName << "\n");
-		fileData = fileData.B64_Encode();
+		fileData = CString_Base64_Encode(fileData);
 
 		while (fileData.length() > 0)
 		{

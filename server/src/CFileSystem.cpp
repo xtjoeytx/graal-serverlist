@@ -4,6 +4,7 @@
 	#include <utime.h>
 #else
 	#include <sys/utime.h>
+	#include <windows.h>
 	#define _utime utime
 	#define _utimbuf utimbuf;
 #endif
