@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <time.h>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -65,17 +66,30 @@ void CLog::out( const CString format, ... )
 	va_list s_format_v;
 	va_start( s_format_v, format );
 
+	// Assemble and print the timestamp.
+	char timestr[60];
+	time_t curtime = time(0);
+	strftime(timestr, sizeof(timestr), "%I:%M %p", localtime(&curtime));
+	printf("[%s] ", timestr);
+
 	// Log output to file.
-	if ( true == enabled && 0 != file )
+	if (true == enabled && 0 != file)
 	{
-		vfprintf( file, format.text(), s_format_v );
-		fflush( file );
+		// Save the timestamp to the file.
+		strftime(timestr, sizeof(timestr), "%a %b %d %X %Y", localtime(&curtime));
+		fprintf(file, "[%s] ", timestr);
+
+		// Write the message to the file.
+		va_start(s_format_v, format);
+		vfprintf(file, format.text(), s_format_v);
+		va_end(s_format_v);
+		fflush(file);
 	}
 
 	// Display message.
-	vprintf( format.text(), s_format_v );
-
-	va_end( s_format_v );
+	va_start(s_format_v, format);
+	vprintf(format.text(), s_format_v);
+	va_end(s_format_v);
 }
 
 void CLog::clear()
