@@ -162,17 +162,14 @@ int main(int argc, char *argv[])
 #ifndef NO_MYSQL
 		if (!mySQL->ping())
 		{
-			serverlog.out( "[Error] No response from MySQL.\n" );
-			
-			// H4x
-			delete mySQL;
-			mySQL = new CMySQL(settings->getStr("server").text(), settings->getStr("user").text(), settings->getStr("password").text(), settings->getStr("database").text(), settings->getStr("sockfile").text());
-			if (!mySQL->ping()) {
-				serverlog.out( "[Error] Could not reconnect to MySQL. Exiting execution\n" );
+			serverlog.out("[Error] No response from MySQL.\n");
+
+			if (!mySQL->connect()) {
+				serverlog.out("[Error] Could not reconnect to MySQL. Exiting execution\n");
 				running = false;
 			}
 		}
-		mySQL->update();
+		else mySQL->update();
 #endif
 
 		// Accept New Connections
