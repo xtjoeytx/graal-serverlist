@@ -79,7 +79,10 @@ void CMySQL::add_simple_query(const CString& query)
 int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 {
 	if (!isConnected)
-		return -1;
+	{
+		if (!connect())
+			return -1;
+	}
 
 	// run query
 	if (mysql_query(mysql, query.text()) != 0)

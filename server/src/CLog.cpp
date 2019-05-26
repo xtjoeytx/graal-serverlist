@@ -60,7 +60,7 @@ CLog::~CLog()
 	fclose( file );
 }
 
-void CLog::out( const CString& format, ... )
+void CLog::out( const CString format, ... )
 {
 	va_list s_format_v;
 	va_start( s_format_v, format );
