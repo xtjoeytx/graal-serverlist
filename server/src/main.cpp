@@ -642,3 +642,119 @@ void getBasePath()
 	}
 #endif
 }
+
+// 2002-05-07 by Markus Ewald
+CString CString_Base64_Encode(const CString& input)
+{
+	static const char *EncodeTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+	CString retVal;
+
+	for (int i = 0; i < input.length(); i++)
+	{
+		char pCode;
+
+		pCode = (input[i] >> 2) & 0x3f;
+		retVal.writeChar(EncodeTable[pCode]);
+
+		pCode = (input[i] << 4) & 0x3f;
+		if (i++ < input.length())
+			pCode |= (input[i] >> 4) & 0x0f;
+		retVal.writeChar(EncodeTable[pCode]);
+
+		if (i < input.length())
+		{
+			pCode = (input[i] << 2) & 0x3f;
+			if (i++ < input.length())
+				pCode |= (input[i] >> 6) & 0x03;
+			retVal.writeChar(EncodeTable[pCode]);
+		}
+		else
+		{
+			i++;
+			retVal.writeChar('=');
+		}
+
+		if (i < input.length())
+		{
+			pCode = input[i] & 0x3f;
+			retVal.writeChar(EncodeTable[pCode]);
+		}
+		else
+		{
+			retVal.writeChar('=');
+		}
+	}
+
+	return retVal;
+}
+
+CString CString_Base64_Decode(const CString& input)
+{
+	static const int DecodeTable[] = {
+		// 0   1   2   3   4   5   6   7   8   9
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //   0 -   9
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //  10 -  19
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //  20 -  29
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //  30 -  39
+		-1, -1, -1, 62, -1, -1, -1, 63, 52, 53,  //  40 -  49
+		54, 55, 56, 57, 58, 59, 60, 61, -1, -1,  //  50 -  59
+		-1, -1, -1, -1, -1,  0,  1,  2,  3,  4,  //  60 -  69
+		 5,  6,  7,  8,  9, 10, 11, 12, 13, 14,  //  70 -  79
+		15, 16, 17, 18, 19, 20, 21, 22, 23, 24,  //  80 -  89
+		25, -1, -1, -1, -1, -1, -1, 26, 27, 28,  //  90 -  99
+		29, 30, 31, 32, 33, 34, 35, 36, 37, 38,  // 100 - 109
+		39, 40, 41, 42, 43, 44, 45, 46, 47, 48,  // 110 - 119
+		49, 50, 51, -1, -1, -1, -1, -1, -1, -1,  // 120 - 129
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 130 - 139
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 140 - 149
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 150 - 159
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 160 - 169
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 170 - 179
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 180 - 189
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 190 - 199
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 200 - 209
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 210 - 219
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 220 - 229
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 230 - 239
+		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 240 - 249
+		-1, -1, -1, -1, -1, -1				   // 250 - 256
+	};
+
+	CString retVal;
+
+	for (int i = 0; i < input.length(); i++)
+	{
+		unsigned char c1, c2;
+
+		c1 = (char)DecodeTable[(unsigned char)input[i]];
+		i++;
+		c2 = (char)DecodeTable[(unsigned char)input[i]];
+		c1 = (c1 << 2) | ((c2 >> 4) & 0x3);
+		retVal.writeChar(c1);
+
+		if (i++ < input.length())
+		{
+			c1 = input[i];
+			if (c1 == '=')
+				break;
+
+			c1 = (char)DecodeTable[(unsigned char)input[i]];
+			c2 = ((c2 << 4) & 0xf0) | ((c1 >> 2) & 0xf);
+			retVal.writeChar(c2);
+		}
+
+		if (i++ < input.length())
+		{
+			c2 = input[i];
+			if (c2 == '=')
+				break;
+
+			c2 = (char)DecodeTable[(unsigned char)input[i]];
+			c1 = ((c1 << 6) & 0xc0) | c2;
+			retVal.writeChar(c1);
+		}
+	}
+
+	return retVal;
+}

@@ -48,6 +48,9 @@ int verifyGuild(const CString& pAccount, const CString& pNickname, const CString
 void acceptSock(CSocket& pSocket, int pType);
 void shutdownServer( int signal );
 
+CString CString_Base64_Decode(const CString& input);
+CString CString_Base64_Encode(const CString& input);
+
 /*
 	Definitions
 */

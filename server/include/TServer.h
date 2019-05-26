@@ -2,6 +2,7 @@
 #define TSERVER_H
 
 #include <time.h>
+#include "CString.h"
 
 enum
 {
