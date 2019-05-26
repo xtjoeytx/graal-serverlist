@@ -22,7 +22,7 @@ class CMySQL
 		~CMySQL();
 
 		bool connect();
-		bool ping();
+		int ping();
 		const char* error();
 
 		void update();

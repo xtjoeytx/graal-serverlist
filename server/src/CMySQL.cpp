@@ -29,7 +29,13 @@ bool CMySQL::connect()
 {
 	isConnected = false;
 
-	if ((mysql = mysql_init(mysql)) == NULL)
+	if (mysql != nullptr)
+	{
+		mysql_close(mysql);
+		mysql = nullptr;
+	}
+
+	if ((mysql = mysql_init(mysql)) == nullptr)
 		return false;
 
 	unsigned int sqlPort = 0;
@@ -40,13 +46,14 @@ bool CMySQL::connect()
 		return false;
 
 	isConnected = true;
-	return ping();
+	return (ping() == 0);
 }
 
-bool CMySQL::ping()
+int CMySQL::ping()
 {
-	isConnected = (mysql_ping(mysql) == 0);
-	return isConnected;
+	int result = mysql_ping(mysql);
+	isConnected = (result == 0);
+	return result;
 }
 
 const char* CMySQL::error()
@@ -121,8 +128,8 @@ int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 		char* temp = new char[lengths[i] + 1];
 		memcpy(temp, row[i], lengths[i]);
 		temp[lengths[i]] = '\0';
-		result.push_back(CString(temp));
-		delete temp;
+		result.emplace_back(CString(temp));
+		delete[] temp;
 	}
 
 	// cleanup
@@ -173,8 +180,8 @@ int CMySQL::try_query_rows(const CString& query, std::vector<std::vector<CString
 			char* temp = new char[lengths[i] + 1];
 			memcpy(temp, row[i], lengths[i]);
 			temp[lengths[i]] = '\0';
-			r.push_back(CString(temp));
-			delete temp;
+			r.emplace_back(CString(temp));
+			delete[] temp;
 		}
 
 		// Push back the row.

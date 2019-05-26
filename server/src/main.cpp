@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 #ifndef NO_MYSQL
 	mySQL = new CMySQL(settings->getStr("server").text(), settings->getStr("user").text(), settings->getStr("password").text(), settings->getStr("database").text(), settings->getStr("port").text(), settings->getStr("sockfile").text());
 	vBmySQL = new CMySQL(settings->getStr("server").text(), settings->getStr("vbuser").text(), settings->getStr("vbpassword").text(), settings->getStr("vbdatabase").text(), settings->getStr("vbport").text(), settings->getStr("sockfile").text());
-	if (!mySQL->ping())
+	if (mySQL->ping() != 0)
 	{
 		serverlog.out( "[Error] No response from MySQL.\n" );
 		return ERR_MYSQL;
@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
 
 		// Make sure MySQL is active
 #ifndef NO_MYSQL
-		if (!mySQL->ping())
+		if (mySQL->ping() != 0)
 		{
 			if ((int)difftime(now, t30s) > 30)
 			{
