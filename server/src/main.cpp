@@ -156,17 +156,23 @@ int main(int argc, char *argv[])
 
 	// Main Loop
 	time_t t5min = time(0);
+	time_t t30s = time(0);
 	while (running)
 	{
+		time_t now = time(0);
+
 		// Make sure MySQL is active
 #ifndef NO_MYSQL
 		if (!mySQL->ping())
 		{
-			serverlog.out("[Error] No response from MySQL.\n");
+			if ((int)difftime(now, t30s) > 30)
+			{
+				if (!mySQL->connect()) {
+					serverlog.out("[Error] Could not reconnect to MySQL. Trying again in 30 seconds.\n");
+				}
+				else serverlog.out("Reconnected to MySQL Server\n");
 
-			if (!mySQL->connect()) {
-				serverlog.out("[Error] Could not reconnect to MySQL. Exiting execution\n");
-				running = false;
+				t30s = now;
 			}
 		}
 		else mySQL->update();
@@ -229,13 +235,13 @@ int main(int argc, char *argv[])
 		// Every 5 minutes...
 		// Reload ip bans.
 		// Resync the file system.
-		if ((int)difftime(time(0), t5min) > (5*60))
+		if ((int)difftime(now, t5min) > 300)
 		{
 			ipBans = CString::loadToken("ipbans.txt", "\n", true);
 			serverTypes = CString::loadToken("servertypes.txt", "\n", true);
 			for (int i = 0; i < 5; ++i)
 				filesystem[i].resync();
-			t5min = time(0);
+			t5min = now;
 		}
 
 		// Wait
