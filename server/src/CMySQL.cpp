@@ -128,7 +128,10 @@ int CMySQL::try_query(const CString& query, std::vector<CString>& result)
 int CMySQL::try_query_rows(const CString& query, std::vector<std::vector<CString> >& result)
 {
 	if (!isConnected)
-		return -1;
+	{
+		if (!connect())
+			return -1;
+	}
 
 	// run query
 	if (mysql_query(mysql, query.text()))
