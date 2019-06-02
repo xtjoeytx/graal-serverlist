@@ -2,6 +2,8 @@
 #include "TPlayer.h"
 #include "TServer.h"
 
+#include "MySQLBackend.h"
+
 ListServer::ListServer(const std::string& homePath)
 	: _initialized(false), _homePath(homePath), _dataStore(nullptr)
 {
@@ -68,7 +70,13 @@ InitializeError ListServer::Initialize()
 
 
 
-	// TODO(joey): Data backend
+	// TODO(joey): Create data backend
+	_dataStore = new MySQLBackend(_settings.getStr("server").text(), _settings.getInt("port"), _settings.getStr("sockfile").text(),
+		_settings.getStr("user").text(), _settings.getStr("password").text(), _settings.getStr("database").text());
+
+	// Connect to backend
+	if (_dataStore->Initialize())
+		return InitializeError::Backend_Error;
 
 	_initialized = true;
 	return InitializeError::None;
@@ -80,14 +88,14 @@ void ListServer::Cleanup()
 		return;
 
 	// Delete the players
-	for (auto it = _playerList.begin(); it != _playerList.end(); ++it)
+	for (auto it = _playerConnections.begin(); it != _playerConnections.end(); ++it)
 		delete *it;
-	_playerList.clear();
+	_playerConnections.clear();
 
 	// Delete the servers
-	for (auto it = _serverList.begin(); it != _serverList.end(); ++it)
+	for (auto it = _serverConnections.begin(); it != _serverConnections.end(); ++it)
 		delete *it;
-	_serverList.clear();
+	_serverConnections.clear();
 
 	// Disconnect sockets
 	_serverSock.disconnect();

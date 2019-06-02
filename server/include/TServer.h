@@ -9,6 +9,7 @@ enum
 	SVI_SETNAME			= 0,
 	SVI_SETDESC			= 1,
 	SVI_SETLANG			= 2,
+
 	SVI_SETVERS			= 3,
 	SVI_SETURL			= 4,
 	SVI_SETIP			= 5,

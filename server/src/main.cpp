@@ -73,6 +73,8 @@ const char * getErrorString(InitializeError error)
 	}
 }
 
+#include "PlayerProfile.h"
+
 int main(int argc, char *argv[])
 {
 	// Shut down the server if we get a kill signal.
@@ -91,9 +93,6 @@ int main(int argc, char *argv[])
 		listServer.Cleanup();
 		return -1;
 	}
-
-
-	return 0;
 
 	// Initialize data directory.
 	filesystem[0].addDir("global");

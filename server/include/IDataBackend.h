@@ -4,6 +4,7 @@
 #define IDATABACKEND_H
 
 #include <string>
+#include "PlayerProfile.h"
 
 class IDataBackend
 {
@@ -13,11 +14,17 @@ class IDataBackend
 
 		virtual int Initialize() = 0;
 		virtual void Cleanup() = 0;
+		virtual int Ping() = 0;
 
 		/// Methods for interfacing with the backend.
 		// 
+		virtual bool IsIpBanned(const std::string& ipAddress) = 0;
+
 		virtual int VerifyAccount(const std::string& account, const std::string& password) = 0;
 		virtual int VerifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) = 0;
+
+		virtual PlayerProfile GetProfile(const std::string& account) = 0;
+		virtual void SetProfile(const PlayerProfile& profile) = 0;
 };
 
 #endif

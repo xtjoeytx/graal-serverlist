@@ -33,6 +33,7 @@ set(
     TPlayer.cpp
     TServer.cpp
     ListServer.cpp
+	MySQLBackend.cpp
 )
 
 set(
@@ -47,7 +48,9 @@ set(
     ../include/main.h
     ../include/CSocket.h
     ../include/ListServer.h
+    ../include/PlayerProfile.h
     ../include/IDataBackend.h
+    ../include/MySQLBackend.h
 )
 
 include_directories(

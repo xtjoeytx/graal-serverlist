@@ -22,7 +22,8 @@ enum class InitializeError
 	ServerSock_Init,
 	ServerSock_Listen,
 	PlayerSock_Init,
-	PlayerSock_Listen
+	PlayerSock_Listen,
+	Backend_Error
 };
 
 class ListServer
@@ -47,8 +48,8 @@ private:
 	CSettings _settings;
 	CSocket _playerSock, _serverSock;
 	std::string _homePath;
-	std::vector<TPlayer *> _playerList;
-	std::vector<TServer *> _serverList;
+	std::vector<TPlayer *> _playerConnections;
+	std::vector<TServer *> _serverConnections;
 
 	IDataBackend *_dataStore;
 	std::chrono::high_resolution_clock::time_point _lastTimer;
