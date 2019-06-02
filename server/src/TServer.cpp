@@ -761,13 +761,13 @@ bool TServer::msgSVI_SETPROF(CString& pPacket)
 bool TServer::msgSVI_PLYRADD(CString& pPacket)
 {
 	player *pl = new player();
-		pl->account = pPacket.readChars(pPacket.readGUChar());
-		pl->nick = pPacket.readChars(pPacket.readGUChar());
-		pl->level = pPacket.readChars(pPacket.readGUChar());
-		pl->x = (float)pPacket.readGChar() / 2.0f;
-		pl->y = (float)pPacket.readGChar() / 2.0f;
-		pl->ap = pPacket.readGUChar();
-		pl->type = pPacket.readGUChar();
+	pl->account = pPacket.readChars(pPacket.readGUChar());
+	pl->nick = pPacket.readChars(pPacket.readGUChar());
+	pl->level = pPacket.readChars(pPacket.readGUChar());
+	pl->x = (float)pPacket.readGChar() / 2.0f;
+	pl->y = (float)pPacket.readGChar() / 2.0f;
+	pl->ap = pPacket.readGUChar();
+	pl->type = pPacket.readGUChar();
 	playerList.push_back(pl);
 
 	// Update the database.

@@ -32,6 +32,7 @@ set(
     main.cpp
     TPlayer.cpp
     TServer.cpp
+    ListServer.cpp
 )
 
 set(
@@ -45,6 +46,8 @@ set(
     ../include/TServer.h
     ../include/main.h
     ../include/CSocket.h
+    ../include/ListServer.h
+    ../include/IDataBackend.h
 )
 
 include_directories(

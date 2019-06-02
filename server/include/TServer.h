@@ -20,8 +20,8 @@ enum
 	SVI_NICKNAME		= 11,
 	SVI_GETPROF			= 12,
 	SVI_SETPROF			= 13,
-	SVI_PLYRADD			= 14,
-	SVI_PLYRREM			= 15,
+	SVI_PLYRADD			= 14,		// Add player to the servers playerlist
+	SVI_PLYRREM			= 15,		// Remove player from the servers playerlist
 	SVI_SVRPING			= 16,
 	SVI_VERIACC2		= 17,
 	SVI_SETLOCALIP		= 18,
@@ -61,6 +61,10 @@ enum
 	SVO_SERVERINFO		= 18,
 	SVO_REQUESTTEXT		= 19,
 	SVO_PMPLAYER		= 29,
+	SVO_NEWSERVER		= 30,
+	SVO_DELSERVER		= 31,
+	SVO_SERVERADDPLYR	= 32,
+	SVO_SERVERDELPLYR	= 33,
 	SVO_PING			= 99,
 	SVO_RAWDATA			= 100,
 };

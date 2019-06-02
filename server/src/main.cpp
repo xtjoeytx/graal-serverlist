@@ -44,6 +44,35 @@ static void getBasePath();
 // Filesystem.
 CFileSystem filesystem[5];
 
+#include "ListServer.h"
+
+const char * getErrorString(InitializeError error)
+{
+	switch (error)
+	{
+		case InitializeError::None:
+			return "Success";
+
+		case InitializeError::InvalidSettings:
+			return "Could not read settings";
+
+		case InitializeError::ServerSock_Init:
+			return "Could not initialize server socket";
+
+		case InitializeError::ServerSock_Listen:
+			return "Could not listen on server socket";
+
+		case InitializeError::PlayerSock_Init:
+			return "Could not initialize player socket";
+
+		case InitializeError::PlayerSock_Listen:
+			return "Could not listen on player socket";
+
+		default:
+			return "";
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	// Shut down the server if we get a kill signal.
@@ -52,6 +81,19 @@ int main(int argc, char *argv[])
 
 	// Grab the base path to the server executable.
 	getBasePath();
+
+	// Setup listserver
+	ListServer listServer(homepath.text());
+	InitializeError err = listServer.Initialize();
+	if (err != InitializeError::None)
+	{
+		listServer.getServerLog().out("[Error] %s", getErrorString(err));
+		listServer.Cleanup();
+		return -1;
+	}
+
+
+	return 0;
 
 	// Initialize data directory.
 	filesystem[0].addDir("global");
