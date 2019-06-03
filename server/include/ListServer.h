@@ -55,7 +55,6 @@ private:
 	std::chrono::high_resolution_clock::time_point _lastTimer;
 
 	// TBD:
-	std::vector<CString> _ipBans;
 	std::vector<CString> _serverTypes;
 };
 

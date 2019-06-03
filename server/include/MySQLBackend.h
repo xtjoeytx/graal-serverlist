@@ -15,12 +15,15 @@
 class MySQLBackend : public IDataBackend
 {
 	public:
-		MySQLBackend(const std::string& host, int port, const std::string& external, const std::string& user, const std::string& password, const std::string& database);
-		~MySQLBackend();
+		MySQLBackend(const std::string& host, int port, const std::string& socket, const std::string& user, const std::string& password, const std::string& database);
+		virtual ~MySQLBackend();
 
 		int Initialize() override;
 		void Cleanup() override;
 		int Ping() override;
+
+		bool IsConnected() const override;
+		std::string GetLastError() const override;
 
 		/// Methods for interfacing with the backend.
 		// 
@@ -34,6 +37,20 @@ class MySQLBackend : public IDataBackend
 		bool _isConnected;
 		MYSQL *_mysql;
 		MYSQL_RES *_mysqlresult;
+
+		int _cfgPort;
+		std::string _cfgHost, _cfgSocket;
+		std::string _cfgUser, _cfgPass, _cfgDatabase;
 };
+
+inline bool MySQLBackend::IsConnected() const
+{
+	return _isConnected;
+}
+
+inline std::string MySQLBackend::GetLastError() const
+{
+	return mysql_error(_mysql);
+}
 
 #endif

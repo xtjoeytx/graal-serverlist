@@ -68,6 +68,9 @@ const char * getErrorString(InitializeError error)
 		case InitializeError::PlayerSock_Listen:
 			return "Could not listen on player socket";
 
+		case InitializeError::Backend_Error:
+			return "Could not connect to backend";
+
 		default:
 			return "";
 	}
@@ -91,6 +94,10 @@ int main(int argc, char *argv[])
 		listServer.Cleanup();
 		return -1;
 	}
+
+	printf("Done\n");
+
+	return -1;
 
 	// Initialize data directory.
 	filesystem[0].addDir("global");
@@ -668,11 +675,20 @@ void getBasePath()
 	if (pos == -1) homepath.clear();
 	else if (pos != (homepath.length() - 1))
 		homepath.removeI(++pos, homepath.length());
+#elif __APPLE__
+	char path[255];
+	if (!getcwd(path, sizeof(path)))
+		printf("Error getting CWD\n");
+
+	homepath = path;
+	if (homepath[homepath.length() - 1] != '/')
+		homepath << '/';
 #else
 	// Get the path to the program.
 	char path[260];
 	memset((void*)path, 0, 260);
 	readlink("/proc/self/exe", path, sizeof(path));
+	printf("Test path: %s\n", path);
 
 	// Assign the path to homepath.
 	char* end = strrchr(path, '/');

@@ -17,7 +17,7 @@ class IDataBackend
 		virtual int Ping() = 0;
 
 		virtual bool IsConnected() const = 0;
-		virtual std::string GetLastError() = 0;
+		virtual std::string GetLastError() const = 0;
 
 		/// Methods for interfacing with the backend.
 		// 

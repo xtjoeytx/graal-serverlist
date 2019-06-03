@@ -23,24 +23,16 @@ InitializeError ListServer::Initialize()
 		return InitializeError::None;
 
 	// Load settings
+	_settings.setSeparator("=");
 	if (!_settings.loadFile(_homePath + "settings.ini"))
 		return InitializeError::InvalidSettings;
 
-	// TODO(joey): Move this to the data backend, and check when requested?
-	// Load ip bans
-	_ipBans = CString::loadToken(_homePath + "ipbans.txt", "\n", true);
-	if (!_ipBans.empty())
-	{
-		getServerLog().out("Loaded following IP bans:\n");
-		for (auto it = _ipBans.begin(); it != _ipBans.end(); ++it)
-			getServerLog().out("\t%s\n", it->text());
-	}
-
 	// Load server types
-	_serverTypes = CString::loadToken("servertypes.txt", "\n", true);
+	//_serverTypes = CString::loadToken("servertypes.txt", "\n", true);
 
 	// Bind the server socket
 	CString serverInterface = _settings.getStr("gserverInterface");
+
 	if (serverInterface == "AUTO")
 		serverInterface.clear();
 	_serverSock.setType(SOCKET_TYPE_SERVER);
@@ -70,7 +62,7 @@ InitializeError ListServer::Initialize()
 
 
 
-	// TODO(joey): Create data backend
+	// TODO(joey): Create different data backends (likely do a text-based one as well)
 	_dataStore = new MySQLBackend(_settings.getStr("server").text(), _settings.getInt("port"), _settings.getStr("sockfile").text(),
 		_settings.getStr("user").text(), _settings.getStr("password").text(), _settings.getStr("database").text());
 
