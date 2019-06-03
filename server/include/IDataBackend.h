@@ -16,6 +16,9 @@ class IDataBackend
 		virtual void Cleanup() = 0;
 		virtual int Ping() = 0;
 
+		virtual bool IsConnected() const = 0;
+		virtual std::string GetLastError() = 0;
+
 		/// Methods for interfacing with the backend.
 		// 
 		virtual bool IsIpBanned(const std::string& ipAddress) = 0;

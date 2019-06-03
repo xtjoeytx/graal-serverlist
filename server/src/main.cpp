@@ -73,8 +73,6 @@ const char * getErrorString(InitializeError error)
 	}
 }
 
-#include "PlayerProfile.h"
-
 int main(int argc, char *argv[])
 {
 	// Shut down the server if we get a kill signal.
