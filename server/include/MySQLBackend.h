@@ -4,13 +4,8 @@
 #define MYSQLBACKEND_H
 
 #include <string>
+#include <mysql+++.h>
 #include "IDataBackend.h"
-
-#ifdef _WIN32
-	#define my_socket_defined
-	#define my_socket int
-#endif
-#include "mysql/mysql.h"
 
 class MySQLBackend : public IDataBackend
 {
@@ -34,23 +29,18 @@ class MySQLBackend : public IDataBackend
 		void SetProfile(const PlayerProfile& profile) override;
 
 	private:
-		bool _isConnected;
-		MYSQL *_mysql;
-		MYSQL_RES *_mysqlresult;
-
-		int _cfgPort;
-		std::string _cfgHost, _cfgSocket;
-		std::string _cfgUser, _cfgPass, _cfgDatabase;
+		daotk::mysql::connection _connection;
+		daotk::mysql::connect_options _connectionOptions;
 };
 
 inline bool MySQLBackend::IsConnected() const
 {
-	return _isConnected;
+	return _connection.is_open();
 }
 
 inline std::string MySQLBackend::GetLastError() const
 {
-	return mysql_error(_mysql);
+	return _connection.error_message();
 }
 
 #endif

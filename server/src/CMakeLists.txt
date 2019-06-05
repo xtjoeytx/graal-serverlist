@@ -81,6 +81,7 @@ if (HAVE_INET_PTON)
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/dependencies/gs2lib/include)
+include_directories(${PROJECT_SOURCE_DIR}/dependencies/mysql-modern-cpp/mysql+++)
 
 if(APPLE)
 	add_executable(${TARGET_NAME} ${SOURCES} ${HEADERS})

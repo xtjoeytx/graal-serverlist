@@ -3,11 +3,14 @@
 
 MySQLBackend::MySQLBackend(const std::string& host, int port, const std::string& socket,
 	const std::string& user, const std::string& password, const std::string& database)
-	: IDataBackend(), _isConnected(false), _mysql(nullptr), _mysqlresult(nullptr),
-	_cfgHost(host), _cfgPort(port), _cfgSocket(socket),
-	_cfgUser(user), _cfgPass(password), _cfgDatabase(database)
+	: IDataBackend()
 {
-
+	// TODO(joey): The library doesn't support socket, i'll fork and add it eventually
+	_connectionOptions.server = host;
+	_connectionOptions.port = port;
+	_connectionOptions.username = user;
+	_connectionOptions.password = password;
+	_connectionOptions.dbname = database;
 }
 
 MySQLBackend::~MySQLBackend()
@@ -17,48 +20,27 @@ MySQLBackend::~MySQLBackend()
 
 int MySQLBackend::Initialize()
 {
-	// Restore this to a clean state, freeing any resources used
+	// Close any connections
 	Cleanup();
 
+	// Auto-reconnect
+	_connectionOptions.autoreconnect = true;
+
 	// Initialize mysql
-	_mysql = mysql_init(_mysql);
-	if (!_mysql)
+	if (!_connection.open(_connectionOptions))
 		return -1;
-
-	// Setup auto-reconnect
-	//my_bool auto_reconnect = 1;
-	//mysql_options(_mysql, MYSQL_OPT_RECONNECT, &auto_reconnect);
-
-	// Unused
-	unsigned long clientFlags = 0;
-
-	// Connect to socket
-	if (!mysql_real_connect(_mysql, _cfgHost.c_str(), _cfgUser.c_str(), _cfgPass.c_str(), _cfgDatabase.c_str(), _cfgPort, _cfgSocket.c_str(), clientFlags))
-		return -2;
 
 	return 0;
 }
 
 void MySQLBackend::Cleanup()
 {
-	if (_mysqlresult)
-	{
-		mysql_free_result(_mysqlresult);
-		_mysqlresult = nullptr;
-	}
-
-	if (_mysql)
-	{
-		mysql_close(_mysql);
-		_mysql = nullptr;
-	}
-
-	_isConnected = false;
+	_connection.close();
 }
 
 int MySQLBackend::Ping()
 {
-	return 0;
+	return (IsConnected() ? 0 : -1);
 }
 
 bool MySQLBackend::IsIpBanned(const std::string& ipAddress)
@@ -68,60 +50,42 @@ bool MySQLBackend::IsIpBanned(const std::string& ipAddress)
 
 int MySQLBackend::VerifyAccount(const std::string& account, const std::string& password)
 {
-	// temporary testing, may look into the c++ mysql connector
-	std::string queryTest = "SELECT activated, banned, account FROM graal_users WHERE ";
-	queryTest += "account='" + account + "' AND ";
-	queryTest += "password=MD5(CONCAT(MD5('" + password + "'), `salt`)) LIMIT 1";
+	std::string query = "SELECT account, activated, banned FROM graal_users WHERE " \
+		"`account` = ? AND password=MD5(CONCAT(MD5(?),`salt`)) LIMIT 1";
 
-	printf("Query: %s\n", queryTest.c_str());
+	// results
+	std::string acct;
+	int activated, banned;
 
-	if (mysql_query(_mysql, queryTest.c_str()))
-	{
-		_isConnected = false;
-		return -1;
+	daotk::mysql::prepared_stmt stmt(_connection, query);
+	stmt.bind_param(account, password);
+	stmt.bind_result(acct, activated, banned);
+
+	try {
+		if (stmt.execute())
+		{
+			while (stmt.fetch())
+			{
+				printf("Account: %s\n", acct.c_str());
+				printf("Activated: %d\n", activated);
+				printf("Banned: %d\n", banned);
+			}
+		}
 	}
-
-	// store result
-	if (!(_mysqlresult = mysql_store_result(_mysql)))
+	catch (daotk::mysql::mysql_exception exp)
 	{
-		_isConnected = false;
+		printf("Mysql Exception (%d): %s\n", exp.error_number(), exp.what());
+		return -3;
+	}
+	catch (daotk::mysql::mysqlpp_exception exp)
+	{
+		printf("Mysql++ Exception: %s\n", exp.what());
 		return -2;
 	}
-
-	std::vector<std::string> result;
-
-	int row_count = 0;
-
-	// fetch row
-	MYSQL_ROW row = 0;
-	while ((row = mysql_fetch_row(_mysqlresult)))
+	catch (std::runtime_error exp)
 	{
-		unsigned long* lengths = mysql_fetch_lengths(_mysqlresult);
-		if (lengths == 0 || row == 0)
-		{
-			mysql_free_result(_mysqlresult);
-			return -3;
-		}
-
-		// Grab the full value and add it to the vector.
-		//std::vector<std::string> r;
-		for (unsigned int i = 0; i < mysql_num_fields(_mysqlresult); i++)
-		{
-			char* temp = new char[lengths[i] + 1];
-			memcpy(temp, row[i], lengths[i]);
-			temp[lengths[i]] = '\0';
-			result.emplace_back(std::string(temp));
-			delete[] temp;
-		}
-
-		// Push back the row.
-		//result.push_back(r);
-		++row_count;
-	}
-
-	for (auto it = result.begin(); it != result.end(); ++it)
-	{
-		printf("Test: %s\n", it->c_str());
+		printf("Runtime Exception: %s\n", exp.what());
+		return -1;
 	}
 
 	return 0;
@@ -129,6 +93,52 @@ int MySQLBackend::VerifyAccount(const std::string& account, const std::string& p
 
 int MySQLBackend::VerifyGuild(const std::string& account, const std::string& nickname, const std::string& guild)
 {
+	std::string queryTest = "SELECT account, activated, banned FROM graal_users WHERE " \
+	"account = ? AND password=MD5(CONCAT(MD5(?),`salt`)) LIMIT 1";
+
+	// results
+	std::string acct;
+	int activated, banned;
+
+	// test query 1
+	//auto res = my.query("SELECT account, activated, banned FROM graal_users where account = '%s'", account.c_str());
+	//res.fetch(acct, activated, banned);
+
+	//printf("Account: %s\n", acct.c_str());
+	//printf("Activated: %d\n", activated);
+	//printf("Banned: %d\n", banned);
+
+	// test prep statement
+	try {
+		daotk::mysql::prepared_stmt stmt(_connection, queryTest);
+		stmt.bind_param(account, nickname);
+		stmt.bind_result(acct, activated, banned);
+		if (stmt.execute())
+		{
+			while (stmt.fetch())
+			{
+				printf("Account: %s\n", acct.c_str());
+				printf("Activated: %d\n", activated);
+				printf("Banned: %d\n", banned);
+			}
+		}
+	}
+	catch (daotk::mysql::mysql_exception exp)
+	{
+		printf("Mysql Exception (%d): %s\n", exp.error_number(), exp.what());
+		return -3;
+	}
+	catch (daotk::mysql::mysqlpp_exception exp)
+	{
+		printf("Mysql++ Exception: %s\n", exp.what());
+		return -2;
+	}
+	catch (std::runtime_error exp)
+	{
+		printf("Runtime Exception: %s\n", exp.what());
+		return -1;
+	}
+
 	return 0;
 }
 
