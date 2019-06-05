@@ -11,6 +11,10 @@ MySQLBackend::MySQLBackend(const std::string& host, int port, const std::string&
 	_connectionOptions.username = user;
 	_connectionOptions.password = password;
 	_connectionOptions.dbname = database;
+
+	// Auto-reconnect
+	_connectionOptions.autoreconnect = true;
+
 }
 
 MySQLBackend::~MySQLBackend()
@@ -22,9 +26,6 @@ int MySQLBackend::Initialize()
 {
 	// Close any connections
 	Cleanup();
-
-	// Auto-reconnect
-	_connectionOptions.autoreconnect = true;
 
 	// Initialize mysql
 	if (!_connection.open(_connectionOptions))
@@ -45,12 +46,31 @@ int MySQLBackend::Ping()
 
 bool MySQLBackend::IsIpBanned(const std::string& ipAddress)
 {
+	const std::string query = "SELECT id graal_ipban WHERE " \
+		"`server_ip` = ? LIMIT 1";
+
+	int id;
+
+	daotk::mysql::prepared_stmt stmt(_connection, query);
+	stmt.bind_param(ipAddress);
+	stmt.bind_result(id);
+
+	try {
+		if (stmt.execute())
+		{
+			if (stmt.fetch())
+				return true;
+		}
+	} catch (std::exception& exp) {
+		printf("IsIpBanned Exception: %s\n", exp.what());
+	}
+
 	return false;
 }
 
-int MySQLBackend::VerifyAccount(const std::string& account, const std::string& password)
+AccountStatus MySQLBackend::VerifyAccount(const std::string& account, const std::string& password)
 {
-	std::string query = "SELECT account, activated, banned FROM graal_users WHERE " \
+	const std::string query = "SELECT account, activated, banned FROM graal_users WHERE " \
 		"`account` = ? AND password=MD5(CONCAT(MD5(?),`salt`)) LIMIT 1";
 
 	// results
@@ -64,82 +84,31 @@ int MySQLBackend::VerifyAccount(const std::string& account, const std::string& p
 	try {
 		if (stmt.execute())
 		{
-			while (stmt.fetch())
+			if (stmt.fetch())
 			{
-				printf("Account: %s\n", acct.c_str());
-				printf("Activated: %d\n", activated);
-				printf("Banned: %d\n", banned);
+				if (banned)
+					return AccountStatus::Banned;
+
+				if (!activated)
+					return AccountStatus::NotActivated;
+
+				return AccountStatus::Normal;
 			}
 		}
-	}
-	catch (daotk::mysql::mysql_exception exp)
-	{
-		printf("Mysql Exception (%d): %s\n", exp.error_number(), exp.what());
-		return -3;
-	}
-	catch (daotk::mysql::mysqlpp_exception exp)
-	{
-		printf("Mysql++ Exception: %s\n", exp.what());
-		return -2;
-	}
-	catch (std::runtime_error exp)
-	{
-		printf("Runtime Exception: %s\n", exp.what());
-		return -1;
+	} catch (std::exception& exp) {
+		printf("VerifyAccount Exception: %s\n", exp.what());
+		return AccountStatus::BackendError;
 	}
 
-	return 0;
+	return AccountStatus::NotFound;
 }
 
-int MySQLBackend::VerifyGuild(const std::string& account, const std::string& nickname, const std::string& guild)
+GuildStatus MySQLBackend::VerifyGuild(const std::string& account, const std::string& nickname, const std::string& guild)
 {
 	std::string queryTest = "SELECT account, activated, banned FROM graal_users WHERE " \
 	"account = ? AND password=MD5(CONCAT(MD5(?),`salt`)) LIMIT 1";
 
-	// results
-	std::string acct;
-	int activated, banned;
-
-	// test query 1
-	//auto res = my.query("SELECT account, activated, banned FROM graal_users where account = '%s'", account.c_str());
-	//res.fetch(acct, activated, banned);
-
-	//printf("Account: %s\n", acct.c_str());
-	//printf("Activated: %d\n", activated);
-	//printf("Banned: %d\n", banned);
-
-	// test prep statement
-	try {
-		daotk::mysql::prepared_stmt stmt(_connection, queryTest);
-		stmt.bind_param(account, nickname);
-		stmt.bind_result(acct, activated, banned);
-		if (stmt.execute())
-		{
-			while (stmt.fetch())
-			{
-				printf("Account: %s\n", acct.c_str());
-				printf("Activated: %d\n", activated);
-				printf("Banned: %d\n", banned);
-			}
-		}
-	}
-	catch (daotk::mysql::mysql_exception exp)
-	{
-		printf("Mysql Exception (%d): %s\n", exp.error_number(), exp.what());
-		return -3;
-	}
-	catch (daotk::mysql::mysqlpp_exception exp)
-	{
-		printf("Mysql++ Exception: %s\n", exp.what());
-		return -2;
-	}
-	catch (std::runtime_error exp)
-	{
-		printf("Runtime Exception: %s\n", exp.what());
-		return -1;
-	}
-
-	return 0;
+	return GuildStatus::Invalid;
 }
 
 PlayerProfile MySQLBackend::GetProfile(const std::string& account)

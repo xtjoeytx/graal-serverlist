@@ -23,8 +23,8 @@ class MySQLBackend : public IDataBackend
 		/// Methods for interfacing with the backend.
 		// 
 		bool IsIpBanned(const std::string& ipAddress) override;
-		int VerifyAccount(const std::string& account, const std::string& password) override;
-		int VerifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) override;
+		AccountStatus VerifyAccount(const std::string& account, const std::string& password) override;
+		GuildStatus VerifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) override;
 		PlayerProfile GetProfile(const std::string& account) override;
 		void SetProfile(const PlayerProfile& profile) override;
 
