@@ -181,14 +181,19 @@ if(NOT NOSTATIC)
 endif()
 
 find_package(MySQL)
+if(NOT MySQL_FOUND)
+	add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient EXCLUDE_FROM_ALL)
+endif()
 
 find_package(Threads REQUIRED)
+
+add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/gs2lib)
 
 # Restore library suffixes
 if(NOT NOSTATIC)
 	set(CMAKE_FIND_LIBRARY_SUFFIXES ${SUFFIXES_ORIG})
 endif()
 
-add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/gs2lib)
+
 add_subdirectory(${PROJECT_SOURCE_DIR}/bin)
-add_subdirectory(${PROJECT_SOURCE_DIR}/server/src)
+add_subdirectory(${PROJECT_SOURCE_DIR}/server)

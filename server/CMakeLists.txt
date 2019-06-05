@@ -24,40 +24,39 @@ include(CheckSymbolExists)
 
 set(
     SOURCES
-    CFileSystem.cpp
-    CMySQL.cpp
-    codec.cpp
-    CSocket.cpp
-    FProfile.cpp
-    main.cpp
-    TPlayer.cpp
-    TServer.cpp
-    ListServer.cpp
-	MySQLBackend.cpp
+	src/CFileSystem.cpp
+	src/CMySQL.cpp
+	src/codec.cpp
+	src/CSocket.cpp
+	src/FProfile.cpp
+	src/main.cpp
+	src/TPlayer.cpp
+	src/TServer.cpp
+	src/ListServer.cpp
+	src/MySQLBackend.cpp
 )
 
 set(
     HEADERS
     ${PROJECT_BINARY_DIR}/server/include/IConfig.h
-    ../include/CFileSystem.h
-    ../include/TPlayer.h
-    ../include/codec.h
-    ../include/FProfile.h
-    ../include/CMySQL.h
-    ../include/TServer.h
-    ../include/main.h
-    ../include/CSocket.h
-    ../include/ListServer.h
-    ../include/PlayerProfile.h
-    ../include/IDataBackend.h
-    ../include/MySQLBackend.h
+	include/CFileSystem.h
+	include/TPlayer.h
+	include/codec.h
+	include/FProfile.h
+	include/CMySQL.h
+	include/TServer.h
+	include/main.h
+	include/CSocket.h
+	include/ListServer.h
+	include/PlayerProfile.h
+	include/IDataBackend.h
+	include/MySQLBackend.h
 )
 
 include_directories(
     # Include the CMake-generated version header from the build directory
     ${PROJECT_BINARY_DIR}/server/include
-    ${PROJECT_SOURCE_DIR}/server/include
-    ${PROJECT_SOURCE_DIR}/dependencies/include
+	include
 )
 
 # Set target names for the executables
@@ -65,7 +64,7 @@ if(APPLE OR WIN32)
     # OS X and Windows get a mixed-case binary name
     set(TARGET_NAME ${PROJECT_NAME})
 elseif(EMSCRIPTEN)
-    set(TARGET_NAME ${PROJECT_NAME_LOWER}.html)
+    set(TARGET_NAME ${PROJECT_NAME_LOWER})
 else()
     # Linux/other UNIX get a lower-case binary name
     set(TARGET_NAME ${PROJECT_NAME_LOWER})
@@ -78,6 +77,11 @@ endif()
 
 if (HAVE_INET_PTON)
 	add_definition(-DHAVE_INET_PTON)
+endif()
+
+if(NOT MYSQL_FOUND)
+	include_directories(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient/include)
+	include_directories(${PROJECT_BINARY_DIR}/dependencies/mysqlclient/include)
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/dependencies/gs2lib/include)
@@ -99,7 +103,7 @@ elseif(WIN32)
 		set_target_properties(${TARGET_NAME} PROPERTIES COMPILE_DEFINITIONS_RELWITHDEBINFO "_CONSOLE")
 		set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:CONSOLE")
 		set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS_MINSIZEREL "/SUBSYSTEM:CONSOLE")
-		set_target_properties(${TARGET_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
+		set_target_properties(${TARGET_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "../bin")
 
 		if(NOT MYSQL_FOUND)
 			target_link_libraries(${TARGET_NAME} libmysql.lib)
@@ -116,6 +120,9 @@ target_link_libraries(${TARGET_NAME} gs2lib)
 
 if(MYSQL_FOUND)
 	target_link_libraries(${TARGET_NAME} ${MYSQL_LIBRARY})
+	else()
+	add_dependencies(${TARGET_NAME} mariadbclient)
+	target_link_libraries(${TARGET_NAME} mariadbclient)
 endif()
 
 target_link_libraries(${TARGET_NAME} ${CMAKE_THREAD_LIBS_INIT})
@@ -128,10 +135,10 @@ file(GLOB TEXT
     "${PROJECT_NAME_LOWER}.wasm"
 )
 
-set(INSTALL_DEST ".")
+set(INSTALL_DEST "src")
 
 install(FILES ${TEXT} DESTINATION ${INSTALL_DEST})
 
-set(INSTALL_DEST .)
+set(INSTALL_DEST src)
 
 install(TARGETS ${TARGET_NAME} DESTINATION ${INSTALL_DEST})
