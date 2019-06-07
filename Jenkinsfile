@@ -96,11 +96,11 @@ node('master') {
 		//		buildStep('dockcross/windows-static-x64:latest', 'Unix Makefiles', 'Windows x86_64 NoMySQL', "-DNOMYSQL=TRUE")
 		//	}
 		//},
-		'Win64': {
-			node {
-				buildStep('dockcross/windows-static-x64:latest', 'Unix Makefiles', 'Windows x86_64', "-DNOMYSQL=FALSE")
-			}
-		},
+		//'Win64': {
+		//	node {
+		//		buildStep('dockcross/windows-static-x64:latest', 'Unix Makefiles', 'Windows x86_64', "-DNOMYSQL=FALSE")
+		//	}
+		//},
 		//'Linux x86_64-NoMySQL': {
 		//	node {
 		//		buildStep('desertbit/crossbuild:linux-x86_64', 'Unix Makefiles', 'Linux x86_64 NoMySQL', "-DNOMYSQL=TRUE")
