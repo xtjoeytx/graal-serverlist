@@ -14,7 +14,7 @@
 	#define my_socket_defined
 	#define my_socket int
 #endif
-#include "mysql.h"
+#include "mysql/mysql.h"
 
 class CMySQL
 {
