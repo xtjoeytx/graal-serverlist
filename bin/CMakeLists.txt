@@ -27,8 +27,8 @@ file(GLOB TEXT
 install(FILES ${TEXT} DESTINATION ".")
 
 file(GLOB DOCS
-	 sql_account_creation.txt
-	 sql_tables.txt
+	 ../docs/sql_account_creation.txt
+	 ../docs/sql_tables.txt
 	 )
 
 install(FILES ${DOCS} DESTINATION "docs/")
