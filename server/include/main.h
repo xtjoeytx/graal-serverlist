@@ -57,26 +57,4 @@ enum // Return-Errors
 	ERR_LISTEN			= -4,
 };
 
-enum // Socket Type
-{
-	SOCK_PLAYER			= 0,
-	SOCK_SERVER			= 1,
-	SOCK_PLAYEROLD		= 2,
-};
-
-enum // Account Status
-{
-	ACCSTAT_NORMAL		= 0,
-	ACCSTAT_NONREG		= 1,
-	ACCSTAT_BANNED		= 2,
-	ACCSTAT_INVALID		= 3,
-	ACCSTAT_ERROR		= 4,
-};
-
-enum // Guild Status
-{
-	GUILDSTAT_DISALLOWED	= 0,
-	GUILDSTAT_ALLOWED		= 1,
-};
-
 #endif // MAIN_H
