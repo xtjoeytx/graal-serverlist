@@ -189,7 +189,7 @@ if(NOT NOSTATIC)
 endif()
 
 if(NOT NOMYSQL)
-	find_package(MySQL)
+	#find_package(MySQL)
 	if(NOT MYSQL_FOUND)
 		add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient EXCLUDE_FROM_ALL)
 	endif()
