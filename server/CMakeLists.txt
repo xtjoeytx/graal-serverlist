@@ -24,33 +24,22 @@ include(CheckSymbolExists)
 
 set(
     SOURCES
-	src/CFileSystem.cpp
-	src/CMySQL.cpp
-	src/codec.cpp
-	src/CSocket.cpp
-	src/FProfile.cpp
-	src/main.cpp
-	src/TPlayer.cpp
-	src/TServer.cpp
-	src/ListServer.cpp
-	src/MySQLBackend.cpp
+		src/main.cpp
+		src/ListServer.cpp
+		src/PlayerConnection.cpp
+		src/ServerConnection.cpp
+		src/MySQLBackend.cpp
 )
 
 set(
     HEADERS
-    ${PROJECT_BINARY_DIR}/server/include/IConfig.h
-	include/CFileSystem.h
-	include/TPlayer.h
-	include/codec.h
-	include/FProfile.h
-	include/CMySQL.h
-	include/TServer.h
-	include/main.h
-	include/CSocket.h
-	include/ListServer.h
-	include/PlayerProfile.h
-	include/IDataBackend.h
-	include/MySQLBackend.h
+		${PROJECT_BINARY_DIR}/server/include/IConfig.h
+		include/ListServer.h
+		include/ServerConnection.h
+		include/PlayerConnection.h
+		include/PlayerProfile.h
+		include/IDataBackend.h
+		include/MySQLBackend.h
 )
 
 include_directories(
