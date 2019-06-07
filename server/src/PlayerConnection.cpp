@@ -1,5 +1,4 @@
 #include <time.h>
-#include "main.h"
 #include "PlayerConnection.h"
 #include "CLog.h"
 

@@ -1,10 +1,7 @@
 #include <stdlib.h>
 #include <time.h>
-
-#include "main.h"
 #include "ServerConnection.h"
 #include "CLog.h"
-#include "FProfile.h"
 //#include "CFileSystem.h"
 
 enum
