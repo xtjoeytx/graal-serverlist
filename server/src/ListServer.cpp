@@ -2,7 +2,9 @@
 #include "PlayerConnection.h"
 #include "ServerConnection.h"
 
+#ifndef NO_MYSQL
 #include "MySQLBackend.h"
+#endif
 
 ListServer::ListServer(const std::string& homePath)
 	: _initialized(false), _running(false), _homePath(homePath), _dataStore(nullptr)
