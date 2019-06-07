@@ -36,7 +36,8 @@ int MySQLBackend::Initialize()
 
 void MySQLBackend::Cleanup()
 {
-	_connection.close();
+	if (_connection.is_open())
+		_connection.close();
 }
 
 int MySQLBackend::Ping()

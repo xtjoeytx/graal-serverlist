@@ -18,7 +18,7 @@
 	#include <dirent.h>
 #endif
 
-void shutdownServer( int signal );
+void shutdownServer(int signal);
 
 // Function pointer for signal handling.
 typedef void (*sighandler_t)(int);
@@ -99,30 +99,44 @@ const char * getErrorString(InitializeError error)
 	}
 }
 
+ListServer *listServer = nullptr;
+
 int main(int argc, char *argv[])
 {
 	// Shut down the server if we get a kill signal.
-	signal( SIGINT, (sighandler_t) shutdownServer );
-	signal( SIGTERM, (sighandler_t) shutdownServer );
+	signal(SIGINT, (sighandler_t) shutdownServer);
+	signal(SIGTERM, (sighandler_t) shutdownServer);
 
 	// Grab the base path to the server executable.
 	std::string homePath = getBasePath();
 
 	// Setup listserver
-	ListServer listServer(homePath);
-	InitializeError err = listServer.Initialize();
+	listServer = new ListServer(homePath);
+	InitializeError err = listServer->Initialize();
 	if (err != InitializeError::None)
 	{
-		listServer.getServerLog().out("[Error] %s", getErrorString(err));
-		listServer.Cleanup();
+		listServer->getServerLog().out("[Error] %s", getErrorString(err));
+		listServer->Cleanup();
 		return -1;
 	}
+
+	listServer->Main();
 
 	printf("Done\n");
 
 	return -1;
+}
 
-	/*
+void shutdownServer(int signal)
+{
+	if (listServer != nullptr)
+	{
+		listServer->Cleanup();
+		delete listServer;
+	}
+}
+
+/*
 	// Initialize data directory.
 	filesystem[0].addDir("global");
 	filesystem[1].addDir("global/heads");
@@ -330,10 +344,8 @@ int main(int argc, char *argv[])
 	}
 
 	return ERR_SUCCESS;
-	*/
 }
 
-/*
 void acceptSock(CSocket& pSocket, int pType)
 {
 	CSocket* newSock = pSocket.accept();
@@ -678,12 +690,6 @@ int verifyGuild(const CString& pAccount, const CString& pNickname, const CString
 #endif
 }
 */
-
-void shutdownServer( int signal )
-{
-//	serverlog.out( "Server is now shutting down...\n" );
-	running = false;
-}
 
 //// 2002-05-07 by Markus Ewald
 //CString CString_Base64_Encode(const CString& input)

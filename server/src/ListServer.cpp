@@ -1,3 +1,5 @@
+#include <chrono>
+#include <thread>
 #include "ListServer.h"
 #include "PlayerConnection.h"
 #include "ServerConnection.h"
@@ -94,6 +96,15 @@ void ListServer::Cleanup()
 	// Disconnect sockets
 	_serverSock.disconnect();
 	_playerSock.disconnect();
+
+	if (_dataStore)
+	{
+		_dataStore->Cleanup();
+		delete _dataStore;
+	}
+
+	// Stop running
+	_running = false;
 }
 
 void ListServer::acceptSock(CSocket& socket, SocketType socketType)
@@ -137,9 +148,30 @@ void ListServer::acceptSock(CSocket& socket, SocketType socketType)
 
 bool ListServer::Main()
 {
-	auto currentTimer = std::chrono::high_resolution_clock::now();
+	if (!_initialized || _running)
+		return false;
 
-	_lastTimer = currentTimer;
+	_running = true;
+
+	auto currentTimer = std::chrono::high_resolution_clock::now();
+	std::chrono::high_resolution_clock::time_point _lastTimer;
+
+	while (_running)
+	{
+		// accept sockets
+		acceptSock(_playerSock, SocketType::Player);
+		acceptSock(_serverSock, SocketType::Server);
+
+		// iterate connections
+
+		// do whatever
+
+		// ping datastore (flush updates to db, or text whatever)
+		_dataStore->Ping();
+
+		_lastTimer = currentTimer;
+		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	}
 
 	return true;
 }

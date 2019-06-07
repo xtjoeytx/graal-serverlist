@@ -60,7 +60,6 @@ public:
 private:
 	bool _initialized;
 	bool _running;
-//	CFileSystem _fileSystem[5];
 	CLog _clientLog;
 	CLog _serverLog;
 	CSettings _settings;
@@ -71,7 +70,6 @@ private:
 	std::vector<ServerConnection *> _serverConnections;
 
 	IDataBackend *_dataStore;
-	std::chrono::high_resolution_clock::time_point _lastTimer;
 
 	// TBD:
 	std::vector<CString> _serverTypes;
