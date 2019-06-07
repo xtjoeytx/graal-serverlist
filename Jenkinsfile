@@ -91,39 +91,34 @@ node('master') {
 	def fixed_job_name = env.JOB_NAME.replace('%2F','/')
 	slackSend color: "good", channel: "#jenkins", message: "Build Started: ${fixed_job_name} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
 	parallel (
-		'Win64-NoMySQL': {
-			node {
-				buildStep('dockcross/windows-static-x64:latest', 'Unix Makefiles', 'Windows x86_64 NoMySQL', "-DNOMYSQL=TRUE")
-			}
-		},
+		//'Win64-NoMySQL': {
+		//	node {
+		//		buildStep('dockcross/windows-static-x64:latest', 'Unix Makefiles', 'Windows x86_64 NoMySQL', "-DNOMYSQL=TRUE")
+		//	}
+		//},
 		'Win64': {
 			node {
 				buildStep('dockcross/windows-static-x64:latest', 'Unix Makefiles', 'Windows x86_64', "-DNOMYSQL=FALSE")
 			}
 		},
-		'Linux x86_64-NoMySQL': {
-			node {
-				buildStep('desertbit/crossbuild:linux-x86_64', 'Unix Makefiles', 'Linux x86_64 NoMySQL', "-DNOMYSQL=TRUE")
-			}
-		},
+		//'Linux x86_64-NoMySQL': {
+		//	node {
+		//		buildStep('desertbit/crossbuild:linux-x86_64', 'Unix Makefiles', 'Linux x86_64 NoMySQL', "-DNOMYSQL=TRUE")
+		//	}
+		//},
 		'Linux x86_64': {
 			node {
 				buildStep('desertbit/crossbuild:linux-x86_64', 'Unix Makefiles', 'Linux x86_64', "-DNOMYSQL=FALSE")
 			}
 		},
-		'Linux ARMv7-NoMySQL': {
-			node {
-				buildStep('desertbit/crossbuild:linux-armv7', 'Unix Makefiles', 'Linux RasPi NoMySQL', '-DNOMYSQL=TRUE')
-			}
-		},
+		//'Linux ARMv7-NoMySQL': {
+		//	node {
+		//		buildStep('desertbit/crossbuild:linux-armv7', 'Unix Makefiles', 'Linux RasPi NoMySQL', '-DNOMYSQL=TRUE')
+		//	}
+		//},
 		'Linux ARMv7': {
 			node {
 				buildStep('desertbit/crossbuild:linux-armv7', 'Unix Makefiles', 'Linux RasPi', '-DNOMYSQL=FALSE')
-			}
-		},
-		'WebASM': {
-			node {
-				buildStep('dockcross/web-wasm:latest', 'Unix Makefiles', 'Web assembly', "-DNOMYSQL=FALSE")
 			}
 		}
     )
