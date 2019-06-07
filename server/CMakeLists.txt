@@ -28,7 +28,6 @@ set(
 		src/ListServer.cpp
 		src/PlayerConnection.cpp
 		src/ServerConnection.cpp
-		src/MySQLBackend.cpp
 )
 
 set(
@@ -39,7 +38,6 @@ set(
 		include/PlayerConnection.h
 		include/PlayerProfile.h
 		include/IDataBackend.h
-		include/MySQLBackend.h
 )
 
 include_directories(
@@ -68,17 +66,32 @@ if (HAVE_INET_PTON)
 	add_definition(-DHAVE_INET_PTON)
 endif()
 
-if(NOT NOMYSQL AND NOT MYSQL_FOUND)
-	configure_file(
+
+if(NOT NOMYSQL)
+	list(
+		APPEND
+		SOURCES
+		src/MySQLBackend.cpp
+	)
+
+	list(
+		APPEND
+		HEADERS
+		include/MySQLBackend.h
+	)
+
+	if(NOT MYSQL_FOUND)
+		configure_file(
 			${PROJECT_SOURCE_DIR}/dependencies/mysqlclient/include/mysql.h
 			${PROJECT_BINARY_DIR}/dependencies/mysqlclient/include/mysql/mysql.h
-	)
-	configure_file(
+		)
+		configure_file(
 			${PROJECT_SOURCE_DIR}/dependencies/mysqlclient/include/errmsg.h
 			${PROJECT_BINARY_DIR}/dependencies/mysqlclient/include/mysql/errmsg.h
-	)
-	include_directories(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient/include)
-	include_directories(${PROJECT_BINARY_DIR}/dependencies/mysqlclient/include)
+		)
+		include_directories(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient/include)
+		include_directories(${PROJECT_BINARY_DIR}/dependencies/mysqlclient/include)
+	endif()
 endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/dependencies/gs2lib/include)
