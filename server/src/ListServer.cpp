@@ -1,11 +1,11 @@
 #include "ListServer.h"
-#include "TPlayer.h"
-#include "TServer.h"
+#include "PlayerConnection.h"
+#include "ServerConnection.h"
 
 #include "MySQLBackend.h"
 
 ListServer::ListServer(const std::string& homePath)
-	: _initialized(false), _homePath(homePath), _dataStore(nullptr)
+	: _initialized(false), _running(false), _homePath(homePath), _dataStore(nullptr)
 {
 	_clientLog.setFilename(_homePath + "clientlog.txt");
 	_serverLog.setFilename(_homePath + "serverlog.txt");
@@ -92,6 +92,45 @@ void ListServer::Cleanup()
 	// Disconnect sockets
 	_serverSock.disconnect();
 	_playerSock.disconnect();
+}
+
+void ListServer::acceptSock(CSocket& socket, SocketType socketType)
+{
+	CSocket* newSock = socket.accept();
+	if (newSock == 0)
+		return;
+
+	std::string ipAddress(newSock->getRemoteIp());
+
+	if (_dataStore->IsIpBanned(ipAddress))
+	{
+		getServerLog().append("New connection from %s was rejected due to an ip ban!\n", newSock->getRemoteIp());
+		newSock->disconnect();
+		delete newSock;
+		return;
+	}
+
+	getServerLog().append("New Connection from %s -> %s\n", ipAddress.c_str(), (socketType == SocketType::Server ? "Server" : "Player"));
+
+	switch (socketType)
+	{
+		case SocketType::PlayerOld:
+		case SocketType::Player:
+		{
+			bool oldPlayer = (socketType == SocketType::PlayerOld);
+			_playerConnections.push_back(new PlayerConnection(this, newSock, oldPlayer));
+			break;
+		}
+
+		case SocketType::Server:
+			_serverConnections.push_back(new ServerConnection(newSock));
+			break;
+
+		default:
+			newSock->disconnect();
+			delete newSock;
+			break;
+	}
 }
 
 bool ListServer::Main()
