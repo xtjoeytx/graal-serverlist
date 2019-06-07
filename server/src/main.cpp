@@ -6,8 +6,6 @@
 #include "PlayerConnection.h"
 #include "ServerConnection.h"
 
-#include "main.h"
-//#include "CFileSystem.h"
 #include "IConfig.h"
 
 #ifdef _WIN32
