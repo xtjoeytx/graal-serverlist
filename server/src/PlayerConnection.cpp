@@ -28,7 +28,7 @@ void createPlayerPtrTable()
 	Constructor - Deconstructor
 */
 PlayerConnection::PlayerConnection(ListServer *listServer, CSocket *pSocket, bool pIsOld)
-	: _listServer(listServer), sock(pSocket), key(0), version(PLV_PRE22), isOld(pIsOld)
+	: _listServer(listServer), sock(pSocket), fileQueue(pSocket), version(PLV_PRE22), isOld(pIsOld)
 {
 	// 1.41 doesn't request a server list.  It assumes the server will just send it out.
 //	if (isOld)
@@ -52,26 +52,31 @@ bool PlayerConnection::doMain()
 	if (sock == NULL || sock->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
 
+	// Grab the data from the socket and put it into our receive buffer.
+	unsigned int size = 0;
+	char* data = sock->getData(&size);
+	if (size != 0)
+		sockBuffer.write(data, size);
+	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
+		return false;
+
+
 	// definitions
 	CString unBuffer;
-//
-//	// Grab the data from the socket and put it into our receive buffer.
-//	unsigned int size = 0;
-//	char* data = sock->getData(&size);
-//	if (size != 0)
-//		sockBuffer.write(data, size);
-//	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
-//		return false;
-//
-//	// parse data
-//	sockBuffer.setRead(0);
-//	while (sockBuffer.length() >= 2)
-//	{
-//		// packet length
-//		unsigned short len = (unsigned short)sockBuffer.readShort();
-//		if ((unsigned int)len > (unsigned int)sockBuffer.length()-2)
-//			break;
-//
+
+	// parse data
+	sockBuffer.setRead(0);
+	while (sockBuffer.length() >= 2)
+	{
+		// packet length
+		unsigned short len = (unsigned short)sockBuffer.readShort();
+		if ((unsigned int)len > (unsigned int)sockBuffer.length()-2)
+			break;
+
+		unBuffer = sockBuffer.readChars(len);
+		sockBuffer.removeI(0, len+2);
+
+
 //		// version 2.2+
 //		if (version == PLV_POST22)
 //		{
@@ -123,7 +128,7 @@ bool PlayerConnection::doMain()
 //		// well theres your buffer
 //		if (!parsePacket(unBuffer))
 //			return false;
-//	}
+	}
 
 	// send out buffer
 	sendCompress();
@@ -298,6 +303,8 @@ bool PlayerConnection::msgPLI_SERVERLIST(CString& pPacket)
 
 bool PlayerConnection::msgPLI_V2VER(CString& pPacket)
 {
+	unsigned char key = pPacket.readGUChar();
+//	in_codec.reset(key);
 //	//version = PLV_POST22;
 //	version = PLV_22;
 //	key = pPacket.readGChar();
@@ -309,7 +316,7 @@ bool PlayerConnection::msgPLI_V2VER(CString& pPacket)
 
 bool PlayerConnection::msgPLI_V2SERVERLISTRC(CString& pPacket)
 {
-//	version = PLV_POST22;
+	version = PLV_POST22;
 //	key = pPacket.readGChar();
 //	in_codec.reset(key);
 //	out_codec.reset(key);

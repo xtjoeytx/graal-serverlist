@@ -3,7 +3,8 @@
 
 #include "CSocket.h"
 #include "CString.h"
-//#include "codec.h"
+#include "CEncryption.h"
+#include "CFileQueue.h"
 
 enum
 {
@@ -70,9 +71,11 @@ private:
 	ListServer *_listServer;
 	CSocket *sock;
 	CString sendBuffer, sockBuffer, outBuffer;
-//	codec in_codec;
-//	codec out_codec;
-	int key;
+
+	CEncryption in_codec;
+	CFileQueue fileQueue;
+
+	//int key;
 	int version;
 	bool isOld;
 };
