@@ -23,8 +23,6 @@ void shutdownServer(int signal);
 // Function pointer for signal handling.
 typedef void (*sighandler_t)(int);
 
-bool running = true;
-
 // Home path of the serverlist.
 std::string getBasePath()
 {
@@ -121,10 +119,7 @@ int main(int argc, char *argv[])
 	}
 
 	listServer->Main();
-
-	printf("Done\n");
-
-	return -1;
+	return 0;
 }
 
 void shutdownServer(int signal)
