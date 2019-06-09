@@ -2,7 +2,6 @@
 #include <time.h>
 #include "ServerConnection.h"
 #include "CLog.h"
-//#include "CFileSystem.h"
 
 enum
 {
@@ -14,41 +13,47 @@ enum
 /*
 	Pointer-Functions for Packets
 */
-std::vector<TSVSock> svfunc(256, &ServerConnection::msgSVI_NULL);
+typedef bool (ServerConnection::*ServerSocketFunction)(CString&);
 
-void createSVFunctions()
+ServerSocketFunction serverFunctionTable[SVI_PACKETCOUNT];
+
+void createServerPtrTable()
 {
+	// kinda like a memset-ish thing y'know
+	for (int packetId = 0; packetId < SVI_PACKETCOUNT; packetId++)
+		serverFunctionTable[packetId] = &ServerConnection::msgSVI_NULL;
+
 	// now set non-nulls
-	svfunc[SVI_SETNAME] = &ServerConnection::msgSVI_SETNAME;
-	svfunc[SVI_SETDESC] = &ServerConnection::msgSVI_SETDESC;
-	svfunc[SVI_SETLANG] = &ServerConnection::msgSVI_SETLANG;
-	svfunc[SVI_SETVERS] = &ServerConnection::msgSVI_SETVERS;
-	svfunc[SVI_SETURL]  = &ServerConnection::msgSVI_SETURL;
-	svfunc[SVI_SETIP]   = &ServerConnection::msgSVI_SETIP;
-	svfunc[SVI_SETPORT] = &ServerConnection::msgSVI_SETPORT;
-	svfunc[SVI_SETPLYR] = &ServerConnection::msgSVI_SETPLYR;
-	svfunc[SVI_VERIACC] = &ServerConnection::msgSVI_VERIACC;
-	svfunc[SVI_VERIGLD] = &ServerConnection::msgSVI_VERIGLD;
-	svfunc[SVI_GETFILE] = &ServerConnection::msgSVI_GETFILE;
-	svfunc[SVI_NICKNAME] = &ServerConnection::msgSVI_NICKNAME;
-	svfunc[SVI_GETPROF] = &ServerConnection::msgSVI_GETPROF;
-	svfunc[SVI_SETPROF] = &ServerConnection::msgSVI_SETPROF;
-	svfunc[SVI_PLYRADD] = &ServerConnection::msgSVI_PLYRADD;
-	svfunc[SVI_PLYRREM] = &ServerConnection::msgSVI_PLYRREM;
-	svfunc[SVI_SVRPING] = &ServerConnection::msgSVI_SVRPING;
-	svfunc[SVI_VERIACC2] = &ServerConnection::msgSVI_VERIACC2;
-	svfunc[SVI_SETLOCALIP] = &ServerConnection::msgSVI_SETLOCALIP;
-	svfunc[SVI_GETFILE2] = &ServerConnection::msgSVI_GETFILE2;
-	svfunc[SVI_UPDATEFILE] = &ServerConnection::msgSVI_UPDATEFILE;
-	svfunc[SVI_GETFILE3] = &ServerConnection::msgSVI_GETFILE3;
-	svfunc[SVI_NEWSERVER] = &ServerConnection::msgSVI_NEWSERVER;
-	svfunc[SVI_SERVERHQPASS] = &ServerConnection::msgSVI_SERVERHQPASS;
-	svfunc[SVI_SERVERHQLEVEL] = &ServerConnection::msgSVI_SERVERHQLEVEL;
-	svfunc[SVI_SERVERINFO] = &ServerConnection::msgSVI_SERVERINFO;
-	svfunc[SVI_REQUESTLIST] = &ServerConnection::msgSVI_REQUESTLIST;
-	svfunc[SVI_REQUESTSVRINFO] = &ServerConnection::msgSVI_REQUESTSVRINFO;
-	svfunc[SVI_REQUESTBUDDIES] = &ServerConnection::msgSVI_REQUESTBUDDIES;
-	svfunc[SVI_PMPLAYER] = &ServerConnection::msgSVI_PMPLAYER;
+	serverFunctionTable[SVI_SETNAME] = &ServerConnection::msgSVI_SETNAME;
+	serverFunctionTable[SVI_SETDESC] = &ServerConnection::msgSVI_SETDESC;
+	serverFunctionTable[SVI_SETLANG] = &ServerConnection::msgSVI_SETLANG;
+	serverFunctionTable[SVI_SETVERS] = &ServerConnection::msgSVI_SETVERS;
+	serverFunctionTable[SVI_SETURL]  = &ServerConnection::msgSVI_SETURL;
+	serverFunctionTable[SVI_SETIP]   = &ServerConnection::msgSVI_SETIP;
+	serverFunctionTable[SVI_SETPORT] = &ServerConnection::msgSVI_SETPORT;
+	serverFunctionTable[SVI_SETPLYR] = &ServerConnection::msgSVI_SETPLYR;
+	serverFunctionTable[SVI_VERIACC] = &ServerConnection::msgSVI_VERIACC;
+	serverFunctionTable[SVI_VERIGLD] = &ServerConnection::msgSVI_VERIGLD;
+	serverFunctionTable[SVI_GETFILE] = &ServerConnection::msgSVI_GETFILE;
+	serverFunctionTable[SVI_NICKNAME] = &ServerConnection::msgSVI_NICKNAME;
+	serverFunctionTable[SVI_GETPROF] = &ServerConnection::msgSVI_GETPROF;
+	serverFunctionTable[SVI_SETPROF] = &ServerConnection::msgSVI_SETPROF;
+	serverFunctionTable[SVI_PLYRADD] = &ServerConnection::msgSVI_PLYRADD;
+	serverFunctionTable[SVI_PLYRREM] = &ServerConnection::msgSVI_PLYRREM;
+	serverFunctionTable[SVI_SVRPING] = &ServerConnection::msgSVI_SVRPING;
+	serverFunctionTable[SVI_VERIACC2] = &ServerConnection::msgSVI_VERIACC2;
+	serverFunctionTable[SVI_SETLOCALIP] = &ServerConnection::msgSVI_SETLOCALIP;
+	serverFunctionTable[SVI_GETFILE2] = &ServerConnection::msgSVI_GETFILE2;
+	serverFunctionTable[SVI_UPDATEFILE] = &ServerConnection::msgSVI_UPDATEFILE;
+	serverFunctionTable[SVI_GETFILE3] = &ServerConnection::msgSVI_GETFILE3;
+	serverFunctionTable[SVI_NEWSERVER] = &ServerConnection::msgSVI_NEWSERVER;
+	serverFunctionTable[SVI_SERVERHQPASS] = &ServerConnection::msgSVI_SERVERHQPASS;
+	serverFunctionTable[SVI_SERVERHQLEVEL] = &ServerConnection::msgSVI_SERVERHQLEVEL;
+	serverFunctionTable[SVI_SERVERINFO] = &ServerConnection::msgSVI_SERVERINFO;
+	serverFunctionTable[SVI_REQUESTLIST] = &ServerConnection::msgSVI_REQUESTLIST;
+	serverFunctionTable[SVI_REQUESTSVRINFO] = &ServerConnection::msgSVI_REQUESTSVRINFO;
+	serverFunctionTable[SVI_REQUESTBUDDIES] = &ServerConnection::msgSVI_REQUESTBUDDIES;
+	serverFunctionTable[SVI_REGISTERV3] = &ServerConnection::msgSVI_REGISTERV3;
 }
 
 /*
@@ -56,14 +61,25 @@ void createSVFunctions()
 */
 ServerConnection::ServerConnection(CSocket *pSocket)
 : sock(pSocket), addedToSQL(false), isServerHQ(false),
-serverhq_level(1), server_version(VERSION_1)
+serverhq_level(1), server_version(VERSION_1), _fileQueue(pSocket), new_protocol(false)
 {
+	static bool _setupServerPackets = false;
+	if (!_setupServerPackets)
+	{
+		createServerPtrTable();
+		_setupServerPackets = true;
+	}
+
+	_fileQueue.setCodec(ENCRYPT_GEN_1, 0);
+	_inCodec.setGen(ENCRYPT_GEN_1);
 	language = "English";
 	lastPing = lastPlayerCount = lastData = lastUptimeCheck = time(0);
 }
 
 ServerConnection::~ServerConnection()
 {
+	printf("Disconnected\n");
+
 	// clean playerlist
 	for (unsigned int i = 0; i < playerList.size(); i++)
 		delete playerList[i];
@@ -91,15 +107,8 @@ ServerConnection::~ServerConnection()
 bool ServerConnection::doMain()
 {
 	// sock exist?
-	if (sock == NULL)
-	{
-//		serverlog.out("Socket does not exist for server %s!\n", getName().text());
+	if (sock == NULL || sock->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
-	}
-
-	// definitions
-	CString line, unBuffer;
-	int lineEnd;//, size;
 
 	// Grab the data from the socket and put it into our receive buffer.
 	unsigned int size = 0;
@@ -107,13 +116,44 @@ bool ServerConnection::doMain()
 	if (size != 0)
 		sockBuffer.write(data, size);
 	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
-	{
-//		serverlog.out(CString("Socket is disconnected for server ") << name << ".\n");
 		return false;
-	}
 
-	if (!sockBuffer.length())
+	// definitions
+	CString line, unBuffer;
+	int lineEnd;
+
+	printf("Protocol: %d\n", new_protocol);
+
+	if (new_protocol)
+	{
+		sockBuffer.setRead(0);
+		while (sockBuffer.length() >= 2)
+		{
+			// packet length
+			unsigned short len = (unsigned short)sockBuffer.readShort();
+			if ((unsigned int)len > (unsigned int)sockBuffer.length() - 2)
+				break;
+
+			unBuffer = sockBuffer.readChars(len);
+			sockBuffer.removeI(0, len + 2);
+
+			switch (_inCodec.getGen())
+			{
+				// Gen 2 and 3 are zlib compressed.  Gen 3 encrypts individual packets
+				// Uncompress so we can properly decrypt later on.
+				case ENCRYPT_GEN_2:
+				case ENCRYPT_GEN_3:
+					unBuffer.zuncompressI();
+					break;
+			}
+
+			// well theres your buffer
+			if (!parsePacket(unBuffer))
+				return false;
+		}
+
 		return true;
+	}
 
 	// parse data
 	if ((lineEnd = sockBuffer.findl('\n')) == -1)
@@ -138,26 +178,6 @@ bool ServerConnection::doMain()
 		lastPing = time(0);
 		sendPacket( CString() >> (char)SVO_PING );
 	}
-
-#ifndef NO_MYSQL
-//	// Update our uptime every 3 minutes.
-//	if ((int)difftime(time(0), lastUptimeCheck) >= 180)
-//	{
-//		int uptime = (int)difftime(time(0), lastUptimeCheck);
-//		lastUptimeCheck = time(0);
-//		CString query;
-//		query << "UPDATE `" << settings->getStr("serverlist") << "`";
-//		query << " SET uptime=uptime+" << CString((int)uptime) << " WHERE name='" << name.escape() << "'";
-//		mySQL->add_simple_query(query.text());
-//		if (isServerHQ)
-//		{
-//			query.clear();
-//			query << "UPDATE `" << settings->getStr("serverhq") << "`";
-//			query << " SET uptime=uptime+" << CString((int)uptime) << " WHERE name='" << name.escape() << "'";
-//			mySQL->add_simple_query(query.text());
-//		}
-//	}
-#endif
 
 	// send out buffer
 	sendCompress();
@@ -338,6 +358,12 @@ const CString ServerConnection::getServerPacket(int PLVER, const CString& pIp)
 */
 void ServerConnection::sendCompress()
 {
+	if (!new_protocol)
+	{
+		_fileQueue.sendCompress();
+		return;
+	}
+
 	// empty buffer?
 	if (sendBuffer.isEmpty())
 	{
@@ -361,7 +387,7 @@ void ServerConnection::sendCompress()
 	sendBuffer.clear();
 }
 
-void ServerConnection::sendPacket(CString pPacket)
+void ServerConnection::sendPacket(CString pPacket, bool pSendNow)
 {
 	// empty buffer?
 	if (pPacket.isEmpty())
@@ -371,8 +397,15 @@ void ServerConnection::sendPacket(CString pPacket)
 	if (pPacket[pPacket.length()-1] != '\n')
 		pPacket.writeChar('\n');
 
-	// append buffer
-	sendBuffer.write(pPacket);
+	// append buffer depending on protocol
+	if (new_protocol)
+		_fileQueue.addPacket(pPacket);
+	else
+		sendBuffer.write(pPacket);
+
+	// send buffer now?
+	if (pSendNow)
+		sendCompress();
 }
 
 /*
@@ -383,9 +416,12 @@ bool ServerConnection::parsePacket(CString& pPacket)
 	// read id & packet
 	unsigned char id = pPacket.readGUChar();
 
+	printf("Server Packet [%d]: %s\n", id, pPacket.text() + 1);
+
 	// valid packet, call function
-	bool ret = (*this.*svfunc[id])(pPacket);
+	bool ret = (*this.*serverFunctionTable[id])(pPacket);
 	if (!ret) {
+		printf("Return value: %d\n", ret);
 //		serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, name.text());
 	}
 	return ret;
@@ -431,7 +467,7 @@ bool ServerConnection::msgSVI_SETNAME(CString& pPacket)
 	// check for duplicates
 	bool dupFound = false;
 	int dupCount = 0;
-dupCheck:
+//dupCheck:
 //	for (unsigned int i = 0; i < serverList.size(); i++)
 //	{
 //		if (serverList[i] == 0) continue;
@@ -532,7 +568,7 @@ bool ServerConnection::msgSVI_SETVERS(CString& pPacket)
 			break;
 		}
 	}
-	SQLupdate("version", version);
+	//SQLupdate("version", version);
 	return true;
 }
 
@@ -1236,6 +1272,17 @@ bool ServerConnection::msgSVI_REQUESTSVRINFO(CString& pPacket)
 //		}
 //	}
 
+	return true;
+}
+
+bool ServerConnection::msgSVI_REGISTERV3(CString& pPacket)
+{
+	new_protocol = true;
+	_fileQueue.setCodec(ENCRYPT_GEN_2, 0);
+	_inCodec.setGen(ENCRYPT_GEN_2);
+
+	CString server_vers = pPacket.readString("");
+	printf("ID: %d -> %s\n", server_version, server_vers.text());
 	return true;
 }
 

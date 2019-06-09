@@ -130,8 +130,11 @@ void ListServer::acceptSock(CSocket& socket, SocketType socketType)
 		case SocketType::PlayerOld:
 		case SocketType::Player:
 		{
-			bool oldPlayer = (socketType == SocketType::PlayerOld);
-			_playerConnections.push_back(new PlayerConnection(this, newSock, oldPlayer));
+			PlayerConnection *newPlayer = new PlayerConnection(this, newSock);
+			_playerConnections.push_back(newPlayer);
+
+			if (socketType == SocketType::PlayerOld)
+				newPlayer->sendServerList();
 			break;
 		}
 
@@ -162,7 +165,32 @@ bool ListServer::Main()
 		acceptSock(_playerSock, SocketType::Player);
 		acceptSock(_serverSock, SocketType::Server);
 
-		// iterate connections
+		// iterate player connections
+		for (auto it = _playerConnections.begin(); it != _playerConnections.end();)
+		{
+			PlayerConnection *conn = *it;
+			if (conn->doMain())
+				++it;
+			else
+			{
+				delete conn;
+				it = _playerConnections.erase(it);
+			}
+		}
+
+		// iterate server connections
+		for (auto it = _serverConnections.begin(); it != _serverConnections.end();)
+		{
+			ServerConnection *conn = *it;
+			if (conn->doMain())
+				++it;
+			else
+			{
+				delete conn;
+				it = _serverConnections.erase(it);
+			}
+		}
+
 
 		// do whatever
 

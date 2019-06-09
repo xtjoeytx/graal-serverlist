@@ -47,7 +47,7 @@ int MySQLBackend::Ping()
 
 bool MySQLBackend::IsIpBanned(const std::string& ipAddress)
 {
-	const std::string query = "SELECT id graal_ipban WHERE " \
+	const std::string query = "SELECT id FROM graal_ipban WHERE " \
 		"`server_ip` = ? LIMIT 1";
 
 	int id;

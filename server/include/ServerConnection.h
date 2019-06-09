@@ -4,6 +4,8 @@
 #include <time.h>
 #include "CSocket.h"
 #include "CString.h"
+#include "CEncryption.h"
+#include "CFileQueue.h"
 
 enum
 {
@@ -38,6 +40,8 @@ enum
 	SVI_REQUESTSVRINFO	= 27,
 	SVI_REQUESTBUDDIES  = 28,
 	SVI_PMPLAYER		= 29,
+	SVI_REGISTERV3		= 30,
+	SVI_PACKETCOUNT,
 };
 
 enum
@@ -75,6 +79,7 @@ enum
 {
 	VERSION_1		= 0,
 	VERSION_2		= 1,
+	VERSION_3		= 2,
 };
 
 enum
@@ -89,8 +94,6 @@ enum
 };
 
 class ServerConnection;
-void createSVFunctions();
-typedef bool (ServerConnection::*TSVSock)(CString&);
 
 struct player
 {
@@ -134,7 +137,7 @@ class ServerConnection
 
 		// send-packet functions
 		void sendCompress();
-		void sendPacket(CString pPacket);
+		void sendPacket(CString pPacket, bool pSendNow = false);
 
 		// packet-functions;
 		bool parsePacket(CString& pPacket);
@@ -167,6 +170,7 @@ class ServerConnection
 		bool msgSVI_SERVERINFO(CString& pPacket);
 		bool msgSVI_REQUESTLIST(CString& pPacket);
 		bool msgSVI_REQUESTSVRINFO(CString& pPacket);
+		bool msgSVI_REGISTERV3(CString & pPacket);
 		bool msgSVI_REQUESTLIST2(CString& pPacket);
 		bool msgSVI_REQUESTBUDDIES(CString& pPacket);
 		bool msgSVI_PMPLAYER(CString& pPacket);
@@ -183,6 +187,10 @@ class ServerConnection
 		CString serverhq_pass;
 		unsigned char serverhq_level;
 		int server_version;
+		
+		bool new_protocol;
+		CEncryption _inCodec;
+		CFileQueue _fileQueue;
 };
 
 #endif // TSERVER_H
