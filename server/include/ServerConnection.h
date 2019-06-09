@@ -188,8 +188,9 @@ class ServerConnection
 		unsigned char serverhq_level;
 		int server_version;
 		
+		bool nextIsRaw;
+		int rawPacketSize;
 		bool new_protocol;
-		CEncryption _inCodec;
 		CFileQueue _fileQueue;
 };
 
