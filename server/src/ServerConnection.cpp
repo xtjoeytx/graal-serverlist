@@ -61,7 +61,7 @@ void createServerPtrTable()
 */
 ServerConnection::ServerConnection(CSocket *pSocket)
 : sock(pSocket), addedToSQL(false), isServerHQ(false),
-serverhq_level(1), server_version(VERSION_1), _fileQueue(pSocket), new_protocol(false)
+serverhq_level(1), server_version(VERSION_1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), rawPacketSize(0)
 {
 	static bool _setupServerPackets = false;
 	if (!_setupServerPackets)
@@ -71,7 +71,6 @@ serverhq_level(1), server_version(VERSION_1), _fileQueue(pSocket), new_protocol(
 	}
 
 	_fileQueue.setCodec(ENCRYPT_GEN_1, 0);
-	_inCodec.setGen(ENCRYPT_GEN_1);
 	language = "English";
 	lastPing = lastPlayerCount = lastData = lastUptimeCheck = time(0);
 }
@@ -117,12 +116,12 @@ bool ServerConnection::doMain()
 		sockBuffer.write(data, size);
 	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
+	
+	if (size > 0)
+		printf("Initial Recv data: %d\n", size);
 
 	// definitions
-	CString line, unBuffer;
-	int lineEnd;
-
-	printf("Protocol: %d\n", new_protocol);
+	CString unBuffer;
 
 	if (new_protocol)
 	{
@@ -136,40 +135,31 @@ bool ServerConnection::doMain()
 
 			unBuffer = sockBuffer.readChars(len);
 			sockBuffer.removeI(0, len + 2);
-
-			switch (_inCodec.getGen())
-			{
-				// Gen 2 and 3 are zlib compressed.  Gen 3 encrypts individual packets
-				// Uncompress so we can properly decrypt later on.
-				case ENCRYPT_GEN_2:
-				case ENCRYPT_GEN_3:
-					unBuffer.zuncompressI();
-					break;
-			}
+			unBuffer.zuncompressI();
 
 			// well theres your buffer
 			if (!parsePacket(unBuffer))
 				return false;
 		}
-
-		return true;
 	}
-
-	// parse data
-	if ((lineEnd = sockBuffer.findl('\n')) == -1)
-		return true;
-
-	line = sockBuffer.subString(0, lineEnd + 1);
-	sockBuffer.removeI(0, line.length());
-
-	std::vector<CString> lines = line.tokenize("\n");
-	for (unsigned int i = 0; i < lines.size(); i++)
+	else
 	{
-		if (!parsePacket(lines[i]))
-			return false;
+		CString line;
+		int lineEnd;
 
-		// Update the data timeout.
-		lastData = time(0);
+		// parse data
+		if ((lineEnd = sockBuffer.findl('\n')) == -1)
+			return true;
+
+		line = sockBuffer.subString(0, lineEnd + 1);
+		sockBuffer.removeI(0, line.length());
+
+		std::vector<CString> lines = line.tokenize("\n");
+		for (unsigned int i = 0; i < lines.size(); i++)
+		{
+			if (!parsePacket(lines[i]))
+				return false;
+		}
 	}
 
 	// Send a ping every 30 seconds.
@@ -358,7 +348,7 @@ const CString ServerConnection::getServerPacket(int PLVER, const CString& pIp)
 */
 void ServerConnection::sendCompress()
 {
-	if (!new_protocol)
+	if (new_protocol)
 	{
 		_fileQueue.sendCompress();
 		return;
@@ -375,7 +365,7 @@ void ServerConnection::sendCompress()
 		}
 		return;
 	}
-
+	
 	// add the send buffer to the out buffer
 	outBuffer << sendBuffer;
 
@@ -413,18 +403,33 @@ void ServerConnection::sendPacket(CString pPacket, bool pSendNow)
 */
 bool ServerConnection::parsePacket(CString& pPacket)
 {
-	// read id & packet
-	unsigned char id = pPacket.readGUChar();
+	while (pPacket.bytesLeft() > 0)
+	{
+		CString curPacket;
+		if (nextIsRaw)
+		{
+			nextIsRaw = false;
+			curPacket = pPacket.readChars(rawPacketSize);
+		}
+		else curPacket = pPacket.readString("\n");
 
-	printf("Server Packet [%d]: %s\n", id, pPacket.text() + 1);
+		// read id & packet
+		unsigned char id = curPacket.readGUChar();
 
-	// valid packet, call function
-	bool ret = (*this.*serverFunctionTable[id])(pPacket);
-	if (!ret) {
-		printf("Return value: %d\n", ret);
-//		serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, name.text());
+		printf("Server Packet [%d]: %s\n", id, curPacket.text() + 1);
+
+		// valid packet, call function
+		bool ret = (*this.*serverFunctionTable[id])(curPacket);
+		if (!ret) {
+			printf("Return value: %d\n", ret);
+			//		serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, name.text());
+		}
+
+		// Update the data timeout.
+		lastData = time(0);
 	}
-	return ret;
+
+	return true;
 }
 
 bool ServerConnection::msgSVI_NULL(CString& pPacket)
@@ -1279,7 +1284,6 @@ bool ServerConnection::msgSVI_REGISTERV3(CString& pPacket)
 {
 	new_protocol = true;
 	_fileQueue.setCodec(ENCRYPT_GEN_2, 0);
-	_inCodec.setGen(ENCRYPT_GEN_2);
 
 	CString server_vers = pPacket.readString("");
 	printf("ID: %d -> %s\n", server_version, server_vers.text());
