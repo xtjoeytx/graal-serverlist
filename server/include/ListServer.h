@@ -10,8 +10,9 @@
 #include "CSettings.h"
 #include "CSocket.h"
 #include "CString.h"
+#include "IDataBackend.h"
 
-class IDataBackend;
+//class IDataBackend;
 class PlayerConnection;
 class ServerConnection;
 
@@ -46,6 +47,7 @@ public:
 	CLog & getClientLog() { return _clientLog; }
 	CLog & getServerLog() { return _serverLog; }
 	CSettings & getSettings() { return _settings; }
+	//IDataBackend * getDatabase() const { return _dataStore; }
 
 	void addServerConnection(ServerConnection * connection)
 	{
@@ -56,6 +58,11 @@ public:
 	{
 
 	}
+
+	const CString& getServerlistPacket() const { return CString(); }
+
+	AccountStatus verifyAccount(const std::string& account, const std::string& password) const;
+
 
 private:
 	bool _initialized;
@@ -77,5 +84,9 @@ private:
 	//
 	void acceptSock(CSocket& socket, SocketType socketType);
 };
+
+inline AccountStatus ListServer::verifyAccount(const std::string& account, const std::string& password) const {
+	return _dataStore->VerifyAccount(account, password);
+}
 
 #endif

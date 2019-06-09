@@ -47,18 +47,17 @@ class PlayerConnection
 {
 public:
 	// constructor-destructor
-	PlayerConnection(ListServer *listServer, CSocket *pSocket, bool pIsOld = false);
+	PlayerConnection(ListServer *listServer, CSocket *pSocket);
 	~PlayerConnection();
 
 	// main loop
 	bool doMain();
 
-	// send packets
-	void sendCompress();
+	// send packet
 	void sendPacket(CString pPacket, bool pSendNow = false);
+	void sendServerList();
 
 	// packet-functions;
-	bool parsePacket(CString& pPacket);
 	bool msgPLI_NULL(CString& pPacket);
 	bool msgPLI_V1VER(CString& pPacket);
 	bool msgPLI_SERVERLIST(CString& pPacket);
@@ -68,16 +67,16 @@ public:
 	bool msgPLI_GRSECURELOGIN(CString& pPacket);
 
 private:
+	// Packet functions.
+	bool parsePacket(CString& pPacket);
+	void decryptPacket(CString& pPacket);
+
 	ListServer *_listServer;
 	CSocket *sock;
 	CString sendBuffer, sockBuffer, outBuffer;
-
-	CEncryption in_codec;
-	CFileQueue fileQueue;
-
-	//int key;
-	int version;
-	bool isOld;
+	CEncryption _inCodec;
+	CFileQueue _fileQueue;
+	std::string _version;
 };
 
 #endif //LISTSERVER_PLAYERCONNECTION_H

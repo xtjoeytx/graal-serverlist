@@ -1,4 +1,5 @@
 #include <time.h>
+#include "ListServer.h"
 #include "PlayerConnection.h"
 #include "CLog.h"
 
@@ -25,11 +26,21 @@ void createPlayerPtrTable()
 }
 
 /*
-	Constructor - Deconstructor
+	Constructor
 */
-PlayerConnection::PlayerConnection(ListServer *listServer, CSocket *pSocket, bool pIsOld)
-	: _listServer(listServer), sock(pSocket), fileQueue(pSocket), version(PLV_PRE22), isOld(pIsOld)
+PlayerConnection::PlayerConnection(ListServer *listServer, CSocket *pSocket)
+	: _listServer(listServer), sock(pSocket), _fileQueue(pSocket)
 {
+	static bool _setupPlayerPackets = false;
+	if (!_setupPlayerPackets)
+	{
+		createPlayerPtrTable();
+		_setupPlayerPackets = true;
+	}
+
+	_fileQueue.setCodec(ENCRYPT_GEN_2, 0);
+	_inCodec.setGen(ENCRYPT_GEN_2);
+
 	// 1.41 doesn't request a server list.  It assumes the server will just send it out.
 //	if (isOld)
 //	{
@@ -40,6 +51,7 @@ PlayerConnection::PlayerConnection(ListServer *listServer, CSocket *pSocket, boo
 
 PlayerConnection::~PlayerConnection()
 {
+	printf("Kill\n");
 	delete sock;
 }
 
@@ -59,8 +71,7 @@ bool PlayerConnection::doMain()
 		sockBuffer.write(data, size);
 	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
-
-
+	
 	// definitions
 	CString unBuffer;
 
@@ -76,156 +87,77 @@ bool PlayerConnection::doMain()
 		unBuffer = sockBuffer.readChars(len);
 		sockBuffer.removeI(0, len+2);
 
+		switch (_inCodec.getGen())
+		{
+			case ENCRYPT_GEN_1:		// Gen 1 is not encrypted or compressed.
+				break;
 
-//		// version 2.2+
-//		if (version == PLV_POST22)
-//		{
-//			// Read the compression type.
-//			unsigned char compressType = (unsigned char)sockBuffer.readChar();
-//
-//			// Pull out the entire packet and discard the first three bytes.
-//			unBuffer = sockBuffer.subString( 0, len + 2 );
-//			unBuffer.removeI( 0, 3 );
-//
-//			// Decrypt.
-//			in_codec.limitfromtype( compressType );
-//			in_codec.apply(reinterpret_cast<uint8_t*>(unBuffer.text()), unBuffer.length());
-//
-//			// Uncompress?
-//			if ( compressType == ENCRYPT22_ZLIB )
-//				unBuffer.zuncompressI();
-//			else if ( compressType == ENCRYPT22_BZ2 )
-//				unBuffer.bzuncompressI();
-//
-//			// Make sure we actually have something.
-//			if (unBuffer.length() < 1)
-//				return false;
-//		}
-//			// anything below version 2.2
-//		else if (version == PLV_PRE22)
-//		{
-//			// uncompress
-//			unBuffer = sockBuffer.remove(0, 2).zuncompress();
-//			if (unBuffer.length() < 1)
-//				return false;
-//		}
-//		else if (version == PLV_22)
-//		{
-//			unBuffer = sockBuffer.remove(0, 2);
-//
-//			// Decrypt.
-//			in_codec.limitfromtype(ENCRYPT22_BZ2);
-//			in_codec.apply(reinterpret_cast<uint8_t*>(unBuffer.text()), unBuffer.length());
-//
-//			unBuffer.bzuncompressI();
-//			if (unBuffer.length() == 0)
-//				return false;
-//		}
-//
-//		// remove read-data
-//		sockBuffer.removeI(0, len+2);
-//
-//		// well theres your buffer
-//		if (!parsePacket(unBuffer))
-//			return false;
+			// Gen 2 and 3 are zlib compressed.  Gen 3 encrypts individual packets
+			// Uncompress so we can properly decrypt later on.
+			case ENCRYPT_GEN_2:
+			case ENCRYPT_GEN_3:
+				unBuffer.zuncompressI();
+				break;
+
+			// Gen 4 and up encrypt the whole combined and compressed packet.
+			// Decrypt and decompress.
+			default:
+				decryptPacket(unBuffer);
+				break;
+		}
+
+		// well theres your buffer
+		if (!parsePacket(unBuffer))
+			return false;
 	}
 
 	// send out buffer
-	sendCompress();
+	_fileQueue.sendCompress();
 	return true;
-}
-
-/*
-	Send-Packet Functions
-*/
-void PlayerConnection::sendCompress()
-{
-//	// empty buffer?
-//	if (sendBuffer.isEmpty())
-//	{
-//		// If we still have some data in the out buffer, try sending it again.
-//		if (outBuffer.isEmpty() == false)
-//		{
-//			unsigned int dsize = outBuffer.length();
-//			outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
-//		}
-//		return;
-//	}
-//
-//	// compress buffer
-//	if (version == PLV_POST22)
-//	{
-//		// Choose which compression to use and apply it.
-//		int compressionType = ENCRYPT22_UNCOMPRESSED;
-//		if (sendBuffer.length() > 0x2000)	// 8KB
-//		{
-//			compressionType = ENCRYPT22_BZ2;
-//			sendBuffer.bzcompressI();
-//		}
-//		else if (sendBuffer.length() > 40)
-//		{
-//			compressionType = ENCRYPT22_ZLIB;
-//			sendBuffer.zcompressI();
-//		}
-//
-//		// Encrypt the packet and add it to the out buffer.
-//		out_codec.limitfromtype(compressionType);
-//		out_codec.apply(reinterpret_cast<uint8_t*>(sendBuffer.text()), sendBuffer.length());
-//		outBuffer << (short)(sendBuffer.length() + 1) << (char)compressionType << sendBuffer;
-//
-//		// Send outBuffer.
-//		unsigned int dsize = outBuffer.length();
-//		outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
-//	}
-//	else if (version == PLV_PRE22)
-//	{
-//		// Compress the packet and add it to the out buffer.
-//		sendBuffer.zcompressI();
-//		outBuffer << (short)sendBuffer.length() << sendBuffer;
-//
-//		// Send outBuffer.
-//		unsigned int dsize = outBuffer.length();
-//		outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
-//	}
-//	else if (version == PLV_22)
-//	{
-//		sendBuffer.bzcompressI();
-//
-//		// Encrypt the packet and add it to the out buffer.
-//		out_codec.limitfromtype(ENCRYPT22_BZ2);
-//		out_codec.apply(reinterpret_cast<uint8_t*>(sendBuffer.text()), sendBuffer.length());
-//		outBuffer << (short)sendBuffer.length() << sendBuffer;
-//
-//		// Send outBuffer.
-//		unsigned int dsize = outBuffer.length();
-//		outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
-//	}
-//
-//	// Clear the send buffer.
-//	sendBuffer.clear();
-}
-
-void PlayerConnection::sendPacket(CString pPacket, bool pSendNow)
-{
-	// empty buffer?
-	if (pPacket.isEmpty())
-		return;
-
-	// append '\n'
-	if (pPacket[pPacket.length()-1] != '\n')
-		pPacket.writeChar('\n');
-
-	// append buffer
-	sendBuffer.write(pPacket);
-
-	// send buffer now?
-	if (pSendNow)
-		sendCompress();
 }
 
 /*
 	Packet-Functions
 */
+void PlayerConnection::decryptPacket(CString& pPacket)
+{
+	// Version 1.41 - 2.18 encryption
+	// Was already decompressed so just decrypt the packet.
+	if (_inCodec.getGen() == ENCRYPT_GEN_3)
+		_inCodec.decrypt(pPacket);
+
+	// Version 2.19+ encryption.
+	// Encryption happens before compression and depends on the compression used so
+	// first decrypt and then decompress.
+	if (_inCodec.getGen() == ENCRYPT_GEN_4)
+	{
+		// Decrypt the packet.
+		_inCodec.limitFromType(COMPRESS_BZ2);
+		_inCodec.decrypt(pPacket);
+
+		// Uncompress packet.
+		pPacket.bzuncompressI();
+	}
+	else if (_inCodec.getGen() >= ENCRYPT_GEN_5)
+	{
+		// Find the compression type and remove it.
+		int pType = pPacket.readChar();
+		pPacket.removeI(0, 1);
+
+		// Decrypt the packet.
+		_inCodec.limitFromType(pType);		// Encryption is partially related to compression.
+		_inCodec.decrypt(pPacket);
+
+		// Uncompress packet
+		if (pType == COMPRESS_ZLIB)
+			pPacket.zuncompressI();
+		else if (pType == COMPRESS_BZ2)
+			pPacket.bzuncompressI();
+		else if (pType != COMPRESS_UNCOMPRESSED)
+			printf("** [ERROR] Client gave incorrect packet compression type! [%d]\n", pType);
+	}
+}
+
 bool PlayerConnection::parsePacket(CString& pPacket)
 {
 	while (pPacket.bytesLeft() > 0)
@@ -246,6 +178,32 @@ bool PlayerConnection::parsePacket(CString& pPacket)
 	return true;
 }
 
+void PlayerConnection::sendPacket(CString pPacket, bool pSendNow)
+{
+	// empty buffer?
+	if (pPacket.isEmpty())
+		return;
+
+	// append '\n'
+	if (pPacket[pPacket.length() - 1] != '\n')
+		pPacket.writeChar('\n');
+
+	// append buffer
+	_fileQueue.addPacket(pPacket);
+
+	// send buffer now?
+	if (pSendNow)
+		_fileQueue.sendCompress();
+}
+
+void PlayerConnection::sendServerList()
+{
+
+}
+
+/*
+	Incoming Packets
+*/
 bool PlayerConnection::msgPLI_NULL(CString& pPacket)
 {
 	pPacket.setRead(0);
@@ -255,6 +213,8 @@ bool PlayerConnection::msgPLI_NULL(CString& pPacket)
 
 bool PlayerConnection::msgPLI_V1VER(CString& pPacket)
 {
+	// TODO(joey): not sure what client this is for
+
 	/*
 	// definitions
 	std::vector<CString>::iterator result;
@@ -265,72 +225,81 @@ bool PlayerConnection::msgPLI_V1VER(CString& pPacket)
 		return;
 	*/
 
-	pPacket.readString("");
+	_version = pPacket.readString("").text();
 	return true;
 }
 
 bool PlayerConnection::msgPLI_SERVERLIST(CString& pPacket)
 {
-	// definitions
-	CString account, password;
-	int res;
-
 	// read data
-	account  = pPacket.readChars(pPacket.readGUChar());
-	password = pPacket.readChars(pPacket.readGUChar());
+	CString account = pPacket.readChars(pPacket.readGUChar());
+	CString password = pPacket.readChars(pPacket.readGUChar());
 	printf("Account: %s\n", account.text());
 	//printf("Password: %s\n", password.text());
 
+	// Verify account
+	AccountStatus status = _listServer->verifyAccount(account.text(), password.text());
+
 	// verify account
-//	res = verifyAccount(account, password);
-	printf( "Verify: %d\n", res );
+	printf( "Verify: %d\n", (int)status);
 
-	switch (res)
+	switch (status)
 	{
-//		case ACCSTAT_NORMAL:
-//			if (getServerCount() > 0)
-//				sendPacket(CString() >> (char)PLO_SVRLIST << getServerList(version, sock->getRemoteIp()), true);
-//			sendPacket(CString() >> (char)PLO_STATUS << "Welcome to " << settings->getStr("name") << ", " << account << "." << "\r" << "There are " << CString(getServerCount()) << " server(s) online.");
-//			sendPacket(CString() >> (char)PLO_SITEURL << settings->getStr("url"));
-//			sendPacket(CString() >> (char)PLO_UPGURL << settings->getStr("donateUrl"));
-//			return true;
-
-		default:
-//			sendPacket(CString() >> (char)PLO_ERROR << getAccountError(res));
-			return false;
+		case AccountStatus::Normal:
+			sendPacket(CString() >> (char)PLO_STATUS << "Welcome to test, " << account << "\r" << "There are 5 server(s) online.");
+			sendPacket(CString() >> (char)PLO_SITEURL << "https://");
+			break;
 	}
+
+//	switch (res)
+//	{
+////		case ACCSTAT_NORMAL:
+////			if (getServerCount() > 0)
+////				sendPacket(CString() >> (char)PLO_SVRLIST << getServerList(version, sock->getRemoteIp()), true);
+////			sendPacket(CString() >> (char)PLO_STATUS << "Welcome to " << settings->getStr("name") << ", " << account << "." << "\r" << "There are " << CString(getServerCount()) << " server(s) online.");
+////			sendPacket(CString() >> (char)PLO_SITEURL << settings->getStr("url"));
+////			sendPacket(CString() >> (char)PLO_UPGURL << settings->getStr("donateUrl"));
+////			return true;
+//
+//		default:
+////			sendPacket(CString() >> (char)PLO_ERROR << getAccountError(res));
+//			return false;
+//	}
+
+	return true;
 }
 
 bool PlayerConnection::msgPLI_V2VER(CString& pPacket)
 {
+	// TODO(joey): No idea what client actually uses this, but leaving it in for compatibility.
 	unsigned char key = pPacket.readGUChar();
-//	in_codec.reset(key);
-//	//version = PLV_POST22;
-//	version = PLV_22;
-//	key = pPacket.readGChar();
-//	in_codec.reset(key);
-//	out_codec.reset(key);
-	pPacket.readString("");// == newmain
+	_version = pPacket.readString("").text(); // == newmain
+
+	_fileQueue.setCodec(ENCRYPT_GEN_4, key);
+	_inCodec.reset(key);
+	_inCodec.setGen(ENCRYPT_GEN_4);
 	return true;
 }
 
 bool PlayerConnection::msgPLI_V2SERVERLISTRC(CString& pPacket)
 {
-	version = PLV_POST22;
-//	key = pPacket.readGChar();
-//	in_codec.reset(key);
-//	out_codec.reset(key);
+	unsigned char key = pPacket.readGChar();
+	_version = pPacket.readString("").text();
+
+	_fileQueue.setCodec(ENCRYPT_GEN_5, key);
+	_inCodec.setGen(ENCRYPT_GEN_5);
+	_inCodec.reset(key);
 	return true;
 }
 
 bool PlayerConnection::msgPLI_V2ENCRYPTKEYCL(CString& pPacket)
 {
-//	version = PLV_POST22;
-//	key = pPacket.readGChar();
-//	//version = pPacket.readChars(8);
-//	//pPacket.readString("") == newmain
-//	in_codec.reset(key);
-//	out_codec.reset(key);
+	unsigned char key = pPacket.readGUChar();
+	_version = pPacket.readString("").text();
+
+	_fileQueue.setCodec(ENCRYPT_GEN_5, key);
+	_inCodec.setGen(ENCRYPT_GEN_5);
+	_inCodec.reset(key);
 	return true;
 }
 
@@ -343,6 +312,9 @@ Outgoing format:
 */
 bool PlayerConnection::msgPLI_GRSECURELOGIN(CString& pPacket)
 {
+	// TODO(joey): unsure if this still works.
+
+	/*
 #ifndef NO_MYSQL
 	// Grab the packet values.
 	CString account = pPacket.readChars(pPacket.readGUChar());
@@ -380,6 +352,7 @@ bool PlayerConnection::msgPLI_GRSECURELOGIN(CString& pPacket)
 	// Send the secure login info back to the player.
 	sendPacket(CString() >> (char)PLO_GRSECURELOGIN >> (long long)transaction << salt);
 #endif
+*/
 
 	return true;
 }
