@@ -125,8 +125,9 @@ class ServerConnection
 		int getLastData()	{ return (int)difftime( time(0), lastData ); }
 		CSocket* getSock()	{ return sock; }
 
-		ServerPlayer * getPlayer(unsigned short id);
-		ServerPlayer * getPlayer(const std::string& account, int type);
+		ServerPlayer * getPlayer(unsigned short id) const;
+		ServerPlayer * getPlayer(const std::string& account, int type) const;
+		void clearPlayerList();
 
 		// send-packet functions
 		void sendCompress();
