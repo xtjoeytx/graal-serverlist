@@ -93,20 +93,14 @@ enum
 	TYPE_3D			= 4,
 };
 
-class ServerConnection;
-
-struct player
-{
-	CString account, nick, level;
-	float x, y;
-	unsigned char ap, type;
-};
+class ListServer;
+class ServerPlayer;
 
 class ServerConnection
 {
 	public:
 		// constructor-destructor
-		ServerConnection(CSocket *pSocket);
+		ServerConnection(ListServer *listServer, CSocket *pSocket);
 		~ServerConnection();
 
 		// main loop
@@ -114,10 +108,6 @@ class ServerConnection
 
 		// kill client
 		void kill();
-
-		void SQLupdate(CString tblval, const CString& newVal);
-		void SQLupdateHQ(CString tblval, const CString& newVal);
-		void updatePlayers();
 
 		// get-value functions
 		const CString& getDescription();
@@ -134,6 +124,9 @@ class ServerConnection
 		const CString getServerPacket(int PLVER, const CString& pIp = "");
 		int getLastData()	{ return (int)difftime( time(0), lastData ); }
 		CSocket* getSock()	{ return sock; }
+
+		ServerPlayer * getPlayer(unsigned short id);
+		ServerPlayer * getPlayer(const std::string& account, int type);
 
 		// send-packet functions
 		void sendCompress();
@@ -176,11 +169,12 @@ class ServerConnection
 		bool msgSVI_PMPLAYER(CString& pPacket);
 
 	private:
+		ListServer *_listServer;
 		CSocket *sock;
 		CString sendBuffer, sockBuffer, outBuffer;
 
 		CString description, ip, language, name, port, url, version, localip;
-		std::vector<player *> playerList;
+		std::vector<ServerPlayer *> playerList;
 		time_t lastPing, lastData, lastPlayerCount, lastUptimeCheck;
 		bool addedToSQL;
 		bool isServerHQ;

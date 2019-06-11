@@ -26,6 +26,7 @@ set(
     SOURCES
 		src/main.cpp
 		src/ListServer.cpp
+		src/ServerPlayer.cpp
 		src/PlayerConnection.cpp
 		src/ServerConnection.cpp
 )
@@ -34,10 +35,11 @@ set(
     HEADERS
 		${PROJECT_BINARY_DIR}/server/include/IConfig.h
 		include/ListServer.h
-		include/ServerConnection.h
-		include/PlayerConnection.h
-		include/PlayerProfile.h
 		include/IDataBackend.h
+		include/PlayerProfile.h
+		include/ServerPlayer.h
+		include/PlayerConnection.h
+		include/ServerConnection.h
 )
 
 include_directories(

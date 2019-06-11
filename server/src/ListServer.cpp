@@ -101,10 +101,12 @@ void ListServer::Cleanup()
 	{
 		_dataStore->Cleanup();
 		delete _dataStore;
+		_dataStore = nullptr;
 	}
 
 	// Stop running
-	_running = false;
+	setRunning(false);
+	_initialized = false;
 }
 
 void ListServer::acceptSock(CSocket& socket, SocketType socketType)
@@ -115,7 +117,7 @@ void ListServer::acceptSock(CSocket& socket, SocketType socketType)
 
 	std::string ipAddress(newSock->getRemoteIp());
 
-	if (_dataStore->IsIpBanned(ipAddress))
+	if (_dataStore->isIpBanned(ipAddress))
 	{
 		getServerLog().append("New connection from %s was rejected due to an ip ban!\n", newSock->getRemoteIp());
 		newSock->disconnect();
@@ -139,7 +141,7 @@ void ListServer::acceptSock(CSocket& socket, SocketType socketType)
 		}
 
 		case SocketType::Server:
-			_serverConnections.push_back(new ServerConnection(newSock));
+			_serverConnections.push_back(new ServerConnection(this, newSock));
 			break;
 
 		default:
@@ -154,7 +156,7 @@ bool ListServer::Main()
 	if (!_initialized || _running)
 		return false;
 
-	_running = true;
+	setRunning(true);
 
 	auto currentTimer = std::chrono::high_resolution_clock::now();
 	std::chrono::high_resolution_clock::time_point _lastTimer;
@@ -164,6 +166,9 @@ bool ListServer::Main()
 		// accept sockets
 		acceptSock(_playerSock, SocketType::Player);
 		acceptSock(_serverSock, SocketType::Server);
+
+		// Update our socket manager.
+		//_socketManager.update(0, 5000);		// 5ms
 
 		// iterate player connections
 		for (auto it = _playerConnections.begin(); it != _playerConnections.end();)

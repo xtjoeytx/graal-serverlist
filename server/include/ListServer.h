@@ -44,27 +44,26 @@ public:
 	void Cleanup();
 	bool Main();
 
-	CLog & getClientLog() { return _clientLog; }
-	CLog & getServerLog() { return _serverLog; }
-	CSettings & getSettings() { return _settings; }
-	//IDataBackend * getDatabase() const { return _dataStore; }
-
-	void addServerConnection(ServerConnection * connection)
-	{
-
-	}
-
-	void addPlayerConnect(PlayerConnection * connection)
-	{
-
-	}
-
+	CLog & getClientLog()				{ return _clientLog; }
+	CLog & getServerLog()				{ return _serverLog; }
+	CSettings & getSettings()			{ return _settings; }
+	
 	const CString& getServerlistPacket() const { return CString(); }
-
+	std::vector<ServerConnection *> & getConnections() { return _serverConnections; }
 	AccountStatus verifyAccount(const std::string& account, const std::string& password) const;
+	GuildStatus verifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) const;
+	std::optional<PlayerProfile> getProfile(const std::string& account) const;
+	bool setProfile(const PlayerProfile& profile);
 
+	void setRunning(bool status)
+	{
+		std::lock_guard<std::mutex> guard(pc);
+		_running = status;
+	}
 
 private:
+	std::mutex pc;
+
 	bool _initialized;
 	bool _running;
 	CLog _clientLog;
@@ -86,7 +85,19 @@ private:
 };
 
 inline AccountStatus ListServer::verifyAccount(const std::string& account, const std::string& password) const {
-	return _dataStore->VerifyAccount(account, password);
+	return _dataStore->verifyAccount(account, password);
+}
+
+inline GuildStatus ListServer::verifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) const {
+	return _dataStore->verifyGuild(account, nickname, guild);
+}
+
+inline std::optional<PlayerProfile> ListServer::getProfile(const std::string& account) const {
+	return _dataStore->getProfile(account);
+}
+
+inline bool ListServer::setProfile(const PlayerProfile& profile) {
+	return _dataStore->setProfile(profile);
 }
 
 #endif

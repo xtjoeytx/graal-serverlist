@@ -42,21 +42,21 @@ void MySQLBackend::Cleanup()
 
 int MySQLBackend::Ping()
 {
-	return (IsConnected() ? 0 : -1);
+	return (isConnected() ? 0 : -1);
 }
 
-bool MySQLBackend::IsIpBanned(const std::string& ipAddress)
+bool MySQLBackend::isIpBanned(const std::string& ipAddress)
 {
 	const std::string query = "SELECT id FROM graal_ipban WHERE " \
 		"`server_ip` = ? LIMIT 1";
 
 	int id;
 
-	daotk::mysql::prepared_stmt stmt(_connection, query);
-	stmt.bind_param(ipAddress);
-	stmt.bind_result(id);
-
 	try {
+		daotk::mysql::prepared_stmt stmt(_connection, query);
+		stmt.bind_param(ipAddress);
+		stmt.bind_result(id);
+
 		if (stmt.execute())
 		{
 			if (stmt.fetch())
@@ -69,7 +69,7 @@ bool MySQLBackend::IsIpBanned(const std::string& ipAddress)
 	return false;
 }
 
-AccountStatus MySQLBackend::VerifyAccount(const std::string& account, const std::string& password)
+AccountStatus MySQLBackend::verifyAccount(const std::string& account, const std::string& password)
 {
 	const std::string query = "SELECT account, activated, banned FROM graal_users WHERE " \
 		"`account` = ? AND password=MD5(CONCAT(MD5(?),`salt`)) LIMIT 1";
@@ -78,11 +78,11 @@ AccountStatus MySQLBackend::VerifyAccount(const std::string& account, const std:
 	std::string acct;
 	int activated, banned;
 
-	daotk::mysql::prepared_stmt stmt(_connection, query);
-	stmt.bind_param(account, password);
-	stmt.bind_result(acct, activated, banned);
-
 	try {
+		daotk::mysql::prepared_stmt stmt(_connection, query);
+		stmt.bind_param(account, password);
+		stmt.bind_result(acct, activated, banned);
+
 		if (stmt.execute())
 		{
 			if (stmt.fetch())
@@ -104,7 +104,7 @@ AccountStatus MySQLBackend::VerifyAccount(const std::string& account, const std:
 	return AccountStatus::NotFound;
 }
 
-GuildStatus MySQLBackend::VerifyGuild(const std::string& account, const std::string& nickname, const std::string& guild)
+GuildStatus MySQLBackend::verifyGuild(const std::string& account, const std::string& nickname, const std::string& guild)
 {
 	std::string queryTest = "SELECT account, activated, banned FROM graal_users WHERE " \
 	"account = ? AND password=MD5(CONCAT(MD5(?),`salt`)) LIMIT 1";
@@ -112,12 +112,63 @@ GuildStatus MySQLBackend::VerifyGuild(const std::string& account, const std::str
 	return GuildStatus::Invalid;
 }
 
-PlayerProfile MySQLBackend::GetProfile(const std::string& account)
+std::optional<PlayerProfile> MySQLBackend::getProfile(const std::string& account)
 {
-	PlayerProfile profile(account);
-	return profile;
+	const std::string query = "SELECT profile_name, profile_age, profile_sex, profile_country, profile_icq, profile_email, profile_url, profile_hangout, profile_quote " \
+		"FROM graal_users " \
+		"WHERE `account` = ? LIMIT 1";
+
+	// results
+	std::string profile_name, profile_sex, profile_country, profile_icq, profile_email, profile_url, profile_hangout, profile_quote;
+	int profile_age;
+
+	try {
+		daotk::mysql::prepared_stmt stmt(_connection, query);
+		stmt.bind_param(account);
+		stmt.bind_result(profile_name, profile_age, profile_sex, profile_country, profile_icq, profile_email, profile_url, profile_hangout, profile_quote);
+
+		if (stmt.execute())
+		{
+			if (stmt.fetch())
+			{
+				PlayerProfile profile(account);
+				profile.setName(profile_name);
+				profile.setAge(profile_age);
+				profile.setGender(profile_sex);
+				profile.setCountry(profile_country);
+				profile.setMessenger(profile_icq);
+				profile.setEmail(profile_email);
+				profile.setWebsite(profile_url);
+				profile.setHangout(profile_hangout);
+				profile.setQuote(profile_quote);
+				return profile;
+			}
+		}
+	} catch (std::exception& exp) {
+		printf("GetProfile Exception: %s\n", exp.what());
+	}
+
+	return std::nullopt;
 }
 
-void MySQLBackend::SetProfile(const PlayerProfile& profile)
+bool MySQLBackend::setProfile(const PlayerProfile& profile)
 {
+	const std::string query = "UPDATE graal_users SET profile_name = ?, profile_age = ?, profile_sex = ?, profile_country = ?, " \
+		"profile_icq = ?, profile_email = ?, profile_url = ?, profile_hangout = ?, profile_quote = ? " \
+		"WHERE `account` = ? LIMIT 1";
+
+	try {
+		daotk::mysql::prepared_stmt stmt(_connection, query);
+		stmt.bind_param(profile.getName(), profile.getAge(), profile.getGender(), profile.getCountry(),
+			profile.getMessenger(), profile.getEmail(), profile.getWebsite(), profile.getHangout(), profile.getQuote(),
+			profile.getAccountName());
+
+		if (stmt.execute())
+			return (_connection.affected_rows() == 1);
+	}
+	catch (std::exception& exp) {
+		printf("SetProfile Exception: %s\n", exp.what());
+	}
+
+	return false;
 }
