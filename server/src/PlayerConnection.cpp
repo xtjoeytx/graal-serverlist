@@ -1,6 +1,7 @@
 #include <time.h>
 #include "ListServer.h"
 #include "PlayerConnection.h"
+#include "ServerConnection.h"
 #include "CLog.h"
 
 /*
@@ -61,7 +62,7 @@ PlayerConnection::~PlayerConnection()
 bool PlayerConnection::doMain()
 {
 	// sock exist?
-	if (sock == NULL || sock->getState() == SOCKET_STATE_DISCONNECTED)
+	if (sock == NULL)
 		return false;
 
 	// Grab the data from the socket and put it into our receive buffer.
@@ -71,44 +72,47 @@ bool PlayerConnection::doMain()
 		sockBuffer.write(data, size);
 	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
-	
-	// definitions
-	CString unBuffer;
 
-	// parse data
-	sockBuffer.setRead(0);
-	while (sockBuffer.length() >= 2)
+	if (!sockBuffer.isEmpty())
 	{
-		// packet length
-		unsigned short len = (unsigned short)sockBuffer.readShort();
-		if ((unsigned int)len > (unsigned int)sockBuffer.length()-2)
-			break;
+		// definitions
+		CString unBuffer;
 
-		unBuffer = sockBuffer.readChars(len);
-		sockBuffer.removeI(0, len+2);
-
-		switch (_inCodec.getGen())
+		// parse data
+		sockBuffer.setRead(0);
+		while (sockBuffer.length() >= 2)
 		{
+			// packet length
+			unsigned short len = (unsigned short)sockBuffer.readShort();
+			if ((unsigned int)len > (unsigned int)sockBuffer.length() - 2)
+				break;
+
+			unBuffer = sockBuffer.readChars(len);
+			sockBuffer.removeI(0, len + 2);
+
+			switch (_inCodec.getGen())
+			{
 			case ENCRYPT_GEN_1:		// Gen 1 is not encrypted or compressed.
 				break;
 
-			// Gen 2 and 3 are zlib compressed.  Gen 3 encrypts individual packets
-			// Uncompress so we can properly decrypt later on.
+				// Gen 2 and 3 are zlib compressed.  Gen 3 encrypts individual packets
+				// Uncompress so we can properly decrypt later on.
 			case ENCRYPT_GEN_2:
 			case ENCRYPT_GEN_3:
 				unBuffer.zuncompressI();
 				break;
 
-			// Gen 4 and up encrypt the whole combined and compressed packet.
-			// Decrypt and decompress.
+				// Gen 4 and up encrypt the whole combined and compressed packet.
+				// Decrypt and decompress.
 			default:
 				decryptPacket(unBuffer);
 				break;
-		}
+			}
 
-		// well theres your buffer
-		if (!parsePacket(unBuffer))
-			return false;
+			// well theres your buffer
+			if (!parsePacket(unBuffer))
+				return false;
+		}
 	}
 
 	// send out buffer
@@ -198,7 +202,16 @@ void PlayerConnection::sendPacket(CString pPacket, bool pSendNow)
 
 void PlayerConnection::sendServerList()
 {
+	auto conn = _listServer->getConnections();
 
+	CString dataBuffer;
+	dataBuffer.writeGChar(PLO_SVRLIST);
+	dataBuffer.writeGChar((unsigned char)conn.size());
+
+	for (auto it = conn.begin(); it != conn.end(); ++it)
+		dataBuffer << (*it)->getServerPacket(1, sock->getRemoteIp());
+
+	sendPacket(dataBuffer);
 }
 
 /*
@@ -234,37 +247,23 @@ bool PlayerConnection::msgPLI_SERVERLIST(CString& pPacket)
 	// read data
 	CString account = pPacket.readChars(pPacket.readGUChar());
 	CString password = pPacket.readChars(pPacket.readGUChar());
-	printf("Account: %s\n", account.text());
-	//printf("Password: %s\n", password.text());
-
+	
 	// Verify account
 	AccountStatus status = _listServer->verifyAccount(account.text(), password.text());
-
-	// verify account
-	printf( "Verify: %d\n", (int)status);
 
 	switch (status)
 	{
 		case AccountStatus::Normal:
+			sendServerList();
 			sendPacket(CString() >> (char)PLO_STATUS << "Welcome to test, " << account << "\r" << "There are 5 server(s) online.");
 			sendPacket(CString() >> (char)PLO_SITEURL << "https://");
+			sendPacket(CString() >> (char)PLO_UPGURL << "https://");
 			break;
-	}
 
-//	switch (res)
-//	{
-////		case ACCSTAT_NORMAL:
-////			if (getServerCount() > 0)
-////				sendPacket(CString() >> (char)PLO_SVRLIST << getServerList(version, sock->getRemoteIp()), true);
-////			sendPacket(CString() >> (char)PLO_STATUS << "Welcome to " << settings->getStr("name") << ", " << account << "." << "\r" << "There are " << CString(getServerCount()) << " server(s) online.");
-////			sendPacket(CString() >> (char)PLO_SITEURL << settings->getStr("url"));
-////			sendPacket(CString() >> (char)PLO_UPGURL << settings->getStr("donateUrl"));
-////			return true;
-//
-//		default:
-////			sendPacket(CString() >> (char)PLO_ERROR << getAccountError(res));
-//			return false;
-//	}
+		default:
+			//sendPacket(CString() >> (char)PLO_ERROR << getAccountError(res));
+			return false;
+	}
 
 	return true;
 }

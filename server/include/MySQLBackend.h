@@ -17,28 +17,28 @@ class MySQLBackend : public IDataBackend
 		void Cleanup() override;
 		int Ping() override;
 
-		bool IsConnected() const override;
-		std::string GetLastError() const override;
+		bool isConnected() const override;
+		std::string getLastError() const override;
 
 		/// Methods for interfacing with the backend.
 		// 
-		bool IsIpBanned(const std::string& ipAddress) override;
-		AccountStatus VerifyAccount(const std::string& account, const std::string& password) override;
-		GuildStatus VerifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) override;
-		PlayerProfile GetProfile(const std::string& account) override;
-		void SetProfile(const PlayerProfile& profile) override;
+		bool isIpBanned(const std::string& ipAddress) override;
+		AccountStatus verifyAccount(const std::string& account, const std::string& password) override;
+		GuildStatus verifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) override;
+		std::optional<PlayerProfile> getProfile(const std::string& account) override;
+		bool setProfile(const PlayerProfile& profile) override;
 
 	private:
 		daotk::mysql::connection _connection;
 		daotk::mysql::connect_options _connectionOptions;
 };
 
-inline bool MySQLBackend::IsConnected() const
+inline bool MySQLBackend::isConnected() const
 {
 	return _connection.is_open();
 }
 
-inline std::string MySQLBackend::GetLastError() const
+inline std::string MySQLBackend::getLastError() const
 {
 	return _connection.error_message();
 }

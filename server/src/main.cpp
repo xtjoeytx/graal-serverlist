@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <chrono>
+#include <iostream>
 #include <thread>
 #include "ListServer.h"
 #include "PlayerConnection.h"
@@ -118,7 +119,26 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	listServer->Main();
+	std::thread listThread(&ListServer::Main, listServer);
+
+	// A CLI interface??? MAYBE... if I have time -joey
+	while (true)
+	{
+		std::string command;
+		std::cout << "Input Command: ";
+		std::cin >> command;
+
+		printf("Command sent: |%s|\n", command.c_str());
+		if (command == "quit")
+		{
+			listServer->setRunning(false);
+			break;
+		}
+	}
+
+	listThread.join();
+	listServer->Cleanup();
+	delete listServer;
 	return 0;
 }
 

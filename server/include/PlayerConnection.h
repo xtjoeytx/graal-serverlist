@@ -30,13 +30,6 @@ enum
 
 enum
 {
-	PLV_PRE22			= 0,
-	PLV_POST22			= 1,
-	PLV_22				= 2,
-};
-
-enum
-{
 	SECURELOGIN_NOEXPIRE	= 0,
 	SECURELOGIN_ONEUSE		= 1,
 };
