@@ -41,18 +41,10 @@ PlayerConnection::PlayerConnection(ListServer *listServer, CSocket *pSocket)
 
 	_fileQueue.setCodec(ENCRYPT_GEN_2, 0);
 	_inCodec.setGen(ENCRYPT_GEN_2);
-
-	// 1.41 doesn't request a server list.  It assumes the server will just send it out.
-//	if (isOld)
-//	{
-//		if (getServerCount() > 0)
-//			sendPacket(CString() >> (char)PLO_SVRLIST << getServerList(version, sock->getRemoteIp()), true);
-//	}
 }
 
 PlayerConnection::~PlayerConnection()
 {
-	printf("Kill\n");
 	delete sock;
 }
 
@@ -92,21 +84,21 @@ bool PlayerConnection::doMain()
 
 			switch (_inCodec.getGen())
 			{
-			case ENCRYPT_GEN_1:		// Gen 1 is not encrypted or compressed.
-				break;
+				case ENCRYPT_GEN_1:		// Gen 1 is not encrypted or compressed.
+					break;
 
-				// Gen 2 and 3 are zlib compressed.  Gen 3 encrypts individual packets
-				// Uncompress so we can properly decrypt later on.
-			case ENCRYPT_GEN_2:
-			case ENCRYPT_GEN_3:
-				unBuffer.zuncompressI();
-				break;
+					// Gen 2 and 3 are zlib compressed.  Gen 3 encrypts individual packets
+					// Uncompress so we can properly decrypt later on.
+				case ENCRYPT_GEN_2:
+				case ENCRYPT_GEN_3:
+					unBuffer.zuncompressI();
+					break;
 
-				// Gen 4 and up encrypt the whole combined and compressed packet.
-				// Decrypt and decompress.
-			default:
-				decryptPacket(unBuffer);
-				break;
+					// Gen 4 and up encrypt the whole combined and compressed packet.
+					// Decrypt and decompress.
+				default:
+					decryptPacket(unBuffer);
+					break;
 			}
 
 			// well theres your buffer
@@ -206,11 +198,21 @@ void PlayerConnection::sendServerList()
 
 	CString dataBuffer;
 	dataBuffer.writeGChar(PLO_SVRLIST);
-	dataBuffer.writeGChar((unsigned char)conn.size());
-
+	
+	int serverCount = 0;
+	CString serverPacket;
 	for (auto it = conn.begin(); it != conn.end(); ++it)
-		dataBuffer << (*it)->getServerPacket(1, sock->getRemoteIp());
-
+	{
+		ServerConnection *serverObject = *it;
+		if (!serverObject->getName().isEmpty())
+		{
+			serverPacket << (*it)->getServerPacket(1, sock->getRemoteIp());
+			serverCount++;
+		}
+	}
+	
+	dataBuffer.writeGChar((unsigned char)serverCount);
+	dataBuffer.write(serverPacket);
 	sendPacket(dataBuffer);
 }
 

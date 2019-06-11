@@ -12,6 +12,31 @@ enum
 	PLV_22				= 2,
 };
 
+// TODO(joey): Move this somewhere else
+CString getAccountError(AccountStatus status)
+{
+	switch (status)
+	{
+		case AccountStatus::Normal:
+			return "SUCCESS";
+
+		case AccountStatus::NotActivated:
+			return "Your account is not activated.";
+
+		case AccountStatus::Banned:
+			return "Your account is globally banned.";
+
+		case AccountStatus::InvalidPassword:
+			return "Account name or password is invalid.";
+
+		case AccountStatus::BackendError:
+			return "There was a problem verifying your account.  The SQL server is probably down.";
+
+		default:
+			return "Unknown server error.";
+	}
+}
+
 /*
 	Pointer-Functions for Packets
 */
@@ -81,10 +106,8 @@ ServerConnection::~ServerConnection()
 {
 	printf("Disconnected\n");
 
-	// clean playerlist
-	for (auto it = playerList.begin(); it != playerList.end(); ++it)
-		delete *it;
-	playerList.clear();
+	// Clear Playerlist
+	clearPlayerList();
 
 //	// Update our uptime.
 //	if (isServerHQ)
@@ -274,7 +297,7 @@ const CString ServerConnection::getServerPacket(int PLVER, const CString& pIp)
 	return CString() >> (char)8 >> (char)(getType(PLVER).length() + getName().length()) << getType(PLVER) << getName() >> (char)getLanguage().length() << getLanguage() >> (char)getDescription().length() << getDescription() >> (char)getUrl().length() << getUrl() >> (char)getVersion().length() << getVersion() >> (char)pcount.length() << pcount >> (char)testIp.length() << testIp >> (char)getPort().length() << getPort();
 }
 
-ServerPlayer * ServerConnection::getPlayer(unsigned short id)
+ServerPlayer * ServerConnection::getPlayer(unsigned short id) const
 {
 	for (auto it = playerList.begin(); it != playerList.end(); ++it)
 	{
@@ -286,7 +309,7 @@ ServerPlayer * ServerConnection::getPlayer(unsigned short id)
 	return nullptr;
 }
 
-ServerPlayer * ServerConnection::getPlayer(const std::string & account, int type)
+ServerPlayer * ServerConnection::getPlayer(const std::string & account, int type) const
 {
 	for (auto it = playerList.begin(); it != playerList.end(); ++it)
 	{
@@ -296,6 +319,14 @@ ServerPlayer * ServerConnection::getPlayer(const std::string & account, int type
 	}
 
 	return nullptr;
+}
+
+void ServerConnection::clearPlayerList()
+{
+	// clean playerlist
+	for (auto it = playerList.begin(); it != playerList.end(); ++it)
+		delete *it;
+	playerList.clear();
 }
 
 /*
@@ -585,12 +616,14 @@ bool ServerConnection::msgSVI_SETPORT(CString& pPacket)
 bool ServerConnection::msgSVI_SETPLYR(CString& pPacket)
 {
 	// clear list
-	if (!new_protocol)
+	if (new_protocol)
+	{
+		clearPlayerList();
+	}
+	else
 	{
 		// Clear the playerlist
-		for (auto it = playerList.begin(); it != playerList.end(); ++it)
-			delete *it;
-		playerList.clear();
+		clearPlayerList();
 
 		// grab new playercount
 		unsigned int count = pPacket.readGUChar();
@@ -634,12 +667,10 @@ bool ServerConnection::msgSVI_VERIACC(CString& pPacket)
 	CString account = pPacket.readChars(pPacket.readGUChar());
 	CString password = pPacket.readChars(pPacket.readGUChar());
 
-	// Get the login return code.
-	// This will overwrite "account" with the correct case sensitive account name.
-//	int ret = verifyAccount(account, password, true);
-//
-//	// send verification
-//	sendPacket(CString() >> (char)SVO_VERIACC >> (char)account.length() << account << getAccountError(ret));
+	// Verify the account.
+	AccountStatus status = _listServer->verifyAccount(account.text(), password.text());
+
+	sendPacket(CString() >> (char)SVO_VERIACC >> (char)account.length() << account << getAccountError(status));
 	return true;
 }
 
@@ -652,7 +683,7 @@ bool ServerConnection::msgSVI_VERIGLD(CString& pPacket)
 
 	// Verify the account.
 	GuildStatus status = _listServer->verifyGuild(account.text(), nickname.text(), guild.text());
-	//if (status == GuildStatus::Valid)
+	if (status == GuildStatus::Valid)
 	{
 		// TODO(joey): prune nickname from previous guilds.
 		CString newNick = nickname << " (" << guild << ")";
@@ -882,7 +913,16 @@ bool ServerConnection::msgSVI_PLYRREM(CString& pPacket)
 
 bool ServerConnection::msgSVI_SVRPING(CString& pPacket)
 {
-	// Do nothing.  It is just a ping.  --  1 per minute.
+	if (new_protocol)
+	{
+		// Response of a PING request from the listserver.
+		// Can be used to calculate latency, or something..
+	}
+	else
+	{
+		// Server sends this every 30 seconds
+	}
+
 	return true;
 }
 
@@ -898,15 +938,7 @@ bool ServerConnection::msgSVI_VERIACC2(CString& pPacket)
 
 	// Verify the account.
 	AccountStatus status = _listServer->verifyAccount(account.text(), password.text());
-
-	sendPacket(CString() >> (char)SVO_VERIACC2 >> (char)account.length() << account >> (short)id >> (char)type << "SUCCESS");
-//	int ret = verifyAccount(account, password, true);
-//
-//	// send verification
-//	sendPacket(CString() >> (char)SVO_VERIACC2
-//		>> (char)account.length() << account
-//		>> (short)id >> (char)type
-//		<< getAccountError(ret));
+	sendPacket(CString() >> (char)SVO_VERIACC2 >> (char)account.length() << account >> (short)id >> (char)type << getAccountError(status));
 
 	return true;
 }
@@ -1137,22 +1169,20 @@ bool ServerConnection::msgSVI_SERVERHQLEVEL(CString& pPacket)
 
 bool ServerConnection::msgSVI_SERVERINFO(CString& pPacket)
 {
-	unsigned short pid = pPacket.readGUShort();
+	unsigned short playerId = pPacket.readGUShort();
 	CString servername = pPacket.readString("");
 
-	//int id = 0;
-//	for (std::vector<ServerConnection*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
-//	{
-//		ServerConnection* server = *i;
-//		if (server == 0) continue;
-//		if (servername.comparei(server->getName()))
-//		{
-//			//sendPacket(CString() >> (char)SVO_SERVERINFO >> (short)pid << "playerworld" << CString((int)id) << ",\"" << server->getName() << "\"," << server->getIp() << "," << server->getPort());
-//			sendPacket(CString() >> (char)SVO_SERVERINFO >> (short)pid << (CString() << server->getName() << "\n" << server->getName() << "\n" << server->getIp() << "\n" << server->getPort()).gtokenizeI());
-//			return true;
-//		}
-//		//++id;
-//	}
+	auto serverList = _listServer->getConnections();
+	for (auto it = serverList.begin(); it != serverList.end(); ++it)
+	{
+		ServerConnection *server = *it;
+		if (servername.comparei(server->getName()))
+		{
+			CString serverPacket = CString(server->getName()) << "\n" << server->getName() << "\n" << server->getIp() << "\n" << server->getPort();
+			sendPacket(CString() >> (char)SVO_SERVERINFO >> (short)playerId << serverPacket.gtokenize());
+			break;
+		}
+	}
 
 	return true;
 }
@@ -1207,6 +1237,39 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 
 	// Output.
 	CString p;
+
+	if (type == "pmservers")
+	{
+		// Assemble the serverlist.
+		auto serverList = _listServer->getConnections();
+		for (auto it = serverList.begin(); it != serverList.end(); ++it)
+		{
+			ServerConnection *server = *it;
+			//if (server->getTypeVal() == TYPE_HIDDEN) continue;
+		
+			p << server->getName() << "\n";
+		}
+
+		// TODO(joey): Show hidden servers if friends are on them...?
+		//p << getOwnedServersPM(account);
+		p.gtokenizeI();
+	}
+	else if (type == "pmserverplayers")
+	{
+		// get servers
+		auto serverList = _listServer->getConnections();
+		for (auto it = serverList.begin(); it != serverList.end(); ++it)
+		{
+			ServerConnection *server = *it;
+			if (server->getName() == option)
+				p << server->getPlayers();
+		}
+	}
+
+	// Send the serverlist back to the server.
+	if (!p.isEmpty())
+		sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << CString(weapon << "\n" << type << "\n" << option << "\n").gtokenizeI() << "," << p);
+
 //	if (type == "lister")
 //	{
 //		if (option == "simpleserverlist")
