@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdlib.h>
 #include <time.h>
 #include "ListServer.h"
@@ -326,6 +327,25 @@ void ServerConnection::clearPlayerList()
 	for (auto it = playerList.begin(); it != playerList.end(); ++it)
 		delete *it;
 	playerList.clear();
+}
+
+void ServerConnection::sendTextForPlayer(ServerPlayer * player, const CString & data)
+{
+	assert(player);
+
+	CString dataPacket;
+	dataPacket.writeGChar(SVO_REQUESTTEXT);
+	dataPacket >> (short)player->getId() << data;
+	sendPacket(dataPacket);
+}
+
+void ServerConnection::updatePlayers()
+{
+	CString dataPacket;
+	dataPacket.writeGChar(SVO_SENDTEXT);
+	dataPacket << "Listserver,Modify,Server," << getName().gtokenize() << ",players=" << CString(getPCount());
+
+	_listServer->sendPacketToServers(dataPacket);
 }
 
 /*
@@ -864,7 +884,7 @@ bool ServerConnection::msgSVI_PLYRADD(CString& pPacket)
 	playerObject->setProps(propPacket);
 
 	// Update the database.
-	//updatePlayers();
+	updatePlayers();
 
 	return true;
 }
@@ -904,7 +924,7 @@ bool ServerConnection::msgSVI_PLYRREM(CString& pPacket)
 	}
 
 	// Update the database.
-	//updatePlayers();
+	updatePlayers();
 
 	return true;
 }
@@ -1224,141 +1244,81 @@ bool ServerConnection::msgSVI_PMPLAYER(CString& pPacket)
 
 bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 {
-	unsigned short pid = pPacket.readGUShort();
+	unsigned short playerId = pPacket.readGUShort();
 	CString packet = pPacket.readString("");
-	CString data = packet.guntokenize();
+	std::vector<CString> params = packet.gCommaStrTokens();
 
-	CString account = data.readString("\n");
-	CString weapon = data.readString("\n");
-	CString type = data.readString("\n");
-	CString option = data.readString("\n");
+	//printf("Test Data: %s\n", packet.text());
+	//for (int i = 0; i < params.size(); i++)
+	//	printf("Param %d: %s\n", (int)i, params[i].text());
 
-	// Output.
-	CString p;
-
-	if (type == "pmservers")
+	if (params.size() >= 3)
 	{
-		// Assemble the serverlist.
-		auto serverList = _listServer->getConnections();
-		for (auto it = serverList.begin(); it != serverList.end(); ++it)
-		{
-			ServerConnection *server = *it;
-			//if (server->getTypeVal() == TYPE_HIDDEN) continue;
+		// cant find the referenced player?
+		ServerPlayer *player = getPlayer(playerId);
 		
-			p << server->getName() << "\n";
-		}
-
-		// TODO(joey): Show hidden servers if friends are on them...?
-		//p << getOwnedServersPM(account);
-		p.gtokenizeI();
-	}
-	else if (type == "pmserverplayers")
-	{
-		// get servers
-		auto serverList = _listServer->getConnections();
-		for (auto it = serverList.begin(); it != serverList.end(); ++it)
+		if (player != nullptr)
 		{
-			ServerConnection *server = *it;
-			if (server->getName() == option)
-				p << server->getPlayers();
+			if (params[0] == "GraalEngine")
+			{
+				if (params[1] == "irc")
+				{
+					if (params.size() == 4)
+					{
+						if (params[2] == "join") // GraalEngine,irc,join,#channel,
+						{
+							CString sendMsg = "GraalEngine,irc,join,";
+							sendMsg << params[3].gtokenize();
+							sendTextForPlayer(player, sendMsg);
+							// listServer->addPlayerToChannel(player)
+						}
+						else if (params[2] == "part") // GraalEngine,irc,part,#channel,
+						{
+							CString sendMsg = "GraalEngine,irc,part,";
+							sendMsg << params[3].gtokenize();
+							sendTextForPlayer(player, sendMsg);
+							sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)playerId << sendMsg);
+							// listServer->removePlayerFromChannel(player)
+						}
+					}
+				}
+			}
+		}
+		
+		// Old stuff, forwards over.
+		if (params[1] == "pmservers")
+		{
+			CString sendMsg;
+			// Assemble the serverlist.
+			auto serverList = _listServer->getConnections();
+			for (auto it = serverList.begin(); it != serverList.end(); ++it)
+			{
+				ServerConnection *server = *it;
+				//if (server->getTypeVal() == TYPE_HIDDEN) continue;
+
+				sendMsg << server->getName() << "\n";
+			}
+
+			// TODO(joey): Show hidden servers if friends are on them...?
+			//p << getOwnedServersPM(account);
+			sendMsg.gtokenizeI();
+			sendTextForPlayer(player, sendMsg);
+		}
+		else if (params[1] == "pmserverplayers")
+		{
+			CString sendMsg;
+			// get servers
+			auto serverList = _listServer->getConnections();
+			for (auto it = serverList.begin(); it != serverList.end(); ++it)
+			{
+				ServerConnection *server = *it;
+				if (server->getName() == params[2])
+					sendMsg << server->getPlayers();
+			}
+			sendTextForPlayer(player, sendMsg);
 		}
 	}
 
-	// Send the serverlist back to the server.
-	if (!p.isEmpty())
-		sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << CString(weapon << "\n" << type << "\n" << option << "\n").gtokenizeI() << "," << p);
-
-//	if (type == "lister")
-//	{
-//		if (option == "simpleserverlist")
-//		{
-//			// Assemble the serverlist.
-//			for (std::vector<ServerConnection*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
-//			{
-//				ServerConnection* server = *i;
-//				if (server == 0) continue;
-//				if (server->getTypeVal() == TYPE_HIDDEN) continue;
-//
-//				CString p2;
-//				p2 << server->getName() << "\n";
-//				p2 << server->getType(PLV_POST22) << server->getName() << "\n";
-//				p2 << CString((int)server->getPCount()) << "\n";
-//				p2.gtokenizeI();
-//
-//				p << p2 << "\n";
-//			}
-//			p << getOwnedServers(account);
-//			p.gtokenizeI();
-//		}
-//		else if (option == "rebornlist")
-//		{
-//			CString cat0;
-//			CString cat1;
-//			CString cat2;
-//
-//			for (std::vector<ServerConnection*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
-//			{
-//				ServerConnection* server = *i;
-//				if (server == 0) continue;
-//				if (server->getTypeVal() == TYPE_HIDDEN) continue;
-//
-//				// Assemble the server packet.
-//				CString p2;
-//				p2 << server->getName() << "\n";
-//				p2 << server->getName() << "\n";
-//				p2 << CString((int)server->getPCount()) << "\n";
-//				p2.gtokenizeI();
-//
-//				// Put it in the proper category.
-//				if (server->getTypeVal() == TYPE_3D)
-//					cat0 << p2 << "\n";
-//				else if (server->getTypeVal() == TYPE_GOLD)
-//					cat0 << p2 << "\n";
-//				else if (server->getTypeVal() == TYPE_SILVER)
-//					cat1 << p2 << "\n";
-//				else if (server->getTypeVal() == TYPE_BRONZE)
-//					cat2 << p2 << "\n";
-//			}
-//
-//			// If a category is empty after traversing through the serverlist, use empty.
-//			CString empty("0\n0\n0\n");
-//			empty.gtokenizeI();
-//
-//			// Tokenize the categories.
-//			if (cat0.isEmpty()) cat0 << empty << "\n";
-//			cat0.gtokenizeI();
-//			if (cat1.isEmpty()) cat1 << empty << "\n";
-//			cat1.gtokenizeI();
-//			if (cat2.isEmpty()) cat2 << empty << "\n";
-//			cat2.gtokenizeI();
-//
-//			// Assembly the packet.
-//			p << cat0 << "\n" << cat1 << "\n" << cat2 << "\n";
-//			p.gtokenizeI();
-//		}
-//	}
-//	else if (type == "pmservers")
-//	{
-//		// Assemble the serverlist.
-//		for (std::vector<ServerConnection*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
-//		{
-//			ServerConnection* server = *i;
-//			if (server == 0) continue;
-//			if (server->getTypeVal() == TYPE_HIDDEN) continue;
-//
-//			p << server->getName() << "\n";
-//		}
-//		p << getOwnedServersPM(account);
-//		p.gtokenizeI();
-//	}
-//	else if (type == "pmserverplayers")
-//	{
-//		p << getServerPlayers(option);
-//	}
-//
-//	// Send the serverlist back to the server.
-//	if (!p.isEmpty())
-//		sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << CString(weapon << "\n" << type << "\n" << option << "\n").gtokenizeI() << "," << p);
 	return true;
 }
 
@@ -1417,7 +1377,7 @@ bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
 {
 	CString textData = pPacket.readString("");
 	CString data = textData.guntokenize();
-	std::vector<CString> params = data.tokenize("\n");
+	std::vector<CString> params = textData.gCommaStrTokens();
 
 	if (params.size() >= 3)
 	{

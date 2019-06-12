@@ -38,6 +38,7 @@ enum class SocketType
 	IRC
 };
 
+class ServerPlayer;
 class ListServer
 {
 public:
@@ -60,6 +61,11 @@ public:
 	std::optional<PlayerProfile> getProfile(const std::string& account) const;
 	bool setProfile(const PlayerProfile& profile);
 
+	//void sendText(const CString& data);
+	//void sendText(const std::vector<CString>& stringList);
+
+	void sendPacketToServers(const CString& packet, ServerConnection *sender = nullptr) const;
+	
 	void setRunning(bool status)
 	{
 		std::lock_guard<std::mutex> guard(pc);

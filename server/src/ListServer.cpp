@@ -1,9 +1,11 @@
 #include <chrono>
 #include <thread>
+#include <assert.h>
 #include "ListServer.h"
 #include "PlayerConnection.h"
 #include "IrcConnection.h"
 #include "ServerConnection.h"
+#include "ServerPlayer.h"
 
 #ifndef NO_MYSQL
 #include "MySQLBackend.h"
@@ -240,3 +242,12 @@ bool ListServer::Main()
 	return true;
 }
 
+void ListServer::sendPacketToServers(const CString & packet, ServerConnection * sender) const
+{
+	for (auto it = _serverConnections.begin(); it != _serverConnections.end(); ++it)
+	{
+		ServerConnection *conn = *it;
+		if (conn != sender)
+			conn->sendPacket(packet);
+	}
+}
