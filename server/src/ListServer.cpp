@@ -2,6 +2,7 @@
 #include <thread>
 #include "ListServer.h"
 #include "PlayerConnection.h"
+#include "IrcConnection.h"
 #include "ServerConnection.h"
 
 #ifndef NO_MYSQL
@@ -33,6 +34,16 @@ InitializeError ListServer::Initialize()
 
 	// Load server types
 	//_serverTypes = CString::loadToken("servertypes.txt", "\n", true);
+
+	// Bind the irc socket
+	_ircSock.setType(SOCKET_TYPE_SERVER);
+	_ircSock.setProtocol(SOCKET_PROTOCOL_TCP);
+	_ircSock.setDescription("ircSock");
+
+	if (_ircSock.init(0, "6667"))
+		return InitializeError::IrcSock_Init;
+	if (_ircSock.connect())
+		return InitializeError::IrcSock_Listen;
 
 	// Bind the server socket
 	CString serverInterface = _settings.getStr("gserverInterface");
@@ -93,9 +104,15 @@ void ListServer::Cleanup()
 		delete *it;
 	_serverConnections.clear();
 
+	// Delete the irc clients
+	for (auto it = _ircConnections.begin(); it != _ircConnections.end(); ++it)
+		delete *it;
+	_ircConnections.clear();
+
 	// Disconnect sockets
 	_serverSock.disconnect();
 	_playerSock.disconnect();
+	_ircSock.disconnect();
 
 	if (_dataStore)
 	{
@@ -144,6 +161,10 @@ void ListServer::acceptSock(CSocket& socket, SocketType socketType)
 			_serverConnections.push_back(new ServerConnection(this, newSock));
 			break;
 
+		case SocketType::IRC:
+			_ircConnections.push_back(new IrcConnection(this, newSock));
+			break;
+
 		default:
 			newSock->disconnect();
 			delete newSock;
@@ -166,6 +187,7 @@ bool ListServer::Main()
 		// accept sockets
 		acceptSock(_playerSock, SocketType::Player);
 		acceptSock(_serverSock, SocketType::Server);
+		acceptSock(_ircSock, SocketType::IRC);
 
 		// iterate player connections
 		for (auto it = _playerConnections.begin(); it != _playerConnections.end();)
@@ -190,6 +212,19 @@ bool ListServer::Main()
 			{
 				delete conn;
 				it = _serverConnections.erase(it);
+			}
+		}
+
+		// iterate irc connections
+		for (auto it = _ircConnections.begin(); it != _ircConnections.end();)
+		{
+			IrcConnection *conn = *it;
+			if (conn->doMain())
+				++it;
+			else
+			{
+				delete conn;
+				it = _ircConnections.erase(it);
 			}
 		}
 

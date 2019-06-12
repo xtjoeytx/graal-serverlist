@@ -90,6 +90,12 @@ const char * getErrorString(InitializeError error)
 		case InitializeError::PlayerSock_Listen:
 			return "Could not listen on player socket";
 
+		case InitializeError::IrcSock_Init:
+			return "Could not initialize irc socket";
+
+		case InitializeError::IrcSock_Listen:
+			return "Could not listen on irc socket";
+
 		case InitializeError::Backend_Error:
 			return "Could not connect to backend";
 

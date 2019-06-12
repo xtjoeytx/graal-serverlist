@@ -15,6 +15,7 @@
 //class IDataBackend;
 class PlayerConnection;
 class ServerConnection;
+class IrcConnection;
 
 enum class InitializeError
 {
@@ -24,6 +25,8 @@ enum class InitializeError
 	ServerSock_Listen,
 	PlayerSock_Init,
 	PlayerSock_Listen,
+	IrcSock_Init,
+	IrcSock_Listen,
 	Backend_Error
 };
 
@@ -31,7 +34,8 @@ enum class SocketType
 {
 	PlayerOld,
 	Player,
-	Server
+	Server,
+	IRC
 };
 
 class ListServer
@@ -50,6 +54,7 @@ public:
 	
 	const CString& getServerlistPacket() const { return CString(); }
 	std::vector<ServerConnection *> & getConnections() { return _serverConnections; }
+	std::vector<IrcConnection *> & getIrcConnections() { return _ircConnections; }
 	AccountStatus verifyAccount(const std::string& account, const std::string& password) const;
 	GuildStatus verifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) const;
 	std::optional<PlayerProfile> getProfile(const std::string& account) const;
@@ -69,10 +74,11 @@ private:
 	CLog _clientLog;
 	CLog _serverLog;
 	CSettings _settings;
-	CSocket _playerSock, _serverSock;
+	CSocket _playerSock, _serverSock, _ircSock;
 	std::string _homePath;
 
 	std::vector<PlayerConnection *> _playerConnections;
+	std::vector<IrcConnection *> _ircConnections;
 	std::vector<ServerConnection *> _serverConnections;
 
 	IDataBackend *_dataStore;
