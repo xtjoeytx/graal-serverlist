@@ -167,9 +167,6 @@ bool ListServer::Main()
 		acceptSock(_playerSock, SocketType::Player);
 		acceptSock(_serverSock, SocketType::Server);
 
-		// Update our socket manager.
-		//_socketManager.update(0, 5000);		// 5ms
-
 		// iterate player connections
 		for (auto it = _playerConnections.begin(); it != _playerConnections.end();)
 		{
@@ -195,7 +192,6 @@ bool ListServer::Main()
 				it = _serverConnections.erase(it);
 			}
 		}
-
 
 		// do whatever
 

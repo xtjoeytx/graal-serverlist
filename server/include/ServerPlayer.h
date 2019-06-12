@@ -101,16 +101,16 @@ public:
 	ServerPlayer();
 	~ServerPlayer();
 
-	unsigned short getId() const { return _id; }
-	int getClientType() const { return _clientType; }
-	double getPlayerX() const { return _x; }
-	double getPlayerY() const { return _y; }
-	int getAlignmentPoints() const { return _alignment; }
-	const std::string& getAccountName() const { return _accountName; }
-	const std::string& getLevelName() const { return _levelName; }
-	const std::string& getNickName() const { return _nickName; }
+	unsigned short getId() const				{ return _id; }
+	unsigned char getClientType() const			{ return _clientType; }
+	double getPlayerX() const					{ return _x; }
+	double getPlayerY() const					{ return _y; }
+	int getAlignmentPoints() const				{ return _alignment; }
+	const std::string& getAccountName() const	{ return _accountName; }
+	const std::string& getLevelName() const		{ return _levelName; }
+	const std::string& getNickName() const		{ return _nickName; }
 
-	void setClientType(int type) { _clientType = type; }
+	void setClientType(unsigned char type) { _clientType = type; }
 	void setNickName(const std::string& nickname) { _nickName = nickname; }
 
 	// Prop manipulation
@@ -118,7 +118,7 @@ public:
 
 protected:
 	unsigned short _id;
-	int _clientType;
+	unsigned char _clientType;
 	double _x, _y;
 	int _alignment;
 	std::string _accountName, _nickName;

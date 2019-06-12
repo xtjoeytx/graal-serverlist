@@ -81,13 +81,14 @@ void createServerPtrTable()
 	serverFunctionTable[SVI_REQUESTSVRINFO] = &ServerConnection::msgSVI_REQUESTSVRINFO;
 	serverFunctionTable[SVI_REQUESTBUDDIES] = &ServerConnection::msgSVI_REQUESTBUDDIES;
 	serverFunctionTable[SVI_REGISTERV3] = &ServerConnection::msgSVI_REGISTERV3;
+	serverFunctionTable[SVI_SENDTEXT] = &ServerConnection::msgSVI_SENDTEXT;
 }
 
 /*
 	Constructor - Deconstructor
 */
 ServerConnection::ServerConnection(ListServer *listServer, CSocket *pSocket)
-: _listServer(listServer), sock(pSocket), addedToSQL(false), isServerHQ(false),
+: _listServer(listServer), _socket(pSocket), addedToSQL(false), isServerHQ(false),
 serverhq_level(1), server_version(VERSION_1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), rawPacketSize(0)
 {
 	static bool _setupServerPackets = false;
@@ -104,8 +105,6 @@ serverhq_level(1), server_version(VERSION_1), _fileQueue(pSocket), new_protocol(
 
 ServerConnection::~ServerConnection()
 {
-	printf("Disconnected\n");
-
 	// Clear Playerlist
 	clearPlayerList();
 
@@ -122,7 +121,7 @@ ServerConnection::~ServerConnection()
 //	mySQL->add_simple_query(query.text());
 
 	// delete socket
-	delete sock;
+	delete _socket;
 }
 
 /*
@@ -131,16 +130,16 @@ ServerConnection::~ServerConnection()
 bool ServerConnection::doMain()
 {
 	// sock exist?
-	if (sock == NULL)
+	if (_socket == NULL)
 		return false;
 
 	// Grab the data from the socket and put it into our receive buffer.
 	unsigned int size = 0;
-	char* data = sock->getData(&size);
+	char* data = _socket->getData(&size);
 
 	if (size != 0)
 		sockBuffer.write(data, size);
-	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
+	else if (_socket->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
 	
 	if (!sockBuffer.isEmpty())
@@ -347,7 +346,7 @@ void ServerConnection::sendCompress()
 		if (outBuffer.isEmpty() == false)
 		{
 			unsigned int dsize = outBuffer.length();
-			outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
+			outBuffer.removeI(0, _socket->sendData(outBuffer.text(), &dsize));
 		}
 		return;
 	}
@@ -357,7 +356,7 @@ void ServerConnection::sendCompress()
 
 	// send buffer
 	unsigned int dsize = outBuffer.length();
-	outBuffer.removeI(0, sock->sendData(outBuffer.text(), &dsize));
+	outBuffer.removeI(0, _socket->sendData(outBuffer.text(), &dsize));
 
 	// clear buffer
 	sendBuffer.clear();
@@ -407,7 +406,6 @@ bool ServerConnection::parsePacket(CString& pPacket)
 		// valid packet, call function
 		bool ret = (*this.*serverFunctionTable[id])(curPacket);
 		if (!ret) {
-			printf("Return value: %d\n", ret);
 			//		serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, name.text());
 		}
 
@@ -573,7 +571,7 @@ bool ServerConnection::msgSVI_SETURL(CString& pPacket)
 bool ServerConnection::msgSVI_SETIP(CString& pPacket)
 {
 	ip = pPacket.readString("");
-	ip = (ip == "AUTO" ? sock->getRemoteIp() : ip);
+	ip = (ip == "AUTO" ? _socket->getRemoteIp() : ip);
 	//SQLupdate("ip", ip);
 	return true;
 }
@@ -890,7 +888,7 @@ bool ServerConnection::msgSVI_PLYRREM(CString& pPacket)
 	}
 	else
 	{
-		int type = pPacket.readGUChar();
+		unsigned char type = pPacket.readGUChar();
 		std::string accountName = pPacket.readString("").text();
 
 		for (auto it = playerList.begin(); it != playerList.end();)
@@ -1230,6 +1228,11 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 	CString packet = pPacket.readString("");
 	CString data = packet.guntokenize();
 
+	printf("REQUESTLIST:%s\n", packet.text());
+	std::vector<CString> params = data.tokenize("\n");
+	for (size_t i = 0; i < params.size(); ++i)
+		printf("\tParam %zd: %s\n", i, params[i].text());
+
 	CString account = data.readString("\n");
 	CString weapon = data.readString("\n");
 	CString type = data.readString("\n");
@@ -1412,6 +1415,39 @@ bool ServerConnection::msgSVI_REGISTERV3(CString& pPacket)
 	new_protocol = true;
 	_fileQueue.setCodec(ENCRYPT_GEN_2, 0);
 	version = pPacket.readString("");
+	return true;
+}
+
+bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
+{
+	CString textData = pPacket.readString("");
+	CString data = textData.guntokenize();
+	std::vector<CString> params = data.tokenize("\n");
+
+	if (params.size() >= 3)
+	{
+		if (params[0] == "GraalEngine")
+		{
+			if (params[1] == "irc")
+			{
+				if (params.size() == 6 && params[2] == "privmsg")
+				{
+					CString forwardPacket;
+					forwardPacket.writeGChar(SVO_SENDTEXT);
+					forwardPacket << textData;
+
+					auto serverList = _listServer->getConnections();
+					for (auto it = serverList.begin(); it != serverList.end(); ++it)
+					{
+						ServerConnection *server = *it;
+						if (server != this)
+							server->sendPacket(forwardPacket);
+					}
+				}
+			}
+		}
+	}
+
 	return true;
 }
 

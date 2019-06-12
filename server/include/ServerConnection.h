@@ -41,6 +41,7 @@ enum
 	SVI_REQUESTBUDDIES  = 28,
 	SVI_PMPLAYER		= 29,
 	SVI_REGISTERV3		= 30,
+	SVI_SENDTEXT		= 31,
 	SVI_PACKETCOUNT,
 };
 
@@ -66,6 +67,7 @@ enum
 	SVO_FILEEND3		= 17,
 	SVO_SERVERINFO		= 18,
 	SVO_REQUESTTEXT		= 19,
+	SVO_SENDTEXT		= 20,
 	SVO_PMPLAYER		= 29,
 	SVO_NEWSERVER		= 30,
 	SVO_DELSERVER		= 31,
@@ -123,7 +125,7 @@ class ServerConnection
 		const CString& getVersion() { return version; }
 		const CString getServerPacket(int PLVER, const CString& pIp = "");
 		int getLastData()	{ return (int)difftime( time(0), lastData ); }
-		CSocket* getSock()	{ return sock; }
+		CSocket* getSock()	{ return _socket; }
 
 		ServerPlayer * getPlayer(unsigned short id) const;
 		ServerPlayer * getPlayer(const std::string& account, int type) const;
@@ -165,13 +167,19 @@ class ServerConnection
 		bool msgSVI_REQUESTLIST(CString& pPacket);
 		bool msgSVI_REQUESTSVRINFO(CString& pPacket);
 		bool msgSVI_REGISTERV3(CString & pPacket);
-		bool msgSVI_REQUESTLIST2(CString& pPacket);
+		bool msgSVI_SENDTEXT(CString& pPacket);
 		bool msgSVI_REQUESTBUDDIES(CString& pPacket);
 		bool msgSVI_PMPLAYER(CString& pPacket);
 
 	private:
 		ListServer *_listServer;
-		CSocket *sock;
+		CSocket *_socket;
+		
+		// Packet protocol
+		bool nextIsRaw;
+		int rawPacketSize;
+		bool new_protocol;
+		CFileQueue _fileQueue;
 		CString sendBuffer, sockBuffer, outBuffer;
 
 		CString description, ip, language, name, port, url, version, localip;
@@ -182,11 +190,6 @@ class ServerConnection
 		CString serverhq_pass;
 		unsigned char serverhq_level;
 		int server_version;
-		
-		bool nextIsRaw;
-		int rawPacketSize;
-		bool new_protocol;
-		CFileQueue _fileQueue;
 };
 
 #endif // TSERVER_H
