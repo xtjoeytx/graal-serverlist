@@ -350,15 +350,15 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 
 		if (params[0].toLower() == "nick")
 		{
-			nickname = params[1];
+			nickname = params[1].trim();
 		}
 		else if (params[0].toLower() == "pass")
 		{
-			password = params[1];
+			password = params[1].trim();
 		}
 		else if (params[0].toLower() == "user")
 		{
-			account = params[1];
+			account = params[1].trim();
 			_accountStatus = _listServer->verifyAccount(account.text(), password.text());
 			sendPacket(":" + nickname + " NICK " + account);
 			nickname = "" + account;
@@ -371,7 +371,7 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 					sendPacket(":" + nickname + " JOIN #graal");
 					break;
 				default:
-					sendPacket(":" + _listServerAddress + " KILL " + nickname + " You are banned!");
+					sendPacket(":" + _listServerAddress + " KILL " + nickname + " Unable to identify account: " + (int)AccountStatus::Normal);
 					_socket->disconnect();
 					break;
 			}
