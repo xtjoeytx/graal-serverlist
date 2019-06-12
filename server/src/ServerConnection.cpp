@@ -344,7 +344,6 @@ void ServerConnection::updatePlayers()
 	CString dataPacket;
 	dataPacket.writeGChar(SVO_SENDTEXT);
 	dataPacket << "Listserver,Modify,Server," << getName().gtokenize() << ",players=" << CString(getPCount());
-
 	_listServer->sendPacketToServers(dataPacket);
 }
 
@@ -1270,15 +1269,18 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							CString sendMsg = "GraalEngine,irc,join,";
 							sendMsg << params[3].gtokenize();
 							sendTextForPlayer(player, sendMsg);
-							// listServer->addPlayerToChannel(player)
+
+							//std::string channel = params[3].guntokenize().text();
+							//listServer->addPlayerToChannel(player, channel);
 						}
 						else if (params[2] == "part") // GraalEngine,irc,part,#channel,
 						{
 							CString sendMsg = "GraalEngine,irc,part,";
 							sendMsg << params[3].gtokenize();
 							sendTextForPlayer(player, sendMsg);
-							sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)playerId << sendMsg);
-							// listServer->removePlayerFromChannel(player)
+
+							//std::string channel = params[3].guntokenize().text();
+							//listServer->removePlayerFromChannel(player, channel);
 						}
 					}
 				}
@@ -1387,6 +1389,12 @@ bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
 			{
 				if (params.size() == 6 && params[2] == "privmsg")
 				{
+					// TODO(joey): Implement this, and move the forwarding below
+					// std::string from = params[3].text();
+					// std::string channel = params[4].text();
+					// std::string message = params[5].text();
+					// _listServer->sendTextToChannel(channel, from, message);
+
 					CString forwardPacket;
 					forwardPacket.writeGChar(SVO_SENDTEXT);
 					forwardPacket << textData;
