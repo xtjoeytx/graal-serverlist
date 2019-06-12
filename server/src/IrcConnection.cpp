@@ -327,7 +327,7 @@ bool IrcConnection::parsePacket(CString& pPacket)
 		printf("\tIrc Packet In: %s (%d)\n", curPacket.trim().text(), curPacket.trim().length());
 
 		// valid packet, call function
-		bool ret = (*this.*ircFunctionTable[IRCI_SENDTEXT])(curPacket.trim());
+		bool ret = (*this.*ircFunctionTable[IRCI_SENDTEXT])(curPacket);
 		if (!ret) {
 			//		serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, name.text());
 		}
@@ -342,7 +342,7 @@ bool IrcConnection::parsePacket(CString& pPacket)
 
 bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 {
-	std::vector<CString> params = pPacket.tokenize(" ");
+	std::vector<CString> params = pPacket.trim().tokenize(" ");
 
 	if (params.size() >= 0 && _accountStatus != AccountStatus::Normal)
 	{
