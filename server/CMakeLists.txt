@@ -29,6 +29,7 @@ set(
 		src/ServerPlayer.cpp
 		src/PlayerConnection.cpp
 		src/ServerConnection.cpp
+		src/IrcConnection.cpp
 )
 
 set(
@@ -40,6 +41,7 @@ set(
 		include/ServerPlayer.h
 		include/PlayerConnection.h
 		include/ServerConnection.h
+		include/IrcConnection.h
 )
 
 include_directories(
