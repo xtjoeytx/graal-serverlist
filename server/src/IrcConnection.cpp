@@ -324,10 +324,10 @@ bool IrcConnection::parsePacket(CString& pPacket)
 		// read id & packet
 		//auto id = curPacket.readString(" ").text();
 
-		printf("\tIrc Packet In: %s (%d)\n", curPacket.text(), curPacket.length());
+		printf("\tIrc Packet In: %s (%d)\n", curPacket.trim().text(), curPacket.trim().length());
 
 		// valid packet, call function
-		bool ret = (*this.*ircFunctionTable[IRCI_SENDTEXT])(curPacket);
+		bool ret = (*this.*ircFunctionTable[IRCI_SENDTEXT])(curPacket.trim());
 		if (!ret) {
 			//		serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, name.text());
 		}
@@ -350,15 +350,15 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 
 		if (params[0].toLower() == "nick")
 		{
-			nickname = params[1].trim();
+			nickname = params[1];
 		}
 		else if (params[0].toLower() == "pass")
 		{
-			password = params[1].trim();
+			password = params[1];
 		}
 		else if (params[0].toLower() == "user")
 		{
-			account = params[1].trim();
+			account = params[1];
 			_accountStatus = _listServer->verifyAccount(account.text(), password.text());
 			sendPacket(":" + nickname + " NICK " + account);
 			nickname = "" + account;
