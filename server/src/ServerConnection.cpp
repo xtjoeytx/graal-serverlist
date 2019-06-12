@@ -1228,11 +1228,6 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 	CString packet = pPacket.readString("");
 	CString data = packet.guntokenize();
 
-	printf("REQUESTLIST:%s\n", packet.text());
-	std::vector<CString> params = data.tokenize("\n");
-	for (size_t i = 0; i < params.size(); ++i)
-		printf("\tParam %zd: %s\n", i, params[i].text());
-
 	CString account = data.readString("\n");
 	CString weapon = data.readString("\n");
 	CString type = data.readString("\n");
