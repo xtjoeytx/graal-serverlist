@@ -379,7 +379,11 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 	}
 	else if (params.size() >= 0 && _accountStatus == AccountStatus::Normal)
 	{
-		if (params[0].toLower() == "privmsg")
+		if (params[0].toLower() == "join")
+		{
+			sendPacket(":" + nickname + " JOIN " + params[1]);
+		}
+		else if (params[0].toLower() == "privmsg")
 		{
 			CString forwardPacket;
 			forwardPacket.writeGChar(IRCO_SENDTEXT);
