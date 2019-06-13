@@ -664,6 +664,8 @@ bool ServerConnection::msgSVI_SETPLYR(CString& pPacket)
 	}
 	else
 	{
+		int oldPlayerCount = getPCount();
+
 		// Clear the playerlist
 		clearPlayerList();
 
@@ -696,8 +698,9 @@ bool ServerConnection::msgSVI_SETPLYR(CString& pPacket)
 			playerList.push_back(playerObject);
 		}
 
-		// Update the database.
-		updatePlayers();
+		// Update the players.
+		if (oldPlayerCount != count)
+			updatePlayers();
 	}
 
 	return true;
