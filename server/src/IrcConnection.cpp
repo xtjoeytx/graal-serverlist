@@ -381,6 +381,7 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 	{
 		if (params[0].toLower() == "join")
 		{
+			sendPacket(":" + _ircPlayer->getAccountName() + " JOIN " + params[1]);
 			_listServer->addPlayerToChannel(params[1].text(), _ircPlayer);
 		}
 		else if (params[0].toLower() == "part")
