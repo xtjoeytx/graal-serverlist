@@ -54,7 +54,6 @@ std::string getBasePath()
 	char path[260];
 	memset((void*)path, 0, 260);
 	readlink("/proc/self/exe", path, sizeof(path));
-	printf("Test path: %s\n", path);
 
 	// Assign the path to homepath.
 	char* end = strrchr(path, '/');
