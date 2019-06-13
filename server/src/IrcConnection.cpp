@@ -37,6 +37,7 @@ serverhq_level(1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), r
 		_setupServerPackets = true;
 	}
 	_listServerAddress = _listServer->getSettings().getStr("listServerAddress");
+	_ircPlayer = new ServerPlayer(this);
 	_accountStatus = AccountStatus::NotFound;
 	_fileQueue.setCodec(ENCRYPT_GEN_1, 0);
 	language = "English";
@@ -48,17 +49,6 @@ IrcConnection::~IrcConnection()
 	// Clear Playerlist
 	clearPlayerList();
 
-//	// Update our uptime.
-//	if (isServerHQ)
-//	{
-//		int uptime = (int)difftime(time(0), lastUptimeCheck);
-//		CString query = CString("UPDATE `") << settings->getStr("serverhq") << "` SET uptime=uptime+" << CString((int)uptime) << " WHERE name='" << name.escape() << "'";
-//		mySQL->add_simple_query(query.text());
-//	}
-//
-//	// Delete server from SQL serverlist.
-//	CString query = CString("DELETE FROM ") << settings->getStr("serverlist") << " WHERE name='" << name.escape() << "'";
-//	mySQL->add_simple_query(query.text());
 
 	// delete socket
 	delete _socket;
@@ -211,6 +201,11 @@ const CString IrcConnection::getType(int PLVER)
 	return ret;
 }
 
+bool IrcConnection::sendMessage(const std::string& channel, const std::string& from, const std::string& message)
+{
+    sendPacket(":" + from + " PRIVMSG " + channel + " :" + message);
+}
+
 const CString IrcConnection::getServerPacket(int PLVER, const CString& pIp)
 {
 	CString testIp = getIp(pIp);
@@ -352,7 +347,7 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 	{
 		if (params[0].toLower() == "nick")
 		{
-			nickname = params[1];
+            _ircPlayer->setNickName(params[1].text());
 		}
 		else if (params[0].toLower() == "pass")
 		{
@@ -360,38 +355,42 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 		}
 		else if (params[0].toLower() == "user")
 		{
-			account = params[1];
-			_accountStatus = _listServer->verifyAccount(account.text(), password.text());
-			sendPacket(":" + nickname + " NICK " + account);
-			nickname = "" + account;
+			_ircPlayer->setProps(CString() >> (char)PLPROP_ACCOUNTNAME >> (char)params[1].length() << params[1]);
 
-			switch (_accountStatus)
-			{
-				case AccountStatus::Normal:
-					sendPacket(":" + _listServerAddress + " 001 " + nickname + " :Welcome to " + _listServer->getSettings().getStr("name") + ", " + account + ".");
-					sendPacket(":" + _listServerAddress + " 001 " + nickname + " :Your account: " + account + ", password: " + password);
-					sendPacket(":" + nickname + " JOIN #graal");
-					break;
-				default:
-					sendPacket(":" + _listServerAddress + " KILL " + nickname + " Unable to identify account: " + (int)AccountStatus::Normal);
-					_socket->disconnect();
-					break;
-			}
+			sendPacket(":" + _ircPlayer->getNickName() + " NICK " + _ircPlayer->getAccountName());
+            _ircPlayer->setNickName(_ircPlayer->getAccountName());
 		}
+
+		if (_ircPlayer->getAccountName() != "" && password != "")
+        {
+            _accountStatus = _listServer->verifyAccount(_ircPlayer->getAccountName(), password.text());
+            switch (_accountStatus)
+            {
+                case AccountStatus::Normal:
+                    sendPacket(":" + _listServerAddress + " 001 " + _ircPlayer->getAccountName() + " :Welcome to " + _listServer->getSettings().getStr("name") + ", " + _ircPlayer->getAccountName() + "!");
+                    sendPacket(":" + _listServerAddress + " 001 " + _ircPlayer->getAccountName() + " :Your account: " + _ircPlayer->getAccountName() + ", password: " + password);
+                    break;
+                default:
+                    sendPacket(":" + _listServerAddress + " KILL " + _ircPlayer->getAccountName() + " Unable to identify account: " + (int)_accountStatus);
+                    _socket->disconnect();
+                    break;
+            }
+        }
 	}
 	else if (params.size() >= 0 && _accountStatus == AccountStatus::Normal)
 	{
 		if (params[0].toLower() == "join")
 		{
-			sendPacket(":" + nickname + " JOIN " + params[1]);
+			_listServer->addPlayerToChannel(params[1].text(), _ircPlayer);
 		}
+		else if (params[0].toLower() == "part")
+        {
+            _listServer->removePlayerFromChannel(params[1].text(), _ircPlayer);
+        }
 		else if (params[0].toLower() == "privmsg")
 		{
-			CString forwardPacket;
-			forwardPacket.writeGChar(SVO_SENDTEXT);
 			CString message = pPacket.subString(pPacket.readString(":").length()+1);
-			forwardPacket << "GraalEngine,irc,privmsg," << account.gtokenize() << "," << params[1].gtokenize() << "," << message.gtokenize();
-			_listServer->sendPacketToServers(forwardPacket);
+			_listServer->sendTextToChannel(params[1].text(), _ircPlayer->getAccountName(), message.text());
 		}
 	}
 

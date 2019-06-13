@@ -44,7 +44,7 @@ set(
 		include/PlayerConnection.h
 		include/ServerConnection.h
 		include/IrcConnection.h
-)
+        include/IrcStub.h)
 
 include_directories(
     # Include the CMake-generated version header from the build directory

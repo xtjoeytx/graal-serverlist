@@ -300,3 +300,10 @@ void ListServer::sendPacketToServers(const CString & packet, ServerConnection * 
 			conn->sendPacket(packet);
 	}
 }
+
+void ListServer::sendMessage(std::string channel, ServerPlayer *from, std::string message) {
+	auto sendChannel = getChannel(channel);
+	if (sendChannel != nullptr)
+		sendChannel->sendMessage(from->getAccountName(), message);
+
+}

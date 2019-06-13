@@ -7,6 +7,7 @@
 #include "CEncryption.h"
 #include "CFileQueue.h"
 #include "IDataBackend.h" // for AccountStatus
+#include "IrcStub.h"
 
 enum
 {
@@ -23,7 +24,7 @@ class ListServer;
 class ServerConnection;
 class ServerPlayer;
 
-class IrcConnection
+class IrcConnection : IrcStub
 {
 	public:
 		// constructor-destructor
@@ -55,8 +56,9 @@ class IrcConnection
 		ServerPlayer * getPlayer(unsigned short id) const;
 		ServerPlayer * getPlayer(const std::string& account, int type) const;
 		void clearPlayerList();
+		bool sendMessage(const std::string& channel, const std::string& from, const std::string& message);
 
-		// send-packet functions
+    // send-packet functions
 		void sendCompress();
 		void sendPacket(CString pPacket, bool pSendNow = false);
 
@@ -68,6 +70,7 @@ class IrcConnection
 	private:
 		ListServer *_listServer;
 		CSocket *_socket;
+		ServerPlayer *_ircPlayer;
 		
 		// Packet protocol
 		bool nextIsRaw;
@@ -82,9 +85,8 @@ class IrcConnection
 		time_t lastPing, lastData, lastPlayerCount, lastUptimeCheck;
 		bool addedToSQL;
 		bool isServerHQ;
-		CString password, nickname, account, hostname;
+		CString password, hostname;
 		unsigned char serverhq_level;
-		int server_version;
 };
 
 #endif // TIRC_H

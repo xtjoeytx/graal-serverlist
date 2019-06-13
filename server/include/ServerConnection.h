@@ -6,6 +6,7 @@
 #include "CString.h"
 #include "CEncryption.h"
 #include "CFileQueue.h"
+#include "IrcStub.h"
 
 enum
 {
@@ -98,7 +99,7 @@ enum
 class ListServer;
 class ServerPlayer;
 
-class ServerConnection
+class ServerConnection : IrcStub
 {
 	public:
 		// constructor-destructor
@@ -129,9 +130,12 @@ class ServerConnection
 
 		ServerPlayer * getPlayer(unsigned short id) const;
 		ServerPlayer * getPlayer(const std::string& account, int type) const;
+
 		void clearPlayerList();
 		void sendTextForPlayer(ServerPlayer *player, const CString & data);
 		void updatePlayers();
+		bool sendMessage(const std::string& channel, const std::string& from, const std::string& message);
+
 
 		// send-packet functions
 		void sendCompress();

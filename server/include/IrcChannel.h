@@ -36,8 +36,6 @@ public:
 
 private:
 	std::string _channelName;
-	std::vector<ServerConnection *> _serverSubscribers;
-	std::vector<IrcConnection *> _ircSubscribers;
 	std::unordered_set<ServerPlayer *> _users;
 };
 

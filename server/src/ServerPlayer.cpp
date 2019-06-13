@@ -6,6 +6,13 @@ ServerPlayer::ServerPlayer()
 
 }
 
+ServerPlayer::ServerPlayer(IrcStub *ircCommunication)
+        : _ircCommunication(ircCommunication), _id(0), _clientType(0), _x(0.0), _y(0.0), _alignment(0)
+{
+
+}
+
+
 ServerPlayer::~ServerPlayer()
 {
 

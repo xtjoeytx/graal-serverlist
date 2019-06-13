@@ -4,6 +4,7 @@
 #define SERVERPLAYER_H
 
 #include "CString.h"
+#include "IrcStub.h"
 
 enum
 {
@@ -99,10 +100,14 @@ class ServerPlayer
 {
 public:
 	ServerPlayer();
-	~ServerPlayer();
+
+    ServerPlayer(IrcStub *ircCommunication);
+
+    ~ServerPlayer();
 
 	unsigned short getId() const				{ return _id; }
 	unsigned char getClientType() const			{ return _clientType; }
+    IrcStub *getIrcCommunication()         	    { return _ircCommunication; }
 	double getPlayerX() const					{ return _x; }
 	double getPlayerY() const					{ return _y; }
 	int getAlignmentPoints() const				{ return _alignment; }
@@ -117,6 +122,7 @@ public:
 	void setProps(CString& pPacket);
 
 protected:
+    IrcStub *_ircCommunication;
 	unsigned short _id;
 	unsigned char _clientType;
 	double _x, _y;

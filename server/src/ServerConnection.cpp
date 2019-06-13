@@ -131,6 +131,14 @@ ServerConnection::~ServerConnection()
 	delete _socket;
 }
 
+bool ServerConnection::sendMessage(const std::string& channel, const std::string& from, const std::string& message)
+{
+	CString forwardPacket;
+	forwardPacket.writeGChar(SVO_SENDTEXT);
+	forwardPacket << "GraalEngine,irc,privmsg,";
+	forwardPacket << CString(from).gtokenize() << "," << CString(channel).gtokenize() << "," << CString(message).gtokenize();
+	sendPacket(forwardPacket);
+}
 /*
 	Loops
 */
@@ -1427,7 +1435,8 @@ bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
 					std::string from = params[3].text();
 					std::string channel = params[4].text();
 					std::string message = params[5].text();
-					_listServer->sendTextToChannel(channel, from, message, this);
+					ServerPlayer *player = getPlayer(from, 0);
+					_listServer->sendMessage(channel, player, message);
 				}
 			}
 		}

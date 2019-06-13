@@ -83,6 +83,8 @@ public:
 		_running = status;
 	}
 
+	void sendMessage(std::string channel, ServerPlayer *from, std::string message);
+
 private:
 	std::mutex pc;
 
