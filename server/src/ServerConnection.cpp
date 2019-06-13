@@ -695,7 +695,7 @@ bool ServerConnection::msgSVI_SETPLYR(CString& pPacket)
 			propPacket >> (char)PLPROP_ALIGNMENT >> (char)alignment;
 
 			// Create the player object
-			ServerPlayer *playerObject = new ServerPlayer();
+			ServerPlayer *playerObject = new ServerPlayer(this);
 			playerObject->setClientType(type);
 			playerObject->setProps(propPacket);
 			playerList.push_back(playerObject);
@@ -905,7 +905,7 @@ bool ServerConnection::msgSVI_PLYRADD(CString& pPacket)
 	// Create a new player
 	if (playerObject == nullptr)
 	{
-		playerObject = new ServerPlayer();
+		playerObject = new ServerPlayer(this);
 		playerList.push_back(playerObject);
 	}
 	
