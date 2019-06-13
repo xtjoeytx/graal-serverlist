@@ -300,7 +300,7 @@ void IrcConnection::sendPacket(CString pPacket, bool pSendNow)
 	else
 		sendBuffer.write(pPacket);
 
-	printf("\tIrc Packet Out: %s (%d)\n", pPacket.text(), pPacket.length());
+	printf("\tIrc Packet Out: %s (%d)\n", pPacket.trim().text(), pPacket.length());
 	// send buffer now?
 	if (pSendNow)
 		sendCompress();
@@ -351,6 +351,10 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 		if (params[0].toLower() == "nick")
 		{
 			nickname = params[1];
+		}
+		else if (params[0].toLower() == "ping")
+		{
+			sendPacket("PONG " + params[1]);
 		}
 		else if (params[0].toLower() == "pass")
 		{
