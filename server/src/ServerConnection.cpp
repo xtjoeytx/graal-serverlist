@@ -188,7 +188,7 @@ bool ServerConnection::doMain()
 				sockBuffer.removeI(0, line.length());
 				
 				if (!parsePacket(line))
-					return true;
+					return false;
 			} while (sockBuffer.bytesLeft() && !new_protocol);
 		}
 	}
@@ -454,13 +454,13 @@ bool ServerConnection::msgSVI_SETNAME(CString& pPacket)
 	CString oldName(name);
 	name = pPacket.readString("");
 	
-	// Should we be checking for blank names?
-	//if (name.isEmpty())
-	//	return false;
-
 	// Remove all server type strings from the name of the server.
 	while (name.subString(0, 2) == "U " || name.subString(0, 2) == "P " || name.subString(0, 2) == "H " || name.subString(0, 2) == "3 ")
 		name.removeI(0, 2);
+
+	// Shouldn't we be checking for blank names?
+	if (name.isEmpty())
+		return false;
 
 	// Remove the old server
 	if (!oldName.isEmpty())
