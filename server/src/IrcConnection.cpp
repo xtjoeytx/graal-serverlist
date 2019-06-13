@@ -390,7 +390,7 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 		else if (params[0].toLower() == "privmsg")
 		{
 			CString message = pPacket.subString(pPacket.readString(":").length()+1);
-			_listServer->sendTextToChannel(params[1].text(), _ircPlayer->getAccountName(), message.text());
+			_listServer->sendMessage(params[1].text(), _ircPlayer->getAccountName(), message.text());
 		}
 	}
 

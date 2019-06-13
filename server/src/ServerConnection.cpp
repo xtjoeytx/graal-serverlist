@@ -1435,8 +1435,7 @@ bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
 					std::string from = params[3].text();
 					std::string channel = params[4].text();
 					std::string message = params[5].text();
-					ServerPlayer *player = getPlayer(from, 0);
-					_listServer->sendMessage(channel, player, message);
+					_listServer->sendMessage(channel, from, message);
 				}
 			}
 		}
