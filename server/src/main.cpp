@@ -104,6 +104,7 @@ const char * getErrorString(InitializeError error)
 }
 
 ListServer *listServer = nullptr;
+std::thread listThread;
 
 int main(int argc, char *argv[])
 {
@@ -124,7 +125,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	std::thread listThread(&ListServer::Main, listServer);
+	listThread = std::thread(&ListServer::Main, listServer);
 
 	// A CLI interface??? MAYBE... if I have time -joey
 	while (true)
@@ -151,6 +152,9 @@ void shutdownServer(int signal)
 {
 	if (listServer != nullptr)
 	{
+		listServer->setRunning(false);
+
+		listThread.join();
 		listServer->Cleanup();
 		delete listServer;
 	}

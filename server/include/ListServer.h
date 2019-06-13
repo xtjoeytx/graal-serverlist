@@ -56,6 +56,13 @@ public:
 	const CString& getServerlistPacket() const { return CString(); }
 	std::vector<ServerConnection *> & getConnections() { return _serverConnections; }
 	std::vector<IrcConnection *> & getIrcConnections() { return _ircConnections; }
+
+	// Chatroom Functionality
+	void addPlayerToChannel(const std::string& channel, ServerPlayer *player);
+	void removePlayerFromChannel(const std::string& channel, ServerPlayer *player);
+	void sendTextToChannel(const std::string& channel, const std::string& from, const std::string& message, ServerConnection *sender = nullptr);
+
+	// Backend functionality
 	AccountStatus verifyAccount(const std::string& account, const std::string& password) const;
 	GuildStatus verifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) const;
 	std::optional<PlayerProfile> getProfile(const std::string& account) const;

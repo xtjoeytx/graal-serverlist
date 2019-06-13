@@ -121,6 +121,12 @@ ServerConnection::~ServerConnection()
 //	CString query = CString("DELETE FROM ") << settings->getStr("serverlist") << " WHERE name='" << name.escape() << "'";
 //	mySQL->add_simple_query(query.text());
 
+	// TODO(joey): very temporary, listserver will be responsible to tell servers when it disconnects
+	CString dataPacket;
+	dataPacket.writeGChar(SVO_SENDTEXT);
+	dataPacket << "Listserver,Modify,Server," << getName().gtokenize() << ",players=-1";
+	_listServer->sendPacketToServers(dataPacket, this);
+
 	// delete socket
 	delete _socket;
 }
@@ -670,10 +676,10 @@ bool ServerConnection::msgSVI_SETPLYR(CString& pPacket)
 			playerObject->setProps(propPacket);
 			playerList.push_back(playerObject);
 		}
-	}
 
-	// Update the database.
-	//updatePlayers();
+		// Update the database.
+		updatePlayers();
+	}
 
 	return true;
 }
@@ -1116,6 +1122,18 @@ bool ServerConnection::msgSVI_NEWSERVER(CString& pPacket)
 	msgSVI_SETLOCALIP(localip);
 	msgSVI_SETPORT(port);			// Port last.
 
+	// TODO(joey): temporary
+	auto serverList = _listServer->getConnections();
+	for (auto it = serverList.begin(); it != serverList.end(); ++it)
+	{
+		ServerConnection *server = *it;
+
+		CString dataPacket;
+		dataPacket.writeGChar(SVO_SENDTEXT);
+		dataPacket << "Listserver,Modify,Server," << server->getName().gtokenize() << ",players=" << CString(server->getPCount());
+		sendPacket(dataPacket);
+	}
+
 	return true;
 }
 
@@ -1270,8 +1288,8 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							sendMsg << params[3].gtokenize();
 							sendTextForPlayer(player, sendMsg);
 
-							//std::string channel = params[3].guntokenize().text();
-							//listServer->addPlayerToChannel(player, channel);
+							std::string channel = params[3].guntokenize().text();
+							_listServer->addPlayerToChannel(channel, player);
 						}
 						else if (params[2] == "part") // GraalEngine,irc,part,#channel,
 						{
@@ -1279,8 +1297,8 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							sendMsg << params[3].gtokenize();
 							sendTextForPlayer(player, sendMsg);
 
-							//std::string channel = params[3].guntokenize().text();
-							//listServer->removePlayerFromChannel(player, channel);
+							std::string channel = params[3].guntokenize().text();
+							_listServer->removePlayerFromChannel(channel, player);
 						}
 					}
 				}
@@ -1389,23 +1407,10 @@ bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
 			{
 				if (params.size() == 6 && params[2] == "privmsg")
 				{
-					// TODO(joey): Implement this, and move the forwarding below
-					// std::string from = params[3].text();
-					// std::string channel = params[4].text();
-					// std::string message = params[5].text();
-					// _listServer->sendTextToChannel(channel, from, message);
-
-					CString forwardPacket;
-					forwardPacket.writeGChar(SVO_SENDTEXT);
-					forwardPacket << textData;
-
-					auto serverList = _listServer->getConnections();
-					for (auto it = serverList.begin(); it != serverList.end(); ++it)
-					{
-						ServerConnection *server = *it;
-						if (server != this)
-							server->sendPacket(forwardPacket);
-					}
+					std::string from = params[3].text();
+					std::string channel = params[4].text();
+					std::string message = params[5].text();
+					_listServer->sendTextToChannel(channel, from, message);
 				}
 			}
 		}
