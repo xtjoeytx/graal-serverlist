@@ -2,10 +2,11 @@
 #include <thread>
 #include <assert.h>
 #include "ListServer.h"
-#include "PlayerConnection.h"
 #include "IrcConnection.h"
+#include "PlayerConnection.h"
 #include "ServerConnection.h"
 #include "ServerPlayer.h"
+#include "IrcChannel.h"
 
 #ifndef NO_MYSQL
 #include "MySQLBackend.h"
@@ -245,11 +246,31 @@ bool ListServer::Main()
 void ListServer::addPlayerToChannel(const std::string& channel, ServerPlayer *player)
 {
 	assert(player);
+
+	IrcChannel *channelObject = getChannel(channel);
+	if (channelObject == nullptr)
+	{
+		channelObject = new IrcChannel(channel);
+		_ircChannels[channel] = channelObject;
+	}
+
+	channelObject->addUser(player);
 }
 
 void ListServer::removePlayerFromChannel(const std::string& channel, ServerPlayer *player)
 {
 	assert(player);
+
+	IrcChannel *channelObject = getChannel(channel);
+	if (channelObject == nullptr)
+		return;
+
+	channelObject->removeUser(player);
+	if (channelObject->getUserCount() == 0)
+	{
+		_ircChannels.erase(channel);
+		delete channelObject;
+	}
 }
 
 void ListServer::sendTextToChannel(const std::string& channel, const std::string& from, const std::string& message, ServerConnection *sender)

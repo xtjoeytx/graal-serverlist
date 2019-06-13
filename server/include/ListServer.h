@@ -4,7 +4,9 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <vector>
+
 //#include "CFileSystem.h"
 #include "CLog.h"
 #include "CSettings.h"
@@ -38,6 +40,7 @@ enum class SocketType
 	IRC
 };
 
+class IrcChannel;
 class ServerPlayer;
 class ListServer
 {
@@ -58,6 +61,7 @@ public:
 	std::vector<IrcConnection *> & getIrcConnections() { return _ircConnections; }
 
 	// Chatroom Functionality
+	IrcChannel * getChannel(const std::string& channel) const;
 	void addPlayerToChannel(const std::string& channel, ServerPlayer *player);
 	void removePlayerFromChannel(const std::string& channel, ServerPlayer *player);
 	void sendTextToChannel(const std::string& channel, const std::string& from, const std::string& message, ServerConnection *sender = nullptr);
@@ -93,6 +97,7 @@ private:
 	std::vector<PlayerConnection *> _playerConnections;
 	std::vector<IrcConnection *> _ircConnections;
 	std::vector<ServerConnection *> _serverConnections;
+	std::unordered_map<std::string, IrcChannel *> _ircChannels;
 
 	IDataBackend *_dataStore;
 
@@ -117,6 +122,13 @@ inline std::optional<PlayerProfile> ListServer::getProfile(const std::string& ac
 
 inline bool ListServer::setProfile(const PlayerProfile& profile) {
 	return _dataStore->setProfile(profile);
+}
+
+inline IrcChannel * ListServer::getChannel(const std::string& channel) const {
+	auto it = _ircChannels.find(channel);
+	if (it == _ircChannels.end())
+		return nullptr;
+	return it->second;
 }
 
 #endif

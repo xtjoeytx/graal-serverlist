@@ -6,6 +6,7 @@
 #include "CString.h"
 #include "CEncryption.h"
 #include "CFileQueue.h"
+#include "IDataBackend.h" // for AccountStatus
 
 enum
 {

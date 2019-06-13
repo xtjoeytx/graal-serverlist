@@ -27,6 +27,7 @@ set(
 		src/main.cpp
 		src/ListServer.cpp
 		src/ServerPlayer.cpp
+		src/IrcChannel.cpp
 		src/PlayerConnection.cpp
 		src/ServerConnection.cpp
 		src/IrcConnection.cpp
@@ -39,6 +40,7 @@ set(
 		include/IDataBackend.h
 		include/PlayerProfile.h
 		include/ServerPlayer.h
+		include/IrcChannel.h
 		include/PlayerConnection.h
 		include/ServerConnection.h
 		include/IrcConnection.h
