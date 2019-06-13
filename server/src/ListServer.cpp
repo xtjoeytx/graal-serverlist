@@ -242,6 +242,34 @@ bool ListServer::Main()
 	return true;
 }
 
+void ListServer::addPlayerToChannel(const std::string& channel, ServerPlayer *player)
+{
+	assert(player);
+}
+
+void ListServer::removePlayerFromChannel(const std::string& channel, ServerPlayer *player)
+{
+	assert(player);
+}
+
+void ListServer::sendTextToChannel(const std::string& channel, const std::string& from, const std::string& message, ServerConnection *sender)
+{
+	// TODO(joey): gtokenize for std::string?
+	CString forwardPacket;
+	forwardPacket.writeGChar(SVO_SENDTEXT);
+	forwardPacket << "GraalEngine,irc,privmsg,";
+	forwardPacket << CString(from).gtokenize() << "," << CString(channel).gtokenize() << "," << CString(message).gtokenize();
+
+	// TODO(joey): Only send to servers that have a player in the channel
+	auto serverList = getConnections();
+	for (auto it = serverList.begin(); it != serverList.end(); ++it)
+	{
+		ServerConnection *server = *it;
+		if (server != sender)
+			server->sendPacket(forwardPacket);
+	}
+}
+
 void ListServer::sendPacketToServers(const CString & packet, ServerConnection * sender) const
 {
 	for (auto it = _serverConnections.begin(); it != _serverConnections.end(); ++it)
