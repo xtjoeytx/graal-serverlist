@@ -117,15 +117,15 @@ class ServerConnection
 		const CString& getLanguage();
 		const CString& getName();
 		const CString getPlayers();
-		const int getPCount();
 		const CString& getPort();
 		const CString getType(int PLVER);
-		int getTypeVal() { return serverhq_level; }
 		const CString& getUrl() { return url; }
 		const CString& getVersion() { return version; }
 		const CString getServerPacket(int PLVER, const CString& pIp = "");
-		int getLastData()	{ return (int)difftime( time(0), lastData ); }
-		CSocket* getSock()	{ return _socket; }
+		int getPlayerCount() const	{ return (int)playerList.size(); };
+		int getTypeVal() const		{ return serverhq_level; }
+		int getLastData()			{ return (int)difftime( time(0), lastData ); }
+		CSocket* getSock() const	{ return _socket; }
 
 		ServerPlayer * getPlayer(unsigned short id) const;
 		ServerPlayer * getPlayer(const std::string& account, int type) const;

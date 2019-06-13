@@ -260,11 +260,6 @@ const CString& ServerConnection::getName()
 	return name;
 }
 
-const int ServerConnection::getPCount()
-{
-	return (int)playerList.size();
-}
-
 const CString& ServerConnection::getPort()
 {
 	return port;
@@ -349,7 +344,7 @@ void ServerConnection::updatePlayers()
 {
 	CString dataPacket;
 	dataPacket.writeGChar(SVO_SENDTEXT);
-	dataPacket << "Listserver,Modify,Server," << getName().gtokenize() << ",players=" << CString(getPCount());
+	dataPacket << "Listserver,Modify,Server," << getName().gtokenize() << ",players=" << CString(getPlayerCount());
 	_listServer->sendPacketToServers(dataPacket);
 }
 
@@ -474,7 +469,7 @@ bool ServerConnection::msgSVI_SETNAME(CString& pPacket)
 	// Add the new server name
 	CString addNewServer;
 	addNewServer.writeGChar(SVO_SENDTEXT);
-	addNewServer << "Listserver,Modify,Server," << getName().gtokenize() << ",players=" << CString(getPCount());
+	addNewServer << "Listserver,Modify,Server," << getName().gtokenize() << ",players=" << CString(getPlayerCount());
 	_listServer->sendPacketToServers(addNewServer);
 
 	// Check ServerHQ if we can use this name.
@@ -664,7 +659,7 @@ bool ServerConnection::msgSVI_SETPLYR(CString& pPacket)
 	}
 	else
 	{
-		int oldPlayerCount = getPCount();
+		int oldPlayerCount = getPlayerCount();
 
 		// Clear the playerlist
 		clearPlayerList();
@@ -816,15 +811,15 @@ bool ServerConnection::msgSVI_GETPROF(CString& pPacket)
 		dataBuffer.writeGShort(playerId);
 		dataBuffer.writeGChar(accountName.length()).write(accountName);
 
-		dataBuffer.writeGChar(prof.getName().length()).write(prof.getName());
-		dataBuffer.writeGChar(age.length()).write(age);
-		dataBuffer.writeGChar(prof.getGender().length()).write(prof.getGender());
-		dataBuffer.writeGChar(prof.getCountry().length()).write(prof.getCountry());
-		dataBuffer.writeGChar(prof.getMessenger().length()).write(prof.getMessenger());
-		dataBuffer.writeGChar(prof.getEmail().length()).write(prof.getEmail());
-		dataBuffer.writeGChar(prof.getWebsite().length()).write(prof.getWebsite());
-		dataBuffer.writeGChar(prof.getHangout().length()).write(prof.getHangout());
-		dataBuffer.writeGChar(prof.getQuote().length()).write(prof.getQuote());
+		dataBuffer.writeGChar((unsigned char)prof.getName().length()).write(prof.getName());
+		dataBuffer.writeGChar((unsigned char)age.length()).write(age);
+		dataBuffer.writeGChar((unsigned char)prof.getGender().length()).write(prof.getGender());
+		dataBuffer.writeGChar((unsigned char)prof.getCountry().length()).write(prof.getCountry());
+		dataBuffer.writeGChar((unsigned char)prof.getMessenger().length()).write(prof.getMessenger());
+		dataBuffer.writeGChar((unsigned char)prof.getEmail().length()).write(prof.getEmail());
+		dataBuffer.writeGChar((unsigned char)prof.getWebsite().length()).write(prof.getWebsite());
+		dataBuffer.writeGChar((unsigned char)prof.getHangout().length()).write(prof.getHangout());
+		dataBuffer.writeGChar((unsigned char)prof.getQuote().length()).write(prof.getQuote());
 		sendPacket(dataBuffer);
 	}
 
@@ -1152,7 +1147,7 @@ bool ServerConnection::msgSVI_NEWSERVER(CString& pPacket)
 
 		CString dataPacket;
 		dataPacket.writeGChar(SVO_SENDTEXT);
-		dataPacket << "Listserver,Modify,Server," << server->getName().gtokenize() << ",players=" << CString(server->getPCount());
+		dataPacket << "Listserver,Modify,Server," << server->getName().gtokenize() << ",players=" << CString(server->getPlayerCount());
 		sendPacket(dataPacket);
 	}
 
@@ -1304,7 +1299,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 				{
 					if (params.size() == 4)
 					{
-						if (params[2] == "join") // GraalEngine,irc,join,#channel,
+						if (params[2] == "join") // GraalEngine,irc,join,#channel
 						{
 							CString sendMsg = "GraalEngine,irc,join,";
 							sendMsg << params[3].gtokenize();
@@ -1313,7 +1308,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							std::string channel = params[3].guntokenize().text();
 							_listServer->addPlayerToChannel(channel, player);
 						}
-						else if (params[2] == "part") // GraalEngine,irc,part,#channel,
+						else if (params[2] == "part") // GraalEngine,irc,part,#channel
 						{
 							CString sendMsg = "GraalEngine,irc,part,";
 							sendMsg << params[3].gtokenize();
