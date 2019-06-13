@@ -1141,6 +1141,18 @@ bool ServerConnection::msgSVI_NEWSERVER(CString& pPacket)
 	msgSVI_SETLOCALIP(localip);
 	msgSVI_SETPORT(port);			// Port last.
 
+	// TODO(joey): temporary
+	auto serverList = _listServer->getConnections();
+	for (auto it = serverList.begin(); it != serverList.end(); ++it)
+	{
+		ServerConnection *server = *it;
+
+		CString dataPacket;
+		dataPacket.writeGChar(SVO_SENDTEXT);
+		dataPacket << "Listserver,Modify,Server," << server->getName().gtokenize() << ",players=" << CString(server->getPCount());
+		sendPacket(dataPacket);
+	}
+
 	return true;
 }
 
