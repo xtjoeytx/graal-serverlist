@@ -453,10 +453,29 @@ bool ServerConnection::msgSVI_SETNAME(CString& pPacket)
 {
 	CString oldName(name);
 	name = pPacket.readString("");
+	
+	// Should we be checking for blank names?
+	//if (name.isEmpty())
+	//	return false;
 
 	// Remove all server type strings from the name of the server.
 	while (name.subString(0, 2) == "U " || name.subString(0, 2) == "P " || name.subString(0, 2) == "H " || name.subString(0, 2) == "3 ")
 		name.removeI(0, 2);
+
+	// Remove the old server
+	if (!oldName.isEmpty())
+	{
+		CString removeOldServer;
+		removeOldServer.writeGChar(SVO_SENDTEXT);
+		removeOldServer << "Listserver,Modify,Server," << oldName.gtokenize() << ",players=-1";
+		_listServer->sendPacketToServers(removeOldServer);
+	}
+
+	// Add the new server name
+	CString addNewServer;
+	addNewServer.writeGChar(SVO_SENDTEXT);
+	addNewServer << "Listserver,Modify,Server," << getName().gtokenize() << ",players=" << CString(getPCount());
+	_listServer->sendPacketToServers(addNewServer);
 
 	// Check ServerHQ if we can use this name.
 #ifndef NO_MYSQL
@@ -1122,18 +1141,6 @@ bool ServerConnection::msgSVI_NEWSERVER(CString& pPacket)
 	msgSVI_SETLOCALIP(localip);
 	msgSVI_SETPORT(port);			// Port last.
 
-	// TODO(joey): temporary
-	auto serverList = _listServer->getConnections();
-	for (auto it = serverList.begin(); it != serverList.end(); ++it)
-	{
-		ServerConnection *server = *it;
-
-		CString dataPacket;
-		dataPacket.writeGChar(SVO_SENDTEXT);
-		dataPacket << "Listserver,Modify,Server," << server->getName().gtokenize() << ",players=" << CString(server->getPCount());
-		sendPacket(dataPacket);
-	}
-
 	return true;
 }
 
@@ -1410,7 +1417,7 @@ bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
 					std::string from = params[3].text();
 					std::string channel = params[4].text();
 					std::string message = params[5].text();
-					_listServer->sendTextToChannel(channel, from, message);
+					_listServer->sendTextToChannel(channel, from, message, this);
 				}
 			}
 		}
