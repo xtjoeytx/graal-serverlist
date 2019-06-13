@@ -300,7 +300,7 @@ void IrcConnection::sendPacket(CString pPacket, bool pSendNow)
 	else
 		sendBuffer.write(pPacket);
 
-	printf("\tIrc Packet Out: %s (%d)\n", pPacket.trim().text(), pPacket.length());
+	printf("Irc Packet Out: %s (%d)\n", pPacket.trim().text(), pPacket.length());
 	// send buffer now?
 	if (pSendNow)
 		sendCompress();
@@ -324,7 +324,7 @@ bool IrcConnection::parsePacket(CString& pPacket)
 		// read id & packet
 		//auto id = curPacket.readString(" ").text();
 
-		printf("\tIrc Packet In: %s (%d)\n", curPacket.trim().text(), curPacket.trim().length());
+		printf("Irc Packet In: %s (%d)\n", curPacket.trim().text(), curPacket.trim().length());
 
 		// valid packet, call function
 		bool ret = (*this.*ircFunctionTable[IRCI_SENDTEXT])(curPacket);
@@ -339,22 +339,20 @@ bool IrcConnection::parsePacket(CString& pPacket)
 	return true;
 }
 
-
 bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 {
 	std::vector<CString> params = pPacket.trim().tokenize(" ");
 
+	if (params[0].toLower() == "ping")
+	{
+		sendPacket("PONG " + params[1]);
+	}
+
 	if (params.size() >= 0 && _accountStatus != AccountStatus::Normal)
 	{
-		//printf("\tIRC COMMAND: %s\n", params[0].toLower().text());
-
 		if (params[0].toLower() == "nick")
 		{
 			nickname = params[1];
-		}
-		else if (params[0].toLower() == "ping")
-		{
-			sendPacket("PONG " + params[1]);
 		}
 		else if (params[0].toLower() == "pass")
 		{
@@ -390,16 +388,10 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 		else if (params[0].toLower() == "privmsg")
 		{
 			CString forwardPacket;
-			forwardPacket.writeGChar(IRCO_SENDTEXT);
+			forwardPacket.writeGChar(SVO_SENDTEXT);
 			CString message = pPacket.subString(pPacket.readString(":").length()+1);
-			forwardPacket << CString("GraalEngine\nirc\nprivmsg\n" + account + "\n" + params[1] + "\n" + message + "\n").gtokenizeI();
-
-			auto serverList = _listServer->getConnections();
-			for (auto it = serverList.begin(); it != serverList.end(); ++it)
-			{
-				ServerConnection *server = *it;
-				server->sendPacket(forwardPacket);
-			}
+			forwardPacket << "GraalEngine,irc,privmsg," << account.gtokenize() << "," << params[1].gtokenize() << "," << message.gtokenize();
+			_listServer->sendPacketToServers(forwardPacket);
 		}
 	}
 
