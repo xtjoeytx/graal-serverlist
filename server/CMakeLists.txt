@@ -24,34 +24,32 @@ include(CheckSymbolExists)
 
 set(
     SOURCES
-    CFileSystem.cpp
-    CMySQL.cpp
-    codec.cpp
-    CSocket.cpp
-    FProfile.cpp
-    main.cpp
-    TPlayer.cpp
-    TServer.cpp
+		src/main.cpp
+		src/ListServer.cpp
+		src/ServerPlayer.cpp
+		src/IrcChannel.cpp
+		src/PlayerConnection.cpp
+		src/ServerConnection.cpp
+		src/IrcConnection.cpp
 )
 
 set(
     HEADERS
-    ${PROJECT_BINARY_DIR}/server/include/IConfig.h
-    ../include/CFileSystem.h
-    ../include/TPlayer.h
-    ../include/codec.h
-    ../include/FProfile.h
-    ../include/CMySQL.h
-    ../include/TServer.h
-    ../include/main.h
-    ../include/CSocket.h
+		${PROJECT_BINARY_DIR}/server/include/IConfig.h
+		include/ListServer.h
+		include/IDataBackend.h
+		include/PlayerProfile.h
+		include/ServerPlayer.h
+		include/IrcChannel.h
+		include/PlayerConnection.h
+		include/ServerConnection.h
+		include/IrcConnection.h
 )
 
 include_directories(
     # Include the CMake-generated version header from the build directory
     ${PROJECT_BINARY_DIR}/server/include
-    ${PROJECT_SOURCE_DIR}/server/include
-    ${PROJECT_SOURCE_DIR}/dependencies/include
+	include
 )
 
 # Set target names for the executables
@@ -59,7 +57,7 @@ if(APPLE OR WIN32)
     # OS X and Windows get a mixed-case binary name
     set(TARGET_NAME ${PROJECT_NAME})
 elseif(EMSCRIPTEN)
-    set(TARGET_NAME ${PROJECT_NAME_LOWER}.html)
+    set(TARGET_NAME ${PROJECT_NAME_LOWER})
 else()
     # Linux/other UNIX get a lower-case binary name
     set(TARGET_NAME ${PROJECT_NAME_LOWER})
@@ -74,7 +72,36 @@ if (HAVE_INET_PTON)
 	add_definition(-DHAVE_INET_PTON)
 endif()
 
+
+if(NOT NOMYSQL)
+	list(
+		APPEND
+		SOURCES
+		src/MySQLBackend.cpp
+	)
+
+	list(
+		APPEND
+		HEADERS
+		include/MySQLBackend.h
+	)
+
+	if(NOT MYSQL_FOUND)
+		configure_file(
+			${PROJECT_SOURCE_DIR}/dependencies/mysqlclient/include/mysql.h
+			${PROJECT_BINARY_DIR}/dependencies/mysqlclient/include/mysql/mysql.h
+		)
+		configure_file(
+			${PROJECT_SOURCE_DIR}/dependencies/mysqlclient/include/errmsg.h
+			${PROJECT_BINARY_DIR}/dependencies/mysqlclient/include/mysql/errmsg.h
+		)
+		include_directories(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient/include)
+		include_directories(${PROJECT_BINARY_DIR}/dependencies/mysqlclient/include)
+	endif()
+endif()
+
 include_directories(${PROJECT_SOURCE_DIR}/dependencies/gs2lib/include)
+include_directories(${PROJECT_SOURCE_DIR}/dependencies/mysql-modern-cpp/mysql+++)
 
 if(APPLE)
 	add_executable(${TARGET_NAME} ${SOURCES} ${HEADERS})
@@ -92,11 +119,7 @@ elseif(WIN32)
 		set_target_properties(${TARGET_NAME} PROPERTIES COMPILE_DEFINITIONS_RELWITHDEBINFO "_CONSOLE")
 		set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS_RELEASE "/SUBSYSTEM:CONSOLE")
 		set_target_properties(${TARGET_NAME} PROPERTIES LINK_FLAGS_MINSIZEREL "/SUBSYSTEM:CONSOLE")
-		set_target_properties(${TARGET_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
-
-		if(NOT MYSQL_FOUND)
-			target_link_libraries(${TARGET_NAME} libmysql.lib)
-		endif()
+		set_target_properties(${TARGET_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "../bin")
 	endif()
 elseif(EMSCRIPTEN)
 	add_executable(${TARGET_NAME} ${SOURCES} ${HEADERS})
@@ -107,8 +130,13 @@ endif()
 add_dependencies(${TARGET_NAME} gs2lib)
 target_link_libraries(${TARGET_NAME} gs2lib)
 
-if(MYSQL_FOUND)
-	target_link_libraries(${TARGET_NAME} ${MYSQL_LIBRARY})
+if(NOT NOMYSQL)
+	if(MYSQL_FOUND)
+		target_link_libraries(${TARGET_NAME} ${MYSQL_LIBRARY})
+	else()
+		add_dependencies(${TARGET_NAME} mariadbclient)
+		target_link_libraries(${TARGET_NAME} mariadbclient)
+	endif()
 endif()
 
 target_link_libraries(${TARGET_NAME} ${CMAKE_THREAD_LIBS_INIT})
@@ -124,7 +152,5 @@ file(GLOB TEXT
 set(INSTALL_DEST ".")
 
 install(FILES ${TEXT} DESTINATION ${INSTALL_DEST})
-
-set(INSTALL_DEST .)
 
 install(TARGETS ${TARGET_NAME} DESTINATION ${INSTALL_DEST})

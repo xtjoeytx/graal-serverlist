@@ -51,9 +51,9 @@ string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
 # Version number in format X.YY.ZZ
-set(VER_X 2)
-set(VER_Y 1)
-set(VER_Z x)
+set(VER_X 3)
+set(VER_Y 0)
+set(VER_Z 0)
 set(VER_EXTRA " GIT" CACHE STRING "Extra version")
 set(VER_FULL "${VER_X}.${VER_Y}.${VER_Z}${VER_EXTRA}")
 
@@ -75,38 +75,13 @@ else()
 	set(BUILD_SHARED_LIBS FALSE CACHE BOOL "-" FORCE)
 endif()
 
-# Packaging
-if(APPLE)
-	set(CPACK_GENERATOR DragNDrop)
-	set(CPACK_DMG_VOLUME_NAME "${PROJECT_NAME} ${VER_FULL}")
-	set(
-		CPACK_DMG_DS_STORE_SETUP_SCRIPT
-		${PROJECT_SOURCE_DIR}/resources/packaging/osx/DMGSetup.scpt
-	)
-	set(
-		CPACK_DMG_BACKGROUND_IMAGE
-		${PROJECT_SOURCE_DIR}/resources/packaging/osx/DMGBackground.tif
-	)
-elseif(WIN32)
-	set(CPACK_GENERATOR ZIP)
-elseif(AMIGA)
-	set(CPACK_GENERATOR LHA)
+option(NOMYSQL "Don't compile with MySQL support." OFF)
+if(NOMYSQL)
+	message("Don't compile with MySQL support.")
+	add_definitions(-DNO_MYSQL)
 else()
-	set(CPACK_GENERATOR TGZ)
+	message("Compile with MySQL support.")
 endif()
-
-set(CPACK_PACKAGE_NAME ${PROJECT_NAME_LOWER})
-set(CPACK_PACKAGE_VENDOR "Graal Reborn Team")
-set(CPACK_PACKAGE_CONTACT "graal.in")
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${VER_CPACK}")
-set(CPACK_PACKAGE_VERSION_MAJOR ${VER_X})
-set(CPACK_PACKAGE_VERSION_MINOR ${VER_Y})
-set(CPACK_PACKAGE_VERSION_PATCH ${VER_Z}${VER_EXTRA})
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Graal Online v1.411 to v5 compatible listserver")
-set(CPACK_SOURCE_GENERATOR TGZ)
-set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${VER_CPACK}-src")
-set(CPACK_SOURCE_IGNORE_FILES "/build/;/.bzr/;~$;${CPACK_SOURCE_IGNORE_FILES}")
-include(CPack)
 
 if(APPLE)
 	# Set variables for generating the Info.plist file
@@ -180,15 +155,54 @@ if(NOT NOSTATIC)
 	set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif()
 
-find_package(MySQL)
+if(NOT NOMYSQL)
+	find_package(MySQL)
+	if(NOT MYSQL_FOUND)
+		add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient EXCLUDE_FROM_ALL)
+	endif()
+endif()
 
 find_package(Threads REQUIRED)
+
+# Packaging
+if(APPLE)
+	set(CPACK_GENERATOR DragNDrop)
+	set(CPACK_DMG_VOLUME_NAME "${PROJECT_NAME} ${VER_FULL}")
+	set(
+			CPACK_DMG_DS_STORE_SETUP_SCRIPT
+			${PROJECT_SOURCE_DIR}/resources/packaging/osx/DMGSetup.scpt
+	)
+	set(
+			CPACK_DMG_BACKGROUND_IMAGE
+			${PROJECT_SOURCE_DIR}/resources/packaging/osx/DMGBackground.tif
+	)
+elseif(WIN32)
+	set(CPACK_GENERATOR ZIP)
+elseif(AMIGA)
+	set(CPACK_GENERATOR LHA)
+else()
+	set(CPACK_GENERATOR TGZ)
+endif()
+
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME_LOWER})
+set(CPACK_PACKAGE_VENDOR "Graal Reborn Team")
+set(CPACK_PACKAGE_CONTACT "graal.in")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${VER_CPACK}")
+set(CPACK_PACKAGE_VERSION_MAJOR ${VER_X})
+set(CPACK_PACKAGE_VERSION_MINOR ${VER_Y})
+set(CPACK_PACKAGE_VERSION_PATCH ${VER_Z}${VER_EXTRA})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Graal Online v1.411 to v5 compatible listserver")
+set(CPACK_SOURCE_GENERATOR TGZ)
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${VER_CPACK}-src")
+set(CPACK_SOURCE_IGNORE_FILES "/build/;/.bzr/;~$;${CPACK_SOURCE_IGNORE_FILES}")
+include(CPack)
+
+add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/gs2lib)
 
 # Restore library suffixes
 if(NOT NOSTATIC)
 	set(CMAKE_FIND_LIBRARY_SUFFIXES ${SUFFIXES_ORIG})
 endif()
 
-add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/gs2lib)
 add_subdirectory(${PROJECT_SOURCE_DIR}/bin)
-add_subdirectory(${PROJECT_SOURCE_DIR}/server/src)
+add_subdirectory(${PROJECT_SOURCE_DIR}/server)
