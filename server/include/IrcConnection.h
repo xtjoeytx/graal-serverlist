@@ -38,29 +38,13 @@ class IrcConnection : IrcStub
 		void kill();
 
 		// get-value functions
-		const CString& getDescription();
-		const CString getIp(const CString& pIp = "");
-		const CString& getLanguage();
-		const CString& getName();
-		const CString getPlayers();
-		const int getPCount();
-		const CString& getPort();
-		const CString getType(int PLVER);
-		int getTypeVal() { return serverhq_level; }
-		const CString& getUrl() { return url; }
-		const CString& getVersion() { return version; }
-		const CString getServerPacket(int PLVER, const CString& pIp = "");
 		int getLastData()	{ return (int)difftime( time(0), lastData ); }
 		CSocket* getSock()	{ return _socket; }
 
-		ServerPlayer * getPlayer(unsigned short id) const;
-		ServerPlayer * getPlayer(const std::string& account, int type) const;
-		void clearPlayerList();
-		bool sendMessage(const std::string& channel, ServerPlayer *from, const std::string& message);
-
-    // send-packet functions
+		// send-packet functions
 		void sendCompress();
 		void sendPacket(CString pPacket, bool pSendNow = false);
+		bool sendMessage(const std::string& channel, ServerPlayer *from, const std::string& message);
 
 		// packet-functions;
 		bool parsePacket(CString& pPacket);
@@ -73,20 +57,14 @@ class IrcConnection : IrcStub
 		ServerPlayer *_ircPlayer;
 		
 		// Packet protocol
-		bool nextIsRaw;
-		int rawPacketSize;
-		bool new_protocol;
-		CFileQueue _fileQueue;
 		CString sendBuffer, sockBuffer, outBuffer;
 		AccountStatus _accountStatus;
 
-		CString description, ip, language, name, port, url, version, localip, _listServerAddress;
+		CString _listServerAddress;
 		std::vector<ServerPlayer *> playerList;
 		time_t lastPing, lastData, lastPlayerCount, lastUptimeCheck;
-		bool addedToSQL;
-		bool isServerHQ;
+
 		CString password, hostname;
-		unsigned char serverhq_level;
 };
 
 #endif // TIRC_H
