@@ -39,7 +39,7 @@ IrcConnection::IrcConnection(ListServer *listServer, CSocket *pSocket)
 	}
 	_listServerAddress = _listServer->getSettings().getStr("listServerAddress");
 	_accountStatus = AccountStatus::NotFound;
-	lastPing = lastPlayerCount = lastData = lastUptimeCheck = time(0);
+	lastPing = lastData = time(0);
 }
 
 IrcConnection::~IrcConnection()

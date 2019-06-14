@@ -30,3 +30,26 @@ void IrcChannel::sendMessage(const std::string& from, const std::string& message
 		}
 	}
 }
+
+void IrcChannel::subscribe(ServerConnection *connection)
+{
+	auto it = _serverSubscribers.find(connection);
+	if (it != _serverSubscribers.end())
+	{
+		it->second++;
+		return;
+	}
+
+	_serverSubscribers[connection] = 1;
+}
+
+void IrcChannel::unsubscribe(ServerConnection *connection)
+{
+	auto it = _serverSubscribers.find(connection);
+	if (it != _serverSubscribers.end())
+	{
+		it->second--;
+		if (it->second == 0)
+			_serverSubscribers.erase(it);
+	}
+}

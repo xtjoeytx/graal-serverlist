@@ -5,25 +5,11 @@
 #include "CSocket.h"
 #include "CString.h"
 #include "CEncryption.h"
-#include "CFileQueue.h"
 #include "IDataBackend.h" // for AccountStatus
-
-enum
-{
-	IRCI_SENDTEXT		= 0,
-	IRCI_PACKETCOUNT,
-};
-
-enum
-{
-	IRCO_SENDTEXT		= 0,
-};
+#include "ServerPlayer.h"
 
 class ListServer;
 class ServerConnection;
-class ServerPlayer;
-
-#include "ServerPlayer.h"
 
 class IrcConnection
 {
@@ -68,9 +54,8 @@ class IrcConnection
 		AccountStatus _accountStatus;
 		ServerPlayer _player;
 
-		std::vector<ServerPlayer *> playerList;
-		time_t lastPing, lastData, lastPlayerCount, lastUptimeCheck;
 		CString password, hostname, _listServerAddress;
+		time_t lastPing, lastData;
 };
 
 #endif // TIRC_H

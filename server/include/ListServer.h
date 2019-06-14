@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <assert.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -14,10 +15,11 @@
 #include "CString.h"
 #include "IDataBackend.h"
 
-//class IDataBackend;
 class PlayerConnection;
 class ServerConnection;
 class IrcConnection;
+class IrcChannel;
+class ServerPlayer;
 
 enum class InitializeError
 {
@@ -40,8 +42,6 @@ enum class SocketType
 	IRC
 };
 
-class IrcChannel;
-class ServerPlayer;
 class ListServer
 {
 public:
@@ -131,7 +131,6 @@ inline bool ListServer::setProfile(const PlayerProfile& profile) {
 }
 
 //////////////////
-#include <assert.h>
 #include "IrcChannel.h"
 
 inline IrcChannel * ListServer::getChannel(const std::string& channel) const {

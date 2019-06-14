@@ -24,13 +24,13 @@ public:
 	void addUser(ServerPlayer *player);
 	void removeUser(ServerPlayer *player);
 
+	void sendMessage(const std::string& from, const std::string& message, void *sender = 0);
+
 	void subscribe(IrcConnection *connection);
 	void subscribe(ServerConnection *connection);
 
 	void unsubscribe(IrcConnection *connection);
 	void unsubscribe(ServerConnection *connection);
-
-	void sendMessage(const std::string& from, const std::string& message, void *sender = 0);
 
 private:
 	std::string _channelName;
@@ -54,34 +54,13 @@ inline size_t IrcChannel::getUserCount() const
 	return _users.size();
 }
 
-inline void IrcChannel::subscribe(ServerConnection *connection)
+inline void IrcChannel::subscribe(IrcConnection *connection)
 {
-	auto it = _serverSubscribers.find(connection);
-	if (it != _serverSubscribers.end())
-	{
-		it->second++;
-		return;
-	}
-
-	_serverSubscribers[connection] = 1;
-}
-
-inline void IrcChannel::unsubscribe(ServerConnection *connection)
-{
-	auto it = _serverSubscribers.find(connection);
-	if (it != _serverSubscribers.end())
-	{
-		it->second--;
-		if (it->second == 0)
-			_serverSubscribers.erase(it);
-	}
-}
-
-inline void IrcChannel::subscribe(IrcConnection *connection) {
 	_ircSubscribers.insert(connection);
 }
 
-inline void IrcChannel::unsubscribe(IrcConnection *connection) {
+inline void IrcChannel::unsubscribe(IrcConnection *connection)
+{
 	_ircSubscribers.erase(connection);
 }
 
