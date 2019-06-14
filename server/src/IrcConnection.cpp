@@ -11,24 +11,25 @@
 */
 typedef bool (IrcConnection::*IrcSocketFunction)(CString&);
 
-IrcSocketFunction ircFunctionTable[IRCI_PACKETCOUNT];
+std::unordered_map<std::string, IrcSocketFunction> ircFunctionTable;
 
 void createIrcPtrTable()
 {
-	// kinda like a memset-ish thing y'know
-	for (int packetId = 0; packetId < IRCI_PACKETCOUNT; packetId++)
-		ircFunctionTable[packetId] = &IrcConnection::msgIRCI_NULL;
-
-	// now set non-nulls
-	ircFunctionTable[IRCI_SENDTEXT] = &IrcConnection::msgIRCI_SENDTEXT;
+	ircFunctionTable["user"] = &IrcConnection::msgIRC_USER;
+	ircFunctionTable["nick"] = &IrcConnection::msgIRC_NICK;
+	ircFunctionTable["ping"] = &IrcConnection::msgIRC_PING;
+	ircFunctionTable["join"] = &IrcConnection::msgIRC_JOIN;
+	ircFunctionTable["part"] = &IrcConnection::msgIRC_PART;
+	ircFunctionTable["pass"] = &IrcConnection::msgIRC_PASS;
+	ircFunctionTable["privmsg"] = &IrcConnection::msgIRC_PRIVMSG;
+	ircFunctionTable["notice"] = &IrcConnection::msgIRC_PRIVMSG;
 }
 
 /*
 	Constructor - Deconstructor
 */
 IrcConnection::IrcConnection(ListServer *listServer, CSocket *pSocket)
-: _listServer(listServer), _socket(pSocket), addedToSQL(false), isServerHQ(false),
-serverhq_level(1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), rawPacketSize(0), _player()
+: _listServer(listServer), _socket(pSocket), _player()
 {
 	static bool _setupServerPackets = false;
 	if (!_setupServerPackets)
@@ -38,28 +39,11 @@ serverhq_level(1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), r
 	}
 	_listServerAddress = _listServer->getSettings().getStr("listServerAddress");
 	_accountStatus = AccountStatus::NotFound;
-	_fileQueue.setCodec(ENCRYPT_GEN_1, 0);
-	language = "English";
 	lastPing = lastPlayerCount = lastData = lastUptimeCheck = time(0);
 }
 
 IrcConnection::~IrcConnection()
 {
-	// Clear Playerlist
-	clearPlayerList();
-
-//	// Update our uptime.
-//	if (isServerHQ)
-//	{
-//		int uptime = (int)difftime(time(0), lastUptimeCheck);
-//		CString query = CString("UPDATE `") << settings->getStr("serverhq") << "` SET uptime=uptime+" << CString((int)uptime) << " WHERE name='" << name.escape() << "'";
-//		mySQL->add_simple_query(query.text());
-//	}
-//
-//	// Delete server from SQL serverlist.
-//	CString query = CString("DELETE FROM ") << settings->getStr("serverlist") << " WHERE name='" << name.escape() << "'";
-//	mySQL->add_simple_query(query.text());
-
 	// delete socket
 	delete _socket;
 }
@@ -87,43 +71,21 @@ bool IrcConnection::doMain()
 		// definitions
 		CString unBuffer;
 
-		if (new_protocol)
+		CString line;
+		int lineEnd;
+
+		// parse data
+		do
 		{
-			sockBuffer.setRead(0);
-			while (sockBuffer.length() >= 2)
-			{
-				// packet length
-				unsigned short len = (unsigned short)sockBuffer.readShort();
-				if ((unsigned int)len > (unsigned int)sockBuffer.length() - 2)
-					break;
+			if ((lineEnd = sockBuffer.find('\n')) == -1)
+				break;
 
-				unBuffer = sockBuffer.readChars(len);
-				sockBuffer.removeI(0, len + 2);
-				unBuffer.zuncompressI();
-
-				// well theres your buffer
-				if (!parsePacket(unBuffer))
-					return false;
-			}
-		}
-		else
-		{
-			CString line;
-			int lineEnd;
-
-			// parse data
-			do
-			{
-				if ((lineEnd = sockBuffer.find('\n')) == -1)
-					break;
-
-				line = sockBuffer.subString(0, lineEnd + 1);
-				sockBuffer.removeI(0, line.length());
+			line = sockBuffer.subString(0, lineEnd + 1);
+			sockBuffer.removeI(0, line.length());
 				
-				if (!parsePacket(line))
-					return true;
-			} while (sockBuffer.bytesLeft() && !new_protocol);
-		}
+			if (!parsePacket(line))
+				return true;
+		} while (sockBuffer.bytesLeft());
 	}
 
 	// Send a ping every 30 seconds.
@@ -148,119 +110,11 @@ void IrcConnection::kill()
 	delete this;
 }
 
-const CString IrcConnection::getPlayers()
-{
-	const int ANY_CLIENT = (int)(1 << 0) | (int)(1 << 4) | (int)(1 << 5);
-
-	// Update our player list.
-	CString playerlist;
-	for (auto it = playerList.begin(); it != playerList.end(); ++it)
-	{
-		ServerPlayer *player = *it;
-		if ((player->getClientType() & ANY_CLIENT) != 0)
-			playerlist << CString(CString() << player->getAccountName() << "\n" << player->getNickName() << "\n").gtokenizeI() << "\n";
-	}
-
-	playerlist.gtokenizeI();
-	return playerlist;
-}
-
-/*
-	Get-Value Functions
-*/
-const CString& IrcConnection::getDescription()
-{
-	return description;
-}
-
-const CString IrcConnection::getIp(const CString& pIp)
-{
-	if (pIp == ip)
-	{
-		if (localip.length() != 0) return localip;
-		return "127.0.0.1";
-	}
-	return ip;
-}
-
-const CString& IrcConnection::getLanguage()
-{
-	return language;
-}
-
-const CString& IrcConnection::getName()
-{
-	return name;
-}
-
-const int IrcConnection::getPCount()
-{
-	return (int)playerList.size();
-}
-
-const CString& IrcConnection::getPort()
-{
-	return port;
-}
-
-const CString IrcConnection::getType(int PLVER)
-{
-	CString ret;
-	ret.clear();
-
-	return ret;
-}
-
-const CString IrcConnection::getServerPacket(int PLVER, const CString& pIp)
-{
-	CString testIp = getIp(pIp);
-	CString pcount((int)playerList.size());
-	return CString() >> (char)8 >> (char)(getType(PLVER).length() + getName().length()) << getType(PLVER) << getName() >> (char)getLanguage().length() << getLanguage() >> (char)getDescription().length() << getDescription() >> (char)getUrl().length() << getUrl() >> (char)getVersion().length() << getVersion() >> (char)pcount.length() << pcount >> (char)testIp.length() << testIp >> (char)getPort().length() << getPort();
-}
-
-ServerPlayer * IrcConnection::getPlayer(unsigned short id) const
-{
-	for (auto it = playerList.begin(); it != playerList.end(); ++it)
-	{
-		ServerPlayer *player = *it;
-		if (player->getId() == id)
-			return player;
-	}
-
-	return nullptr;
-}
-
-ServerPlayer * IrcConnection::getPlayer(const std::string & account, int type) const
-{
-	for (auto it = playerList.begin(); it != playerList.end(); ++it)
-	{
-		ServerPlayer *player = *it;
-		if (player->getClientType() == type && player->getAccountName() == account)
-			return player;
-	}
-
-	return nullptr;
-}
-
-void IrcConnection::clearPlayerList()
-{
-	// clean playerlist
-	for (auto it = playerList.begin(); it != playerList.end(); ++it)
-		delete *it;
-	playerList.clear();
-}
-
 /*
 	Send-Packet Functions
 */
 void IrcConnection::sendCompress()
 {
-	if (new_protocol)
-	{
-		_fileQueue.sendCompress();
-		return;
-	}
-
 	// empty buffer?
 	if (sendBuffer.isEmpty())
 	{
@@ -295,12 +149,10 @@ void IrcConnection::sendPacket(CString pPacket, bool pSendNow)
 		pPacket.writeChar('\n');
 
 	// append buffer depending on protocol
-	if (new_protocol)
-		_fileQueue.addPacket(pPacket);
-	else
-		sendBuffer.write(pPacket);
+	sendBuffer.write(pPacket);
 
 	printf("Irc Packet Out: %s (%d)\n", pPacket.trim().text(), pPacket.length());
+
 	// send buffer now?
 	if (pSendNow)
 		sendCompress();
@@ -309,17 +161,12 @@ void IrcConnection::sendPacket(CString pPacket, bool pSendNow)
 /*
 	Packet-Functions
 */
+/*
 bool IrcConnection::parsePacket(CString& pPacket)
 {
 	while (pPacket.bytesLeft() > 0)
 	{
-		CString curPacket;
-		if (nextIsRaw)
-		{
-			nextIsRaw = false;
-			curPacket = pPacket.readChars(rawPacketSize);
-		}
-		else curPacket = pPacket.readString("\n");
+		CString curPacket = pPacket.readString("\n");
 
 		// read id & packet
 		//auto id = curPacket.readString(" ").text();
@@ -352,7 +199,7 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 	{
 		if (params[0].toLower() == "nick")
 		{
-			nickname = params[1];
+			_player.setNickName(params[1].text());
 		}
 		else if (params[0].toLower() == "pass")
 		{
@@ -360,23 +207,22 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 		}
 		else if (params[0].toLower() == "user")
 		{
-			account = params[1];
-			_accountStatus = _listServer->verifyAccount(account.text(), password.text());
-			sendPacket(":" + nickname + " NICK " + account);
-			nickname = "" + account;
-			_player.setProps(CString() >> (char)PLPROP_ACCOUNTNAME >> (char)account.length() << account);
+			_player.setProps(CString() >> (char)PLPROP_ACCOUNTNAME >> (char)params[1].length() << params[1]);
 
+			_accountStatus = _listServer->verifyAccount(_player.getAccountName(), password.text());
+			sendPacket(":" + _player.getNickName() + " NICK " + _player.getAccountName());
+			
 			switch (_accountStatus)
 			{
 				case AccountStatus::Normal:
-					sendPacket(":" + _listServerAddress + " 001 " + nickname + " :Welcome to " + _listServer->getSettings().getStr("name") + ", " + account + ".");
-					sendPacket(":" + _listServerAddress + " 001 " + nickname + " :Your account: " + account + ", password: " + password);
+					sendPacket(":" + _listServerAddress + " 001 " + _player.getNickName() + " :Welcome to " + _listServer->getSettings().getStr("name") + ", " + _player.getAccountName() + ".");
+					sendPacket(":" + _listServerAddress + " 001 " + _player.getNickName() + " :Your account: " + _player.getAccountName() + ", password: " + password);
 					
-					sendPacket(":" + nickname + " JOIN #graal");
+					sendPacket(":" + _player.getNickName() + " JOIN #graal");
 					_listServer->addPlayerToChannel("#graal", &_player, this);
 					break;
 				default:
-					sendPacket(":" + _listServerAddress + " KILL " + nickname + " Unable to identify account: " + (int)AccountStatus::Normal);
+					sendPacket(":" + _listServerAddress + " KILL " + _player.getNickName() + " Unable to identify account: " + (int)AccountStatus::Normal);
 					_socket->disconnect();
 					break;
 			}
@@ -386,7 +232,7 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 	{
 		if (params[0].toLower() == "join")
 		{
-			sendPacket(":" + nickname + " JOIN " + params[1]);
+			sendPacket(":" + _player.getNickName() + " JOIN " + params[1]);
 			_listServer->addPlayerToChannel(params[1].text(), &_player, this);
 		}
 		else if (params[0].toLower() == "privmsg")
@@ -395,17 +241,175 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 			//CString forwardPacket;
 			//forwardPacket.writeGChar(SVO_SENDTEXT);
 			//forwardPacket << "GraalEngine,irc,privmsg," << account.gtokenize() << "," << params[1].gtokenize() << "," << message.gtokenize();
-			_listServer->sendTextToChannel(params[1].text(), account.text(), message.text(), this);
+			_listServer->sendTextToChannel(params[1].text(), _player.getAccountName(), message.text(), this);
 		}
 	}
 
 	return true;
 }
+*/
 
-bool IrcConnection::msgIRCI_NULL(CString& pPacket)
+/*
+	Packet-Functions
+*/
+bool IrcConnection::parsePacket(CString& pPacket)
+{
+	while (pPacket.bytesLeft() > 0)
+	{
+		CString curPacket = pPacket.readString("\n");
+
+		// read id & packet
+		std::string packetId = curPacket.readString(" ").toLower().text();
+		curPacket.setRead(0);
+
+		// valid packet, call function
+		auto it = ircFunctionTable.find(packetId);
+		if (it != ircFunctionTable.end()) { (*this.*it->second)(curPacket); }
+		else msgIRC_UNKNOWN(curPacket);
+
+		// Update the data timeout.
+		lastData = time(0);
+	}
+
+	return true;
+}
+
+bool IrcConnection::msgIRC_USER(CString& pPacket)
+{
+	std::vector<CString> params = pPacket.trim().tokenize(" ");
+
+	if (params.size() >= 0 && _accountStatus != AccountStatus::Normal)
+	{
+		_player.setProps(CString() >> (char)PLPROP_ACCOUNTNAME >> (char)params[1].length() << params[1]);
+
+		sendPacket(":" + _player.getNickName() + " NICK " + _player.getAccountName());
+		_player.setNickName(_player.getAccountName());
+
+		authenticateUser();
+	}
+
+	return true;
+}
+
+bool IrcConnection::msgIRC_PING(CString& pPacket)
+{
+	std::vector<CString> params = pPacket.trim().tokenize(" ");
+
+	if (params.size() >= 0)
+	{
+		sendPacket("PONG " + params[1]);
+	}
+
+	return true;
+}
+
+bool IrcConnection::msgIRC_NICK(CString& pPacket)
+{
+	std::vector<CString> params = pPacket.trim().tokenize(" ");
+
+	if (params.size() >= 0 && _accountStatus != AccountStatus::Normal)
+	{
+		_player.setNickName(params[1].text());
+	}
+
+	return true;
+}
+
+bool IrcConnection::msgIRC_PASS(CString& pPacket)
+{
+	std::vector<CString> params = pPacket.trim().tokenize(" ");
+
+	if (params.size() >= 0 && _accountStatus != AccountStatus::Normal)
+	{
+		password = params[1];
+
+		authenticateUser();
+	}
+
+	return true;
+}
+
+void IrcConnection::authenticateUser()
+{
+	if (!_player.getAccountName().empty() && password != "")
+	{
+		_accountStatus = _listServer->verifyAccount(_player.getAccountName(), password.text());
+		switch (_accountStatus)
+		{
+		case AccountStatus::Normal:
+			sendPacket(":" + _listServerAddress + " 001 " + _player.getAccountName() + " :Welcome to "
+				+ _listServer->getSettings().getStr("name") + ", "
+				+ _player.getAccountName() + "!");
+			sendPacket(":" + _listServerAddress + " 001 " + _player.getAccountName() + " :Your account: "
+				+ _player.getAccountName() + ", password: " + password);
+			break;
+		default:
+			sendPacket(":" + _listServerAddress + " KILL " + _player.getAccountName()
+				+ " Unable to identify account: " + (int)_accountStatus, true);
+			_socket->disconnect();
+			break;
+		}
+	}
+}
+
+bool IrcConnection::msgIRC_JOIN(CString& pPacket)
+{
+	std::vector<CString> params = pPacket.trim().tokenize(" ");
+
+	if (params.size() >= 0 && _accountStatus == AccountStatus::Normal)
+	{
+		sendPacket(":" + _player.getNickName() + " JOIN " + params[1]);
+		_listServer->addPlayerToChannel(params[1].text(), &_player, this);
+
+		/*
+		// Todo(Shitai): Move to IrcChannel.cpp?
+		auto channel = _listServer->getChannel(params[1].text());
+		CString users;
+		for (auto * user : *channel->getUsers())
+		{
+			users << user->getAccountName() << " ";
+		}
+
+		sendPacket(":" + _listServerAddress + " 353 " + _ircPlayer->getAccountName() + " = " + params[1] + " :" + users.trim());
+		sendPacket(":" + _listServerAddress + " 366 " + _ircPlayer->getAccountName() + " " + params[1] + " :End of /NAMES list.");
+		*/
+	}
+
+	return true;
+}
+
+bool IrcConnection::msgIRC_PART(CString& pPacket)
+{
+	std::vector<CString> params = pPacket.trim().tokenize(" ");
+
+	if (params.size() >= 0 && _accountStatus == AccountStatus::Normal)
+	{
+		const CString message = pPacket.subString(pPacket.readString(":").length() + 1);
+		sendPacket(":" + _player.getNickName() + " PART " + params[1] + " :" + message);
+		_listServer->removePlayerFromChannel(params[1].text(), &_player, this);
+	}
+
+	return true;
+}
+
+bool IrcConnection::msgIRC_PRIVMSG(CString& pPacket)
+{
+	std::vector<CString> params = pPacket.trim().tokenize(" ");
+
+	if (params.size() >= 0 && _accountStatus == AccountStatus::Normal)
+	{
+		CString message = pPacket.subString(pPacket.readString(":").length() + 1);
+		
+		// Todo(Shitai): Handle when PRIVMSG is sent to player and not a channel. Should send as GraalPM on ServerConnection and as PRIVMSG on IrcConnection
+		_listServer->sendTextToChannel(params[1].text(), _player.getAccountName(), message.text(), this);
+	}
+
+	return true;
+}
+
+bool IrcConnection::msgIRC_UNKNOWN(CString& pPacket)
 {
 	pPacket.setRead(0);
-	unsigned char id = pPacket.readGUChar();
-	printf("Unknown Server Packet: %u (%s)\n", (unsigned int)id, pPacket.text() + 1);
+	printf("Unknown Server Packet: %s\n", pPacket.text());
 	return true;
 }
