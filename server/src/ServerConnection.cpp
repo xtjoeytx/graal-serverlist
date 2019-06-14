@@ -1339,13 +1339,14 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							std::string channel = params[3].guntokenize().text();
 							_listServer->removePlayerFromChannel(channel, player);
 						}
-						else if (params.size() == 6 && params[2] == "privmsg")
-						{
-							std::string from = params[3].text();
-							std::string channel = params[4].text();
-							std::string message = params[5].text();
-							_listServer->sendMessage(channel, player, message);
-						}
+
+					}
+					else  if (params.size() == 6 && params[2] == "privmsg")
+					{
+						std::string from = params[3].text();
+						std::string channel = params[4].text();
+						std::string message = params[5].text();
+						_listServer->sendMessage(channel, player, message);
 					}
 				}
 			}
