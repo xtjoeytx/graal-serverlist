@@ -12,7 +12,7 @@
 */
 typedef bool (IrcConnection::*IrcSocketFunction)(CString&);
 
-std::map<std::string,IrcSocketFunction> ircFunctionTable;
+std::unordered_map<std::string,IrcSocketFunction> ircFunctionTable;
 
 void createIrcPtrTable()
 {
@@ -175,25 +175,12 @@ bool IrcConnection::parsePacket(CString& pPacket)
 		CString curPacket = pPacket.readString("\n");
 
 		// read id & packet
-		std::string packetId = (pPacket.trim().tokenize(" "))[0].toLower().text();
-
-		//printf("Irc Packet In: %s (%d)\n", curPacket.trim().text(), curPacket.trim().length());
-
-		bool ret = false;
+		std::string packetId = pPacket.readString(" ").toLower().text();
 
 		// valid packet, call function
-		for (const auto& ircFunction : ircFunctionTable)
-		{
-			if (ircFunction.first == packetId)
-			{
-				 ret = (*this.*ircFunction.second)(curPacket);
-			}
-		}
-
-		if (!ret)
-		{
-			msgIRC_UNKNOWN(curPacket);
-		}
+		auto it = ircFunctionTable.find(packetId);
+		if (it != ircFunctionTable.end()) { (*this.*it->second)(curPacket); }
+		else msgIRC_UNKNOWN(curPacket);
 
 		// Update the data timeout.
 		lastData = time(0);

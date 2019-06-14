@@ -34,6 +34,7 @@ public:
 
 	void sendMessage(ServerPlayer *from, const std::string& message);
 
+	std::unordered_set<ServerPlayer*>* getUsers() { return &_users; };
 private:
 	std::string _channelName;
 	std::unordered_set<ServerPlayer *> _users;
