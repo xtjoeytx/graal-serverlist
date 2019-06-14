@@ -301,7 +301,7 @@ void ListServer::sendPacketToServers(const CString & packet, ServerConnection * 
 	}
 }
 
-void ListServer::sendMessage(const std::string& channel, const std::string&from, const std::string& message) {
+void ListServer::sendMessage(const std::string& channel, ServerPlayer *from, const std::string& message) {
 	auto sendChannel = getChannel(channel);
 	if (sendChannel != nullptr)
 		sendChannel->sendMessage(from, message);

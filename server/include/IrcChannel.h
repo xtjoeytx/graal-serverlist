@@ -32,7 +32,7 @@ public:
 		return _users.size();
 	}
 
-	void sendMessage(const std::string& from, const std::string& message);
+	void sendMessage(ServerPlayer *from, const std::string& message);
 
 private:
 	std::string _channelName;

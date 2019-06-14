@@ -56,7 +56,7 @@ class IrcConnection : IrcStub
 		ServerPlayer * getPlayer(unsigned short id) const;
 		ServerPlayer * getPlayer(const std::string& account, int type) const;
 		void clearPlayerList();
-		bool sendMessage(const std::string& channel, const std::string& from, const std::string& message);
+		bool sendMessage(const std::string& channel, ServerPlayer *from, const std::string& message);
 
     // send-packet functions
 		void sendCompress();

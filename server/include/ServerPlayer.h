@@ -96,6 +96,8 @@ enum
 };
 #define propscount	83
 
+class IrcStub;
+
 class ServerPlayer
 {
 public:

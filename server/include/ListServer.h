@@ -83,7 +83,7 @@ public:
 		_running = status;
 	}
 
-	void sendMessage(const std::string& channel, const std::string& from, const std::string& message);
+	void sendMessage(const std::string& channel, ServerPlayer *from, const std::string& message);
 
 private:
 	std::mutex pc;

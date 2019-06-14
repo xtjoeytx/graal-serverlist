@@ -134,7 +134,7 @@ class ServerConnection : IrcStub
 		void clearPlayerList();
 		void sendTextForPlayer(ServerPlayer *player, const CString & data);
 		void updatePlayers();
-		bool sendMessage(const std::string& channel, const std::string& from, const std::string& message);
+		bool sendMessage(const std::string& channel, ServerPlayer *from, const std::string& message);
 
 
 		// send-packet functions

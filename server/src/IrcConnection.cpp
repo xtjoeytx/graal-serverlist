@@ -201,9 +201,11 @@ const CString IrcConnection::getType(int PLVER)
 	return ret;
 }
 
-bool IrcConnection::sendMessage(const std::string& channel, const std::string& from, const std::string& message)
+bool IrcConnection::sendMessage(const std::string& channel, ServerPlayer *from, const std::string& message)
 {
-    sendPacket(":" + from + " PRIVMSG " + channel + " :" + message);
+	sendPacket(":" + from->getAccountName() + " PRIVMSG " + channel + " :" + message);
+
+	return true;
 }
 
 const CString IrcConnection::getServerPacket(int PLVER, const CString& pIp)
@@ -391,7 +393,7 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 		else if (params[0].toLower() == "privmsg")
 		{
 			CString message = pPacket.subString(pPacket.readString(":").length()+1);
-			_listServer->sendMessage(params[1].text(), _ircPlayer->getAccountName(), message.text());
+			_listServer->sendMessage(params[1].text(), _ircPlayer, message.text());
 		}
 	}
 
