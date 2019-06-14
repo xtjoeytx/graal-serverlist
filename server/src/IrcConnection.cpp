@@ -172,14 +172,16 @@ bool IrcConnection::parsePacket(CString& pPacket)
 		CString curPacket = pPacket.readString("\n");
 
 		// read id & packet
-		//auto id = curPacket.readString(" ").text();
+		std::string packetId = (pPacket.trim().tokenize(" "))[0].text();
 
-		printf("Irc Packet In: %s (%d)\n", curPacket.trim().text(), curPacket.trim().length());
-		bool ret;
+		//printf("Irc Packet In: %s (%d)\n", curPacket.trim().text(), curPacket.trim().length());
+
+		bool ret = false;
+
 		// valid packet, call function
-		for (auto ircFunction : ircFunctionTable)
+		for (const auto& ircFunction : ircFunctionTable)
 		{
-			if (ircFunction.first == curPacket.readString(" ").toLower().text())
+			if (ircFunction.first == packetId)
 			{
 				 ret = (*this.*ircFunction.second)(curPacket);
 			}
