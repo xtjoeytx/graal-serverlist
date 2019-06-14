@@ -19,50 +19,16 @@ public:
 		: _channelName(name) {
 	}
 
-	void addUser(ServerPlayer *player)
-	{
-		_users.insert(player);
-	}
+	size_t getUserCount() const;
 
-	void removeUser(ServerPlayer *player)
-	{
-		_users.erase(player);
-	}
+	void addUser(ServerPlayer *player);
+	void removeUser(ServerPlayer *player);
 
-	void subscribe(ServerConnection *connection)
-	{
-		auto it = _serverSubscribers.find(connection);
-		if (it != _serverSubscribers.end())
-		{
-			it->second++;
-			return;
-		}
+	void subscribe(IrcConnection *connection);
+	void subscribe(ServerConnection *connection);
 
-		_serverSubscribers[connection] = 1;
-	}
-
-	void unsubscribe(ServerConnection *connection)
-	{
-		auto it = _serverSubscribers.find(connection);
-		if (it != _serverSubscribers.end())
-		{
-			it->second--;
-			if (it->second == 0)
-				_serverSubscribers.erase(it);
-		}
-	}
-
-	void subscribe(IrcConnection *connection) {
-		_ircSubscribers.insert(connection);
-	}
-
-	void unsubscribe(IrcConnection *connection) {
-		_ircSubscribers.erase(connection);
-	}
-
-	size_t getUserCount() const {
-		return _users.size();
-	}
+	void unsubscribe(IrcConnection *connection);
+	void unsubscribe(ServerConnection *connection);
 
 	void sendMessage(const std::string& from, const std::string& message, void *sender = 0);
 
@@ -72,5 +38,51 @@ private:
 	std::unordered_set<IrcConnection *> _ircSubscribers;
 	std::unordered_set<ServerPlayer *> _users;
 };
+
+inline void IrcChannel::addUser(ServerPlayer *player)
+{
+	_users.insert(player);
+}
+
+inline void IrcChannel::removeUser(ServerPlayer *player)
+{
+	_users.erase(player);
+}
+
+inline size_t IrcChannel::getUserCount() const
+{
+	return _users.size();
+}
+
+inline void IrcChannel::subscribe(ServerConnection *connection)
+{
+	auto it = _serverSubscribers.find(connection);
+	if (it != _serverSubscribers.end())
+	{
+		it->second++;
+		return;
+	}
+
+	_serverSubscribers[connection] = 1;
+}
+
+inline void IrcChannel::unsubscribe(ServerConnection *connection)
+{
+	auto it = _serverSubscribers.find(connection);
+	if (it != _serverSubscribers.end())
+	{
+		it->second--;
+		if (it->second == 0)
+			_serverSubscribers.erase(it);
+	}
+}
+
+inline void IrcChannel::subscribe(IrcConnection *connection) {
+	_ircSubscribers.insert(connection);
+}
+
+inline void IrcChannel::unsubscribe(IrcConnection *connection) {
+	_ircSubscribers.erase(connection);
+}
 
 #endif
