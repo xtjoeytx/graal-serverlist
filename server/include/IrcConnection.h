@@ -9,17 +9,6 @@
 #include "IDataBackend.h" // for AccountStatus
 #include "IrcStub.h"
 
-enum
-{
-	IRCI_SENDTEXT		= 0,
-	IRCI_PACKETCOUNT,
-};
-
-enum
-{
-	IRCO_SENDTEXT		= 0,
-};
-
 class ListServer;
 class ServerConnection;
 class ServerPlayer;
@@ -48,8 +37,16 @@ class IrcConnection : IrcStub
 
 		// packet-functions;
 		bool parsePacket(CString& pPacket);
-		bool msgIRCI_NULL(CString& pPacket);
-		bool msgIRCI_SENDTEXT(CString& pPacket);
+		bool msgIRC_UNKNOWN(CString& pPacket);
+		bool msgIRC_USER(CString& pPacket);
+		bool msgIRC_PING(CString& pPacket);
+		bool msgIRC_NICK(CString& pPacket);
+		bool msgIRC_PASS(CString& pPacket);
+		bool msgIRC_JOIN(CString& pPacket);
+		bool msgIRC_PART(CString& pPacket);
+		bool msgIRC_PRIVMSG(CString& pPacket);
+
+		void authenticateUser();
 
 	private:
 		ListServer *_listServer;
