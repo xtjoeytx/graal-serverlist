@@ -6,6 +6,7 @@
 #include "ServerPlayer.h"
 #include "CLog.h"
 #include <map>
+#include "IrcChannel.h"
 
 /*
 	Pointer-Functions for Packets
@@ -281,6 +282,17 @@ bool IrcConnection::msgIRC_JOIN(CString& pPacket)
 	{
 		sendPacket(":" + _ircPlayer->getAccountName() + " JOIN " + params[1]);
 		_listServer->addPlayerToChannel(params[1].text(), _ircPlayer);
+
+		// Todo(Shitai): Move to IrcChannel.cpp?
+		auto channel = _listServer->getChannel(params[1].text());
+		CString users;
+		for (auto * user: *channel->getUsers())
+		{
+			users << user->getAccountName() << " ";
+		}
+				
+		sendPacket(":" + _listServerAddress + " 353 " + _ircPlayer->getAccountName() + " = " + params[1] + " :" + users.trim());
+		sendPacket(":" + _listServerAddress + " 366 " + _ircPlayer->getAccountName() + " " + params[1] + " :End of /NAMES list.");
 	}
 
 	return true;
