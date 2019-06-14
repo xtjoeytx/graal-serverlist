@@ -19,6 +19,9 @@ void createIrcPtrTable()
 	ircFunctionTable["user"] = &IrcConnection::msgIRC_USER;
 	ircFunctionTable["nick"] = &IrcConnection::msgIRC_NICK;
 	ircFunctionTable["ping"] = &IrcConnection::msgIRC_PING;
+	ircFunctionTable["join"] = &IrcConnection::msgIRC_JOIN;
+	ircFunctionTable["part"] = &IrcConnection::msgIRC_PART;
+	ircFunctionTable["pass"] = &IrcConnection::msgIRC_PASS;
 	ircFunctionTable["privmsg"] = &IrcConnection::msgIRC_PRIVMSG;
 	ircFunctionTable["notice"] = &IrcConnection::msgIRC_PRIVMSG;
 }
@@ -172,7 +175,7 @@ bool IrcConnection::parsePacket(CString& pPacket)
 		CString curPacket = pPacket.readString("\n");
 
 		// read id & packet
-		std::string packetId = (pPacket.trim().tokenize(" "))[0].text();
+		std::string packetId = (pPacket.trim().tokenize(" "))[0].toLower().text();
 
 		//printf("Irc Packet In: %s (%d)\n", curPacket.trim().text(), curPacket.trim().length());
 
