@@ -1339,6 +1339,13 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							std::string channel = params[3].guntokenize().text();
 							_listServer->removePlayerFromChannel(channel, player);
 						}
+						else if (params.size() == 6 && params[2] == "privmsg")
+						{
+							std::string from = params[3].text();
+							std::string channel = params[4].text();
+							std::string message = params[5].text();
+							_listServer->sendMessage(channel, player, message);
+						}
 					}
 				}
 			}
@@ -1437,26 +1444,7 @@ bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
 	CString textData = pPacket.readString("");
 	CString data = textData.guntokenize();
 	std::vector<CString> params = textData.gCommaStrTokens();
-
-	if (params.size() >= 3)
-	{
-		if (params[0] == "GraalEngine")
-		{
-			if (params[1] == "irc")
-			{
-				if (params.size() == 6 && params[2] == "privmsg")
-				{
-					std::string from = params[3].text();
-					auto *player = getPlayer(from);
-					std::string channel = params[4].text();
-					std::string message = params[5].text();
-					if (player != nullptr)
-						_listServer->sendMessage(channel, player, message);
-				}
-			}
-		}
-	}
-
+	
 	return true;
 }
 

@@ -390,9 +390,11 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
         {
             _listServer->removePlayerFromChannel(params[1].text(), _ircPlayer);
         }
-		else if (params[0].toLower() == "privmsg")
+		else if (params[0].toLower() == "privmsg" || params[0].toLower() == "notice")
 		{
 			CString message = pPacket.subString(pPacket.readString(":").length()+1);
+
+			// Todo(Shitai): Handle when PRIVMSG is sent to player and not a channel. Should send as GraalPM on ServerConnection and as PRIVMSG on IrcConnection
 			_listServer->sendMessage(params[1].text(), _ircPlayer, message.text());
 		}
 	}
