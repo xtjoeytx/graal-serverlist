@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <map>
 #include <unordered_set>
 #include <string>
 #include <vector>
@@ -28,16 +29,47 @@ public:
 		_users.erase(player);
 	}
 
+	void subscribe(ServerConnection *connection)
+	{
+		auto it = _serverSubscribers.find(connection);
+		if (it != _serverSubscribers.end())
+		{
+			it->second++;
+			return;
+		}
+
+		_serverSubscribers[connection] = 1;
+	}
+
+	void unsubscribe(ServerConnection *connection)
+	{
+		auto it = _serverSubscribers.find(connection);
+		if (it != _serverSubscribers.end())
+		{
+			it->second--;
+			if (it->second == 0)
+				_serverSubscribers.erase(it);
+		}
+	}
+
+	void subscribe(IrcConnection *connection) {
+		_ircSubscribers.insert(connection);
+	}
+
+	void unsubscribe(IrcConnection *connection) {
+		_ircSubscribers.erase(connection);
+	}
+
 	size_t getUserCount() const {
 		return _users.size();
 	}
 
-	void sendMessage(const std::string& from, const std::string& message);
+	void sendMessage(const std::string& from, const std::string& message, void *sender = 0);
 
 private:
 	std::string _channelName;
-	std::vector<ServerConnection *> _serverSubscribers;
-	std::vector<IrcConnection *> _ircSubscribers;
+	std::map<ServerConnection *, size_t> _serverSubscribers;
+	std::unordered_set<IrcConnection *> _ircSubscribers;
 	std::unordered_set<ServerPlayer *> _users;
 };
 

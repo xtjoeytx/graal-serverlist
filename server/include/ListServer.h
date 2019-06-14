@@ -62,9 +62,15 @@ public:
 
 	// Chatroom Functionality
 	IrcChannel * getChannel(const std::string& channel) const;
-	void addPlayerToChannel(const std::string& channel, ServerPlayer *player);
-	void removePlayerFromChannel(const std::string& channel, ServerPlayer *player);
-	void sendTextToChannel(const std::string& channel, const std::string& from, const std::string& message, ServerConnection *sender = nullptr);
+
+	template<class ConnectionCls>
+	void addPlayerToChannel(const std::string& channel, ServerPlayer *player, ConnectionCls *cls);
+
+	template<class ConnectionCls>
+	void removePlayerFromChannel(const std::string& channel, ServerPlayer *player, ConnectionCls *cls);
+
+	template<class ConnectionCls>
+	void sendTextToChannel(const std::string& channel, const std::string& from, const std::string& message, ConnectionCls *sender = nullptr);
 
 	// Backend functionality
 	AccountStatus verifyAccount(const std::string& account, const std::string& password) const;
@@ -124,11 +130,57 @@ inline bool ListServer::setProfile(const PlayerProfile& profile) {
 	return _dataStore->setProfile(profile);
 }
 
+//////////////////
+#include <assert.h>
+#include "IrcChannel.h"
+
 inline IrcChannel * ListServer::getChannel(const std::string& channel) const {
 	auto it = _ircChannels.find(channel);
 	if (it == _ircChannels.end())
 		return nullptr;
 	return it->second;
+}
+
+template<class ConnectionCls>
+void ListServer::addPlayerToChannel(const std::string& channel, ServerPlayer *player, ConnectionCls *cls)
+{
+	assert(player);
+
+	IrcChannel *channelObject = getChannel(channel);
+	if (channelObject == nullptr)
+	{
+		channelObject = new IrcChannel(channel);
+		_ircChannels[channel] = channelObject;
+	}
+
+	channelObject->addUser(player);
+	channelObject->subscribe(cls);
+}
+
+template<class ConnectionCls>
+void ListServer::removePlayerFromChannel(const std::string& channel, ServerPlayer *player, ConnectionCls *cls)
+{
+	assert(player);
+
+	IrcChannel *channelObject = getChannel(channel);
+	if (channelObject == nullptr)
+		return;
+
+	channelObject->removeUser(player);
+	if (channelObject->getUserCount() == 0)
+	{
+		_ircChannels.erase(channel);
+		delete channelObject;
+	}
+	else channelObject->unsubscribe(cls);
+}
+
+template<class ConnectionCls>
+void ListServer::sendTextToChannel(const std::string& channel, const std::string& from, const std::string& message, ConnectionCls *sender)
+{
+	IrcChannel *channelObject = getChannel(channel);
+	if (channelObject != nullptr)
+		channelObject->sendMessage(from, message, sender);
 }
 
 #endif

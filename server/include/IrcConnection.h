@@ -23,6 +23,8 @@ class ListServer;
 class ServerConnection;
 class ServerPlayer;
 
+#include "ServerPlayer.h"
+
 class IrcConnection
 {
 	public:
@@ -76,6 +78,7 @@ class IrcConnection
 		CFileQueue _fileQueue;
 		CString sendBuffer, sockBuffer, outBuffer;
 		AccountStatus _accountStatus;
+		ServerPlayer _player;
 
 		CString description, ip, language, name, port, url, version, localip, _listServerAddress;
 		std::vector<ServerPlayer *> playerList;

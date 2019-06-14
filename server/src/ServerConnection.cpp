@@ -1306,7 +1306,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							sendTextForPlayer(player, sendMsg);
 
 							std::string channel = params[3].guntokenize().text();
-							_listServer->addPlayerToChannel(channel, player);
+							_listServer->addPlayerToChannel(channel, player, this);
 						}
 						else if (params[2] == "part") // GraalEngine,irc,part,#channel
 						{
@@ -1315,7 +1315,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							sendTextForPlayer(player, sendMsg);
 
 							std::string channel = params[3].guntokenize().text();
-							_listServer->removePlayerFromChannel(channel, player);
+							_listServer->removePlayerFromChannel(channel, player, this);
 						}
 					}
 				}

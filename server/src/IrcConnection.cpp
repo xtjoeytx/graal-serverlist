@@ -28,7 +28,7 @@ void createIrcPtrTable()
 */
 IrcConnection::IrcConnection(ListServer *listServer, CSocket *pSocket)
 : _listServer(listServer), _socket(pSocket), addedToSQL(false), isServerHQ(false),
-serverhq_level(1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), rawPacketSize(0)
+serverhq_level(1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), rawPacketSize(0), _player()
 {
 	static bool _setupServerPackets = false;
 	if (!_setupServerPackets)
@@ -364,13 +364,16 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 			_accountStatus = _listServer->verifyAccount(account.text(), password.text());
 			sendPacket(":" + nickname + " NICK " + account);
 			nickname = "" + account;
+			_player.setProps(CString() >> (char)PLPROP_ACCOUNTNAME >> (char)account.length() << account);
 
 			switch (_accountStatus)
 			{
 				case AccountStatus::Normal:
 					sendPacket(":" + _listServerAddress + " 001 " + nickname + " :Welcome to " + _listServer->getSettings().getStr("name") + ", " + account + ".");
 					sendPacket(":" + _listServerAddress + " 001 " + nickname + " :Your account: " + account + ", password: " + password);
+					
 					sendPacket(":" + nickname + " JOIN #graal");
+					_listServer->addPlayerToChannel("#graal", &_player, this);
 					break;
 				default:
 					sendPacket(":" + _listServerAddress + " KILL " + nickname + " Unable to identify account: " + (int)AccountStatus::Normal);
@@ -384,14 +387,15 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 		if (params[0].toLower() == "join")
 		{
 			sendPacket(":" + nickname + " JOIN " + params[1]);
+			_listServer->addPlayerToChannel(params[1].text(), &_player, this);
 		}
 		else if (params[0].toLower() == "privmsg")
 		{
-			CString forwardPacket;
-			forwardPacket.writeGChar(SVO_SENDTEXT);
-			CString message = pPacket.subString(pPacket.readString(":").length()+1);
-			forwardPacket << "GraalEngine,irc,privmsg," << account.gtokenize() << "," << params[1].gtokenize() << "," << message.gtokenize();
-			_listServer->sendPacketToServers(forwardPacket);
+			CString message = pPacket.subString(pPacket.readString(":").length() + 1);
+			//CString forwardPacket;
+			//forwardPacket.writeGChar(SVO_SENDTEXT);
+			//forwardPacket << "GraalEngine,irc,privmsg," << account.gtokenize() << "," << params[1].gtokenize() << "," << message.gtokenize();
+			_listServer->sendTextToChannel(params[1].text(), account.text(), message.text(), this);
 		}
 	}
 
