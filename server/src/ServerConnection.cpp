@@ -332,6 +332,18 @@ ServerPlayer * ServerConnection::getPlayer(const std::string & account, int type
 	return nullptr;
 }
 
+ServerPlayer * ServerConnection::getPlayer(const std::string & account) const
+{
+	for (auto it = playerList.begin(); it != playerList.end(); ++it)
+	{
+		ServerPlayer *player = *it;
+		if (player->getAccountName() == account)
+			return player;
+	}
+
+	return nullptr;
+}
+
 void ServerConnection::clearPlayerList()
 {
 	// clean playerlist
@@ -1435,10 +1447,11 @@ bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
 				if (params.size() == 6 && params[2] == "privmsg")
 				{
 					std::string from = params[3].text();
-					auto *player = getPlayer(from, 0);
+					auto *player = getPlayer(from);
 					std::string channel = params[4].text();
 					std::string message = params[5].text();
-					_listServer->sendMessage(channel, player, message);
+					if (player != nullptr)
+						_listServer->sendMessage(channel, player, message);
 				}
 			}
 		}

@@ -130,6 +130,7 @@ class ServerConnection : IrcStub
 
 		ServerPlayer * getPlayer(unsigned short id) const;
 		ServerPlayer * getPlayer(const std::string& account, int type) const;
+		ServerPlayer * getPlayer(const std::string& account) const;
 
 		void clearPlayerList();
 		void sendTextForPlayer(ServerPlayer *player, const CString & data);
