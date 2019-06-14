@@ -177,6 +177,7 @@ bool IrcConnection::parsePacket(CString& pPacket)
 
 		// read id & packet
 		std::string packetId = curPacket.readString(" ").toLower().text();
+		curPacket.setRead(0);
 
 		// valid packet, call function
 		auto it = ircFunctionTable.find(packetId);
