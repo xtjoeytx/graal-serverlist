@@ -361,6 +361,19 @@ bool IrcConnection::msgIRC_JOIN(CString& pPacket)
 		sendPacket(":" + _player.getNickName() + " JOIN " + params[1]);
 		_listServer->addPlayerToChannel(params[1].text(), &_player, this);
 
+		auto channelObject = _listServer->getChannel(params[1].text());
+		if (channelObject)
+		{
+			CString users;
+			auto userList = channelObject->getUserList();
+			for (auto it = userList.begin(); it != userList.end(); ++it) {
+				users << (*it)->getAccountName() << " ";
+			}
+
+			sendPacket(":" + _listServerAddress + " 353 " + _player.getAccountName() + " = " + params[1] + " :" + users.trim());
+			sendPacket(":" + _listServerAddress + " 366 " + _player.getAccountName() + " " + params[1] + " :End of /NAMES list.");
+		}
+
 		/*
 		// Todo(Shitai): Move to IrcChannel.cpp?
 		auto channel = _listServer->getChannel(params[1].text());

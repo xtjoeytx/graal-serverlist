@@ -20,10 +20,10 @@ public:
 	}
 
 	size_t getUserCount() const;
+	const std::unordered_set<ServerPlayer *>& getUserList() const { return _users; }
 
 	void addUser(ServerPlayer *player);
 	void removeUser(ServerPlayer *player);
-
 	void sendMessage(const std::string& from, const std::string& message, void *sender = 0);
 
 	void subscribe(IrcConnection *connection);
@@ -38,16 +38,6 @@ private:
 	std::unordered_set<IrcConnection *> _ircSubscribers;
 	std::unordered_set<ServerPlayer *> _users;
 };
-
-inline void IrcChannel::addUser(ServerPlayer *player)
-{
-	_users.insert(player);
-}
-
-inline void IrcChannel::removeUser(ServerPlayer *player)
-{
-	_users.erase(player);
-}
 
 inline size_t IrcChannel::getUserCount() const
 {

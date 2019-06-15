@@ -2,6 +2,42 @@
 #include "IrcConnection.h"
 #include "ServerConnection.h"
 
+// TODO(joey): A proper event handling class!
+
+void IrcChannel::addUser(ServerPlayer *player)
+{
+	_users.insert(player);
+
+	if (!_ircSubscribers.empty())
+	{
+		CString ircPacket;
+		ircPacket << ":" << player->getAccountName() << " JOIN " << _channelName;
+		for (auto it = _ircSubscribers.begin(); it != _ircSubscribers.end(); ++it)
+		{
+			IrcConnection *conn = *it;
+			//if (conn != sender)
+			conn->sendPacket(ircPacket);
+		}
+	}
+}
+
+void IrcChannel::removeUser(ServerPlayer *player)
+{
+	_users.erase(player);
+
+	if (!_ircSubscribers.empty())
+	{
+		CString ircPacket;
+		ircPacket << ":" << player->getAccountName() << " PART " << _channelName;
+		for (auto it = _ircSubscribers.begin(); it != _ircSubscribers.end(); ++it)
+		{
+			IrcConnection *conn = *it;
+			//if (conn != sender)
+			conn->sendPacket(ircPacket);
+		}
+	}
+}
+
 void IrcChannel::sendMessage(const std::string& from, const std::string& message, void *sender)
 {
 	if (!_ircSubscribers.empty())
