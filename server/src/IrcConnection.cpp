@@ -299,8 +299,8 @@ bool IrcConnection::msgIRC_MODE(CString& pPacket)
 		if (params[1].subString(0, 1) == "#")
 		{
 			// Get channel modes
-			sendPacket(":" + _listServerAddress + " 324 " + _ircPlayer->getAccountName() + "  " + _ircPlayer->getAccountName() + " " + params[1] +" +cgnst"); // Channel modes
-			sendPacket(":" + _listServerAddress + " 329 " + _ircPlayer->getAccountName() + "  " + _ircPlayer->getAccountName() + "  1251403546"); // When channel modes was last changed
+			sendPacket(":" + _listServerAddress + " 324 " + _ircPlayer->getAccountName() + " " + params[1] + " +cgnst"); // Channel modes
+			sendPacket(":" + _listServerAddress + " 329 " + _ircPlayer->getAccountName() + " " + params[1] + " 1251403546"); // When channel modes was last changed
 		}
 		else if (params[1] == _ircPlayer->getAccountName())
 		{
