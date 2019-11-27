@@ -325,8 +325,11 @@ ServerPlayer * ServerConnection::getPlayer(const std::string & account, int type
 void ServerConnection::clearPlayerList()
 {
 	// clean playerlist
-	for (auto it = playerList.begin(); it != playerList.end(); ++it)
+	for (auto it = playerList.begin(); it != playerList.end(); ++it) {
+		_listServer->removePlayer(*it, this);
+
 		delete *it;
+	}
 	playerList.clear();
 }
 

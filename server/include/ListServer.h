@@ -64,6 +64,9 @@ public:
 	IrcChannel * getChannel(const std::string& channel) const;
 
 	template<class ConnectionCls>
+	void removePlayer(ServerPlayer *player, ConnectionCls *cls);
+
+	template<class ConnectionCls>
 	void addPlayerToChannel(const std::string& channel, ServerPlayer *player, ConnectionCls *cls);
 
 	template<class ConnectionCls>
@@ -138,6 +141,36 @@ inline IrcChannel * ListServer::getChannel(const std::string& channel) const {
 	if (it == _ircChannels.end())
 		return nullptr;
 	return it->second;
+}
+
+template<class ConnectionCls>
+void ListServer::removePlayer(ServerPlayer *player, ConnectionCls *cls)
+{
+	assert(player);
+
+	std::vector<IrcChannel *> deadChannels;
+
+	for (auto it = _ircChannels.begin(); it != _ircChannels.end(); ++it)
+	{
+		IrcChannel *channel = it->second;
+
+		size_t channelUserCount = channel->getUserCount();
+		channel->removeUser(player);
+
+		if (channel->getUserCount() != channelUserCount)
+		{
+			if (channelUserCount == 1)
+			{
+				deadChannels.push_back(channel);
+			}
+			else channel->unsubscribe(cls);
+		}
+	}
+
+	for (IrcChannel *channel : deadChannels) {
+		_ircChannels.erase(channel->getChannelName());
+		delete channel;
+	}
 }
 
 template<class ConnectionCls>

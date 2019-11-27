@@ -44,6 +44,8 @@ IrcConnection::IrcConnection(ListServer *listServer, CSocket *pSocket)
 
 IrcConnection::~IrcConnection()
 {
+	_listServer->removePlayer(&_player, this);
+
 	// delete socket
 	delete _socket;
 }

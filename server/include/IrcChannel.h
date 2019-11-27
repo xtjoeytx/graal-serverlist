@@ -20,6 +20,7 @@ public:
 	}
 
 	size_t getUserCount() const;
+	const std::string& getChannelName() const;
 	const std::unordered_set<ServerPlayer *>& getUserList() const { return _users; }
 
 	void addUser(ServerPlayer *player);
@@ -42,6 +43,11 @@ private:
 inline size_t IrcChannel::getUserCount() const
 {
 	return _users.size();
+}
+
+inline const std::string& IrcChannel::getChannelName() const
+{
+	return _channelName;
 }
 
 inline void IrcChannel::subscribe(IrcConnection *connection)

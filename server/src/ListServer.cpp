@@ -76,8 +76,7 @@ InitializeError ListServer::Initialize()
 	if (_playerSock.connect())
 		return InitializeError::PlayerSock_Listen;
 
-	// TODO(joey): Old player sock?? Unsure what its for, leaving out for now
-
+	// TODO(joey): Old player sock?? Unsure what its for, leaving out for now. (11/25/19) - its for v141
 
 
 	// TODO(joey): Create different data backends (likely do a text-based one as well)
