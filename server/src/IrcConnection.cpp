@@ -284,9 +284,9 @@ bool IrcConnection::msgIRC_USER(CString& pPacket)
 	if (params.size() >= 0 && _accountStatus != AccountStatus::Normal)
 	{
 		accountName = params[1].text();
-		nickName = accountName;
 
 		sendPacket(":" + nickName + " NICK " + accountName);
+		nickName = accountName;
 
 		authenticateUser();
 	}
