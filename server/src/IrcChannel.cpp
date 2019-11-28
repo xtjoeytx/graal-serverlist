@@ -1,6 +1,5 @@
 #include "IrcChannel.h"
-#include "IrcConnection.h"
-#include "ServerConnection.h"
+#include "IrcStub.h"
 
 bool IrcChannel::addUser(IrcStub *ircUser)
 {

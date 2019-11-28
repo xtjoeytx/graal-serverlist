@@ -7,7 +7,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
+#include "CLog.h"
 #include "CSettings.h"
 #include "CSocket.h"
 #include "IDataBackend.h"
@@ -24,10 +24,11 @@ public:
 	IrcServer(ListServer *listServer);
 	~IrcServer();
 
-	bool Initialize(IDataBackend *dataStore, int port);
+	bool Initialize(IDataBackend *dataStore, const std::string& homePath, int port);
 	void Cleanup();
 	bool Main();
 
+	CLog & getIrcLog()				{ return _ircLog; }
 	CSettings & getSettings();
 	std::vector<IrcConnection *> & getIrcConnections() { return _ircConnections; }
 	const std::string& getHostName() const { return _serverHost; }
@@ -48,6 +49,7 @@ public:
 
 private:
 	bool _initialized;
+	CLog _ircLog;
 	CSocket _ircSock;
 	IDataBackend *_dataStore;
 	ListServer *_listServer;

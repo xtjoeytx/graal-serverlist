@@ -13,8 +13,10 @@ IrcServer::~IrcServer()
 	Cleanup();
 }
 
-bool IrcServer::Initialize(IDataBackend *dataStore, int port)
+bool IrcServer::Initialize(IDataBackend *dataStore, const std::string& homePath, int port)
 {
+	_ircLog.setFilename(homePath + "irclog.txt");
+
 	// Bind the irc socket
 	_ircSock.setType(SOCKET_TYPE_SERVER);
 	_ircSock.setProtocol(SOCKET_PROTOCOL_TCP);
@@ -73,13 +75,13 @@ void IrcServer::acceptSock()
 
 	if (_dataStore->isIpBanned(ipAddress))
 	{
-//		getServerLog().append("New connection from %s was rejected due to an ip ban!\n", newSock->getRemoteIp());
+		getIrcLog().append("New connection from %s was rejected due to an ip ban!\n", newSock->getRemoteIp());
 		newSock->disconnect();
 		delete newSock;
 		return;
 	}
 
-//	getServerLog().append("New Connection from %s -> %s\n", ipAddress.c_str(), "Player");
+	getIrcLog().append("New Connection from %s -> %s\n", ipAddress.c_str(), "Player");
 
 	_ircConnections.push_back(new IrcConnection(this, newSock));
 }

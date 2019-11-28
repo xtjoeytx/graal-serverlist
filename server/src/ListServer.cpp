@@ -78,7 +78,7 @@ InitializeError ListServer::Initialize()
 		return InitializeError::Backend_Error;
 
 	// Bind the irc socket
-	if (!_ircServer.Initialize(_dataStore, 6667))
+	if (!_ircServer.Initialize(_dataStore, _homePath, 6667))
 		return InitializeError::IrcSock_Listen;
 
 	_initialized = true;
@@ -176,7 +176,6 @@ bool ListServer::Main()
 		// accept sockets
 		acceptSock(_playerSock, SocketType::Player);
 		acceptSock(_serverSock, SocketType::Server);
-//		acceptSock(_ircSock, SocketType::IRC);
 
 		// iterate player connections
 		for (auto it = _playerConnections.begin(); it != _playerConnections.end();)
@@ -204,20 +203,7 @@ bool ListServer::Main()
 			}
 		}
 
-		// iterate irc connections
-//		for (auto it = _ircConnections.begin(); it != _ircConnections.end();)
-//		{
-//			IrcConnection *conn = *it;
-//			if (conn->doMain())
-//				++it;
-//			else
-//			{
-//				delete conn;
-//				it = _ircConnections.erase(it);
-//			}
-//		}
-
-		// do whatever
+		_ircServer.Main();
 
 		// ping datastore (flush updates to db, or text whatever)
 		_dataStore->Ping();
