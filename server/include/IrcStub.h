@@ -26,6 +26,10 @@ class IrcStub
 			return _nickName;
 		}
 
+		void setNickName(const std::string& nickName) {
+			_nickName = nickName;
+		}
+
 	protected:
 		IrcStub(IrcServer *ircServer)
 			: _ircServer(ircServer) { }

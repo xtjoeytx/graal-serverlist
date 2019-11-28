@@ -285,8 +285,8 @@ bool IrcConnection::msgIRC_USER(CString& pPacket)
 	{
 		accountName = params[1].text();
 
-		sendPacket(":" + nickName + " NICK " + accountName);
-		nickName = accountName;
+		sendPacket(":" + _ircStub.getNickName() + " NICK " + accountName);
+		_ircStub.setNickName(accountName);
 
 		authenticateUser();
 	}
@@ -312,7 +312,7 @@ bool IrcConnection::msgIRC_NICK(CString& pPacket)
 
 	if (params.size() >= 0 && _accountStatus != AccountStatus::Normal)
 	{
-		nickName = params[1].text();
+		_ircStub.setNickName(params[1].text());
 	}
 
 	return true;

@@ -57,7 +57,7 @@ class IrcConnection
 		CString password, hostname, _listServerAddress;
 		time_t lastPing, lastData;
 
-		std::string accountName, nickName;
+		std::string accountName;
 };
 
 #endif // TIRC_H
