@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "IrcChannel.h"
 #include "IrcStub.h"
 
