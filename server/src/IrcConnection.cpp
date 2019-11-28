@@ -373,11 +373,12 @@ bool IrcConnection::msgIRC_PART(CString& pPacket)
 
 	if (params.size() >= 0 && _accountStatus == AccountStatus::Normal)
 	{
- 		bool success = _ircServer->removePlayerFromChannel(params[1].text(), &_ircStub);
- 		if (success) {
-			const CString message = pPacket.subString(pPacket.readString(":").length() + 1);
-			sendPacket(":" + _ircStub.getNickName() + " PART " + params[1] + " :" + message);
- 		}
+ 		_ircServer->removePlayerFromChannel(params[1].text(), &_ircStub);
+ 		
+		//if (success) {
+		//	const CString message = pPacket.subString(pPacket.readString(":").length() + 1);
+		//	sendPacket(":" + _ircStub.getNickName() + " PART " + params[1] + " :" + message);
+ 		//	}
 	}
 
 	return true;
