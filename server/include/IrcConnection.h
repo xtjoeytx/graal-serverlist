@@ -6,16 +6,16 @@
 #include "CString.h"
 #include "CEncryption.h"
 #include "IDataBackend.h" // for AccountStatus
-#include "ServerPlayer.h"
+#include "RealIrcStub.h"
 
-class ListServer;
+class IrcServer;
 class ServerConnection;
 
 class IrcConnection
 {
 	public:
 		// constructor-destructor
-		IrcConnection(ListServer *listServer, CSocket *pSocket);
+		IrcConnection(IrcServer *ircServer, CSocket *pSocket);
 		~IrcConnection();
 
 		// main loop
@@ -46,16 +46,18 @@ class IrcConnection
 		void authenticateUser();
 
 	private:
-		ListServer *_listServer;
+		IrcServer *_ircServer;
 		CSocket *_socket;
+		RealIrcStub _ircStub;
 		
 		// Packet protocol
 		CString sendBuffer, sockBuffer, outBuffer;
 		AccountStatus _accountStatus;
-		ServerPlayer _player;
 
 		CString password, hostname, _listServerAddress;
 		time_t lastPing, lastData;
+
+		std::string accountName, nickName;
 };
 
 #endif // TIRC_H

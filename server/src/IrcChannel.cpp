@@ -2,90 +2,45 @@
 #include "IrcConnection.h"
 #include "ServerConnection.h"
 
-// TODO(joey): A proper event handling class!
-
-void IrcChannel::addUser(ServerPlayer *player)
+bool IrcChannel::addUser(IrcStub *ircUser)
 {
-	_users.insert(player);
+	assert(ircUser);
 
-	if (!_ircSubscribers.empty())
-	{
-		CString ircPacket;
-		ircPacket << ":" << player->getAccountName() << " JOIN " << _channelName;
-		for (auto it = _ircSubscribers.begin(); it != _ircSubscribers.end(); ++it)
-		{
-			IrcConnection *conn = *it;
-			//if (conn != sender)
-			conn->sendPacket(ircPacket);
-		}
+	auto it = _users.insert(ircUser);
+	if (!it.second) // it.second is true if inserted
+		return false;
+
+	ircUser->sendJoinedChannel(_channelName, _users);
+
+	for (auto ircStub : _users) {
+		ircStub->sendUserJoinedChannel(_channelName, ircUser);
 	}
+
+	return it.second;
 }
 
-void IrcChannel::removeUser(ServerPlayer *player)
+bool IrcChannel::removeUser(IrcStub *ircUser)
 {
-	_users.erase(player);
+	assert(ircUser);
 
-	if (!_ircSubscribers.empty())
-	{
-		CString ircPacket;
-		ircPacket << ":" << player->getAccountName() << " PART " << _channelName;
-		for (auto it = _ircSubscribers.begin(); it != _ircSubscribers.end(); ++it)
-		{
-			IrcConnection *conn = *it;
-			//if (conn != sender)
-			conn->sendPacket(ircPacket);
-		}
+	size_t count = _users.erase(ircUser);
+	if (count == 0)
+		return false;
+
+	ircUser->sendLeftChannel(_channelName, "");
+
+	for (auto ircStub : _users) {
+		ircStub->sendUserLeftChannel(_channelName, ircUser);
 	}
+
+	return true;
 }
 
-void IrcChannel::sendMessage(const std::string& from, const std::string& message, void *sender)
+void IrcChannel::sendMessage(const std::string& message, IrcStub *sender)
 {
-	if (!_ircSubscribers.empty())
+	for (auto ircStub : _users)
 	{
-		CString ircPacket;
-		ircPacket << ":" << from << " PRIVMSG " << _channelName << " :" << message;
-		for (auto it = _ircSubscribers.begin(); it != _ircSubscribers.end(); ++it)
-		{
-			IrcConnection *conn = *it;
-			if (conn != sender)
-				conn->sendPacket(ircPacket);
-		}
-	}
-
-	if (!_serverSubscribers.empty())
-	{
-		CString serverPacket;
-		serverPacket >> (char)SVO_SENDTEXT << "GraalEngine,irc,privmsg," << from
-					 << "," << CString(_channelName).gtokenize() << "," << CString(message).gtokenize();
-
-		for (auto it = _serverSubscribers.begin(); it != _serverSubscribers.end(); ++it)
-		{
-			ServerConnection *conn = it->first;
-			if (conn != sender)
-				conn->sendPacket(serverPacket);
-		}
-	}
-}
-
-void IrcChannel::subscribe(ServerConnection *connection)
-{
-	auto it = _serverSubscribers.find(connection);
-	if (it != _serverSubscribers.end())
-	{
-		it->second++;
-		return;
-	}
-
-	_serverSubscribers[connection] = 1;
-}
-
-void IrcChannel::unsubscribe(ServerConnection *connection)
-{
-	auto it = _serverSubscribers.find(connection);
-	if (it != _serverSubscribers.end())
-	{
-		it->second--;
-		if (it->second == 0)
-			_serverSubscribers.erase(it);
+		if (ircStub != sender)
+			ircStub->sendMessage(_channelName, message, sender->getNickName());
 	}
 }

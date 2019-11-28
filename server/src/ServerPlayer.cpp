@@ -1,7 +1,8 @@
 #include "ServerPlayer.h"
 
-ServerPlayer::ServerPlayer()
-	: _id(0), _clientType(0), _x(0.0), _y(0.0), _alignment(0)
+ServerPlayer::ServerPlayer(ServerConnection *serverConnection, IrcServer *ircServer)
+	: _id(0), _clientType(0), _x(0.0), _y(0.0), _alignment(0),
+	  ircStub(ircServer, serverConnection, this)
 {
 
 }

@@ -310,6 +310,18 @@ ServerPlayer * ServerConnection::getPlayer(unsigned short id) const
 	return nullptr;
 }
 
+ServerPlayer * ServerConnection::getPlayer(const std::string & account) const
+{
+	for (auto it = playerList.begin(); it != playerList.end(); ++it)
+	{
+		ServerPlayer *player = *it;
+		if (player->getAccountName() == account)
+			return player;
+	}
+
+	return nullptr;
+}
+
 ServerPlayer * ServerConnection::getPlayer(const std::string & account, int type) const
 {
 	for (auto it = playerList.begin(); it != playerList.end(); ++it)
@@ -326,7 +338,7 @@ void ServerConnection::clearPlayerList()
 {
 	// clean playerlist
 	for (auto it = playerList.begin(); it != playerList.end(); ++it) {
-		_listServer->removePlayer(*it, this);
+		//_listServer->removePlayer(*it, this);
 
 		delete *it;
 	}
@@ -690,7 +702,7 @@ bool ServerConnection::msgSVI_SETPLYR(CString& pPacket)
 			propPacket >> (char)PLPROP_ALIGNMENT >> (char)alignment;
 
 			// Create the player object
-			ServerPlayer *playerObject = new ServerPlayer();
+			ServerPlayer *playerObject = new ServerPlayer(this, _listServer->getIrcServer());
 			playerObject->setClientType(type);
 			playerObject->setProps(propPacket);
 			playerList.push_back(playerObject);
@@ -900,7 +912,7 @@ bool ServerConnection::msgSVI_PLYRADD(CString& pPacket)
 	// Create a new player
 	if (playerObject == nullptr)
 	{
-		playerObject = new ServerPlayer();
+		playerObject = new ServerPlayer(this, _listServer->getIrcServer());
 		playerList.push_back(playerObject);
 	}
 	
@@ -1302,6 +1314,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 				{
 					if (params.size() == 4)
 					{
+						IrcServer *ircServer = _listServer->getIrcServer();
 						if (params[2] == "join") // GraalEngine,irc,join,#channel
 						{
 							CString sendMsg = "GraalEngine,irc,join,";
@@ -1309,7 +1322,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							sendTextForPlayer(player, sendMsg);
 
 							std::string channel = params[3].guntokenize().text();
-							_listServer->addPlayerToChannel(channel, player, this);
+							ircServer->addPlayerToChannel(channel, player->getIrcStub());
 						}
 						else if (params[2] == "part") // GraalEngine,irc,part,#channel
 						{
@@ -1318,7 +1331,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							sendTextForPlayer(player, sendMsg);
 
 							std::string channel = params[3].guntokenize().text();
-							_listServer->removePlayerFromChannel(channel, player, this);
+							ircServer->removePlayerFromChannel(channel, player->getIrcStub());
 						}
 					}
 				}
@@ -1430,7 +1443,9 @@ bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
 					std::string from = params[3].text();
 					std::string channel = params[4].text();
 					std::string message = params[5].text();
-					_listServer->sendTextToChannel(channel, from, message, this);
+
+					ServerPlayer *player = getPlayer(from);
+					_listServer->getIrcServer()->sendTextToChannel(channel, message, player->getIrcStub());
 				}
 			}
 		}

@@ -14,6 +14,7 @@
 #include "CSocket.h"
 #include "CString.h"
 #include "IDataBackend.h"
+#include "IrcServer.h"
 
 class PlayerConnection;
 class ServerConnection;
@@ -38,8 +39,7 @@ enum class SocketType
 {
 	PlayerOld,
 	Player,
-	Server,
-	IRC
+	Server
 };
 
 class ListServer
@@ -55,25 +55,9 @@ public:
 	CLog & getClientLog()				{ return _clientLog; }
 	CLog & getServerLog()				{ return _serverLog; }
 	CSettings & getSettings()			{ return _settings; }
-	
-	const CString& getServerlistPacket() const { return CString(); }
+	IrcServer * getIrcServer()  		{ return &_ircServer; }
+	CString getServerlistPacket() const { return CString(); }
 	std::vector<ServerConnection *> & getConnections() { return _serverConnections; }
-	std::vector<IrcConnection *> & getIrcConnections() { return _ircConnections; }
-
-	// Chatroom Functionality
-	IrcChannel * getChannel(const std::string& channel) const;
-
-	template<class ConnectionCls>
-	void removePlayer(ServerPlayer *player, ConnectionCls *cls);
-
-	template<class ConnectionCls>
-	void addPlayerToChannel(const std::string& channel, ServerPlayer *player, ConnectionCls *cls);
-
-	template<class ConnectionCls>
-	void removePlayerFromChannel(const std::string& channel, ServerPlayer *player, ConnectionCls *cls);
-
-	template<class ConnectionCls>
-	void sendTextToChannel(const std::string& channel, const std::string& from, const std::string& message, ConnectionCls *sender = nullptr);
 
 	// Backend functionality
 	AccountStatus verifyAccount(const std::string& account, const std::string& password) const;
@@ -100,15 +84,14 @@ private:
 	CLog _clientLog;
 	CLog _serverLog;
 	CSettings _settings;
-	CSocket _playerSock, _serverSock, _ircSock;
+	CSocket _playerSock, _serverSock;
 	std::string _homePath;
 
 	std::vector<PlayerConnection *> _playerConnections;
-	std::vector<IrcConnection *> _ircConnections;
 	std::vector<ServerConnection *> _serverConnections;
-	std::unordered_map<std::string, IrcChannel *> _ircChannels;
 
 	IDataBackend *_dataStore;
+	IrcServer _ircServer;
 
 	// TBD:
 	std::vector<CString> _serverTypes;
@@ -131,88 +114,6 @@ inline std::optional<PlayerProfile> ListServer::getProfile(const std::string& ac
 
 inline bool ListServer::setProfile(const PlayerProfile& profile) {
 	return _dataStore->setProfile(profile);
-}
-
-//////////////////
-#include "IrcChannel.h"
-
-inline IrcChannel * ListServer::getChannel(const std::string& channel) const {
-	auto it = _ircChannels.find(channel);
-	if (it == _ircChannels.end())
-		return nullptr;
-	return it->second;
-}
-
-template<class ConnectionCls>
-void ListServer::removePlayer(ServerPlayer *player, ConnectionCls *cls)
-{
-	assert(player);
-
-	std::vector<IrcChannel *> deadChannels;
-
-	for (auto it = _ircChannels.begin(); it != _ircChannels.end(); ++it)
-	{
-		IrcChannel *channel = it->second;
-
-		size_t channelUserCount = channel->getUserCount();
-		channel->removeUser(player);
-
-		if (channel->getUserCount() != channelUserCount)
-		{
-			if (channelUserCount == 1)
-			{
-				deadChannels.push_back(channel);
-			}
-			else channel->unsubscribe(cls);
-		}
-	}
-
-	for (IrcChannel *channel : deadChannels) {
-		_ircChannels.erase(channel->getChannelName());
-		delete channel;
-	}
-}
-
-template<class ConnectionCls>
-void ListServer::addPlayerToChannel(const std::string& channel, ServerPlayer *player, ConnectionCls *cls)
-{
-	assert(player);
-
-	IrcChannel *channelObject = getChannel(channel);
-	if (channelObject == nullptr)
-	{
-		channelObject = new IrcChannel(channel);
-		_ircChannels[channel] = channelObject;
-	}
-
-	channelObject->addUser(player);
-	channelObject->subscribe(cls);
-}
-
-template<class ConnectionCls>
-void ListServer::removePlayerFromChannel(const std::string& channel, ServerPlayer *player, ConnectionCls *cls)
-{
-	assert(player);
-
-	IrcChannel *channelObject = getChannel(channel);
-	if (channelObject == nullptr)
-		return;
-
-	channelObject->removeUser(player);
-	if (channelObject->getUserCount() == 0)
-	{
-		_ircChannels.erase(channel);
-		delete channelObject;
-	}
-	else channelObject->unsubscribe(cls);
-}
-
-template<class ConnectionCls>
-void ListServer::sendTextToChannel(const std::string& channel, const std::string& from, const std::string& message, ConnectionCls *sender)
-{
-	IrcChannel *channelObject = getChannel(channel);
-	if (channelObject != nullptr)
-		channelObject->sendMessage(from, message, sender);
 }
 
 #endif

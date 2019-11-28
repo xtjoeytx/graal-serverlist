@@ -95,10 +95,13 @@ enum
 };
 #define propscount	83
 
+#include "SimulatedIrcStub.h"
+#include "ServerConnection.h"
+
 class ServerPlayer
 {
 public:
-	ServerPlayer();
+	ServerPlayer(ServerConnection *serverConnection, IrcServer *ircServer);
 	~ServerPlayer();
 
 	unsigned short getId() const				{ return _id; }
@@ -116,7 +119,12 @@ public:
 	// Prop manipulation
 	void setProps(CString& pPacket);
 
+	inline SimulatedIrcStub * getIrcStub() {
+		return &ircStub;
+	}
+
 protected:
+	SimulatedIrcStub ircStub;
 	unsigned short _id;
 	unsigned char _clientType;
 	double _x, _y;

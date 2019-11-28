@@ -128,6 +128,7 @@ class ServerConnection
 		CSocket* getSock() const	{ return _socket; }
 
 		ServerPlayer * getPlayer(unsigned short id) const;
+		ServerPlayer * getPlayer(const std::string& account) const;
 		ServerPlayer * getPlayer(const std::string& account, int type) const;
 		void clearPlayerList();
 		void sendTextForPlayer(ServerPlayer *player, const CString & data);

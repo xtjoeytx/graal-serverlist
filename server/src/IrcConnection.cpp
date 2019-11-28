@@ -28,8 +28,8 @@ void createIrcPtrTable()
 /*
 	Constructor - Deconstructor
 */
-IrcConnection::IrcConnection(ListServer *listServer, CSocket *pSocket)
-: _listServer(listServer), _socket(pSocket), _player()
+IrcConnection::IrcConnection(IrcServer *ircServer, CSocket *pSocket)
+: _ircServer(ircServer), _socket(pSocket), _ircStub(ircServer, this)
 {
 	static bool _setupServerPackets = false;
 	if (!_setupServerPackets)
@@ -37,14 +37,15 @@ IrcConnection::IrcConnection(ListServer *listServer, CSocket *pSocket)
 		createIrcPtrTable();
 		_setupServerPackets = true;
 	}
-	_listServerAddress = _listServer->getSettings().getStr("listServerAddress");
+
+	_listServerAddress = _ircServer->getSettings().getStr("listServerAddress");
 	_accountStatus = AccountStatus::NotFound;
 	lastPing = lastData = time(0);
 }
 
 IrcConnection::~IrcConnection()
 {
-	_listServer->removePlayer(&_player, this);
+//	_listServer->removePlayer(&_player, this);
 
 	// delete socket
 	delete _socket;
@@ -282,10 +283,10 @@ bool IrcConnection::msgIRC_USER(CString& pPacket)
 
 	if (params.size() >= 0 && _accountStatus != AccountStatus::Normal)
 	{
-		_player.setProps(CString() >> (char)PLPROP_ACCOUNTNAME >> (char)params[1].length() << params[1]);
+		accountName = params[1].text();
+		nickName = accountName;
 
-		sendPacket(":" + _player.getNickName() + " NICK " + _player.getAccountName());
-		_player.setNickName(_player.getAccountName());
+		sendPacket(":" + nickName + " NICK " + accountName);
 
 		authenticateUser();
 	}
@@ -311,7 +312,7 @@ bool IrcConnection::msgIRC_NICK(CString& pPacket)
 
 	if (params.size() >= 0 && _accountStatus != AccountStatus::Normal)
 	{
-		_player.setNickName(params[1].text());
+		nickName = params[1].text();
 	}
 
 	return true;
@@ -333,20 +334,20 @@ bool IrcConnection::msgIRC_PASS(CString& pPacket)
 
 void IrcConnection::authenticateUser()
 {
-	if (!_player.getAccountName().empty() && password != "")
+	if (!accountName.empty() && password != "")
 	{
-		_accountStatus = _listServer->verifyAccount(_player.getAccountName(), password.text());
+		_accountStatus = _ircServer->verifyAccount(accountName, password.text());
 		switch (_accountStatus)
 		{
 		case AccountStatus::Normal:
-			sendPacket(":" + _listServerAddress + " 001 " + _player.getAccountName() + " :Welcome to "
-				+ _listServer->getSettings().getStr("name") + ", "
-				+ _player.getAccountName() + "!");
-			sendPacket(":" + _listServerAddress + " 001 " + _player.getAccountName() + " :Your account: "
-				+ _player.getAccountName() + ", password: " + password);
+			sendPacket(":" + _listServerAddress + " 001 " + accountName + " :Welcome to "
+				+ _ircServer->getSettings().getStr("name") + ", "
+				+ accountName + "!");
+			sendPacket(":" + _listServerAddress + " 001 " + accountName + " :Your account: "
+				+ accountName + ", password: " + password);
 			break;
 		default:
-			sendPacket(":" + _listServerAddress + " KILL " + _player.getAccountName()
+			sendPacket(":" + _listServerAddress + " KILL " + accountName
 				+ " Unable to identify account: " + (int)_accountStatus, true);
 			_socket->disconnect();
 			break;
@@ -360,21 +361,7 @@ bool IrcConnection::msgIRC_JOIN(CString& pPacket)
 
 	if (params.size() >= 0 && _accountStatus == AccountStatus::Normal)
 	{
-		_listServer->addPlayerToChannel(params[1].text(), &_player, this);
-
-		const auto channelObject = _listServer->getChannel(params[1].text());
-		if (channelObject)
-		{
-			CString users;
-			auto userList = channelObject->getUserList();
-			for (auto it = userList.begin(); it != userList.end(); ++it) {
-				users << (*it)->getAccountName() << " ";
-			}
-
-			sendPacket(":" + _listServerAddress + " 353 " + _player.getAccountName() + " = " + params[1] + " :" + users.trim());
-			sendPacket(":" + _listServerAddress + " 366 " + _player.getAccountName() + " " + params[1] + " :End of /NAMES list.");
-		}
-		// Todo(Shitai): Move to IrcChannel.cpp?
+		_ircServer->addPlayerToChannel(params[1].text(), &_ircStub);
 	}
 
 	return true;
@@ -386,9 +373,11 @@ bool IrcConnection::msgIRC_PART(CString& pPacket)
 
 	if (params.size() >= 0 && _accountStatus == AccountStatus::Normal)
 	{
-		const CString message = pPacket.subString(pPacket.readString(":").length() + 1);
-		sendPacket(":" + _player.getNickName() + " PART " + params[1] + " :" + message);
-		_listServer->removePlayerFromChannel(params[1].text(), &_player, this);
+ 		bool success = _ircServer->removePlayerFromChannel(params[1].text(), &_ircStub);
+ 		if (success) {
+			const CString message = pPacket.subString(pPacket.readString(":").length() + 1);
+			sendPacket(":" + _ircStub.getNickName() + " PART " + params[1] + " :" + message);
+ 		}
 	}
 
 	return true;
@@ -401,9 +390,11 @@ bool IrcConnection::msgIRC_PRIVMSG(CString& pPacket)
 	if (params.size() >= 0 && _accountStatus == AccountStatus::Normal)
 	{
 		CString message = pPacket.subString(pPacket.readString(":").length() + 1);
-		
+
+		// Todo(joey): here
 		// Todo(Shitai): Handle when PRIVMSG is sent to player and not a channel. Should send as GraalPM on ServerConnection and as PRIVMSG on IrcConnection
-		_listServer->sendTextToChannel(params[1].text(), _player.getAccountName(), message.text(), this);
+		_ircServer->sendTextToChannel(params[1].text(), message.text(), &_ircStub);
+//		_listServer->sendTextToChannel(params[1].text(), _player.getAccountName(), message.text(), this);
 	}
 
 	return true;

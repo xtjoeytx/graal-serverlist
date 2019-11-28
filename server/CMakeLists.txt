@@ -31,6 +31,9 @@ set(
 		src/PlayerConnection.cpp
 		src/ServerConnection.cpp
 		src/IrcConnection.cpp
+        src/IrcServer.cpp
+		src/RealIrcStub.cpp
+        src/SimulatedIrcStub.cpp
 )
 
 set(
@@ -43,7 +46,11 @@ set(
 		include/IrcChannel.h
 		include/PlayerConnection.h
 		include/ServerConnection.h
+		include/IrcServer.h
 		include/IrcConnection.h
+        include/IrcStub.h
+		include/RealIrcStub.h
+        include/SimulatedIrcStub.h
 )
 
 include_directories(
