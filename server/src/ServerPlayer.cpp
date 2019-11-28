@@ -21,7 +21,7 @@ void ServerPlayer::setProps(CString& pPacket)
 		switch (propId)
 		{
 			case PLPROP_NICKNAME: // PLPROP_NICKNAME
-				_nickName = pPacket.readChars(pPacket.readGUChar()).text();
+				ircStub.setNickName(pPacket.readChars(pPacket.readGUChar()).text());
 				break;
 
 			case PLPROP_ID: // PLPROP_ID

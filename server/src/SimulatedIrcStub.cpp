@@ -5,7 +5,6 @@
 SimulatedIrcStub::SimulatedIrcStub(IrcServer *ircServer, ServerConnection *connection, ServerPlayer *player)
 		: IrcStub(ircServer), _connection(connection), _player(player)
 {
-	setNickName(player->getAccountName());
 }
 
 void SimulatedIrcStub::disconnect()
