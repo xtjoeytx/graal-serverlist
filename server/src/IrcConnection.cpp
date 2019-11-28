@@ -391,10 +391,8 @@ bool IrcConnection::msgIRC_PRIVMSG(CString& pPacket)
 	{
 		CString message = pPacket.subString(pPacket.readString(":").length() + 1);
 
-		// Todo(joey): here
 		// Todo(Shitai): Handle when PRIVMSG is sent to player and not a channel. Should send as GraalPM on ServerConnection and as PRIVMSG on IrcConnection
 		_ircServer->sendTextToChannel(params[1].text(), message.text(), &_ircStub);
-//		_listServer->sendTextToChannel(params[1].text(), _player.getAccountName(), message.text(), this);
 	}
 
 	return true;

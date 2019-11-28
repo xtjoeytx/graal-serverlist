@@ -15,12 +15,16 @@ void SimulatedIrcStub::disconnect()
 
 void SimulatedIrcStub::sendJoinedChannel(const std::string &channel, const std::unordered_set<IrcStub *> &users)
 {
-
+	CString sendMsg = "GraalEngine,irc,join,";
+	sendMsg << CString(channel).gtokenize();
+	_connection->sendTextForPlayer(_player, sendMsg);
 }
 
 void SimulatedIrcStub::sendLeftChannel(const std::string &channel, const std::string &message)
 {
-
+	CString sendMsg = "GraalEngine,irc,part,";
+	sendMsg << CString(channel).gtokenize();
+	_connection->sendTextForPlayer(_player, sendMsg);
 }
 
 void SimulatedIrcStub::sendMessage(const std::string& channel, const std::string& message, const std::string& sender)

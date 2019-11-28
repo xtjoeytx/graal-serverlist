@@ -1317,19 +1317,11 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 						IrcServer *ircServer = _listServer->getIrcServer();
 						if (params[2] == "join") // GraalEngine,irc,join,#channel
 						{
-							CString sendMsg = "GraalEngine,irc,join,";
-							sendMsg << params[3].gtokenize();
-							sendTextForPlayer(player, sendMsg);
-
 							std::string channel = params[3].guntokenize().text();
 							ircServer->addPlayerToChannel(channel, player->getIrcStub());
 						}
 						else if (params[2] == "part") // GraalEngine,irc,part,#channel
 						{
-							CString sendMsg = "GraalEngine,irc,part,";
-							sendMsg << params[3].gtokenize();
-							sendTextForPlayer(player, sendMsg);
-
 							std::string channel = params[3].guntokenize().text();
 							ircServer->removePlayerFromChannel(channel, player->getIrcStub());
 						}
