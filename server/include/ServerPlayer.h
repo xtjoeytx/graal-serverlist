@@ -111,10 +111,10 @@ public:
 	int getAlignmentPoints() const				{ return _alignment; }
 	const std::string& getAccountName() const	{ return _accountName; }
 	const std::string& getLevelName() const		{ return _levelName; }
-	const std::string& getNickName() const		{ return ircStub.getNickName(); }
+	const std::string& getNickName() const		{ return _nickName; }
 
 	void setClientType(unsigned char type) { _clientType = type; }
-	void setNickName(const std::string& nickname) { ircStub.setNickName(nickname); }
+	void setNickName(const std::string& nickname) { _nickName = nickname; }
 
 	// Prop manipulation
 	void setProps(CString& pPacket);
@@ -129,7 +129,7 @@ protected:
 	unsigned char _clientType;
 	double _x, _y;
 	int _alignment;
-	std::string _accountName;
+	std::string _accountName, _nickName;
 	std::string _levelName;
 };
 
