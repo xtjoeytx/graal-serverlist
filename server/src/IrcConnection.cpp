@@ -18,11 +18,15 @@ void createIrcPtrTable()
 	ircFunctionTable["user"] = &IrcConnection::msgIRC_USER;
 	ircFunctionTable["nick"] = &IrcConnection::msgIRC_NICK;
 	ircFunctionTable["ping"] = &IrcConnection::msgIRC_PING;
+	ircFunctionTable["pong"] = &IrcConnection::msgIRC_PONG;
 	ircFunctionTable["join"] = &IrcConnection::msgIRC_JOIN;
 	ircFunctionTable["part"] = &IrcConnection::msgIRC_PART;
 	ircFunctionTable["pass"] = &IrcConnection::msgIRC_PASS;
 	ircFunctionTable["privmsg"] = &IrcConnection::msgIRC_PRIVMSG;
 	ircFunctionTable["notice"] = &IrcConnection::msgIRC_PRIVMSG;
+	ircFunctionTable["mode"] = &IrcConnection::msgIRC_MODE;
+	ircFunctionTable["who"] = &IrcConnection::msgIRC_WHO;
+	ircFunctionTable["whois"] = &IrcConnection::msgIRC_WHOIS;
 }
 
 /*
@@ -403,5 +407,69 @@ bool IrcConnection::msgIRC_UNKNOWN(CString& pPacket)
 {
 	pPacket.setRead(0);
 	printf("Unknown Server Packet: %s\n", pPacket.text());
+	return true;
+}
+
+bool IrcConnection::msgIRC_PONG(CString &pPacket)
+{
+	//Todo(Shitai): Calculate latency?
+
+	return true;
+}
+
+bool IrcConnection::msgIRC_MODE(CString &pPacket)
+{
+	std::vector<CString> params = pPacket.trim().tokenize(" ");
+
+	if (params.size() >= 3 && _accountStatus == AccountStatus::Normal) // Set mode
+	{
+		if (params[1].subString(0,1) == "#")
+		{
+			// Set channel modes
+		}
+		else if (params[1] == _ircStub.getNickName())
+		{
+			// Perhaps check for valid modes
+			sendPacket(":" + _ircStub.getNickName() + " MODE " + _ircStub.getNickName() + " " + params[2]);
+		}
+	}
+	else if (params.size() == 2 && _accountStatus == AccountStatus::Normal) // Get mode
+	{
+		if (params[1].subString(0, 1) == "#")
+		{
+			// Get channel modes
+			sendPacket(":" + _listServerAddress + " 324 " + _ircStub.getNickName()  + " " + params[1] + " +cgnst"); // Channel modes
+			sendPacket(":" + _listServerAddress + " 329 " + _ircStub.getNickName()  + " " + params[1] + " 1251403546"); // When channel modes was last changed
+		}
+		else if (params[1] == _ircStub.getNickName())
+		{
+			sendPacket(":" + _ircStub.getNickName()  + " MODE " + _ircStub.getNickName()  + " :+i");
+		}
+	}
+
+	return true;
+}
+
+bool IrcConnection::msgIRC_WHO(CString &pPacket)
+{
+	//std::vector<CString> params = pPacket.trim().tokenize(" ");
+
+	return true;
+}
+
+bool IrcConnection::msgIRC_WHOIS(CString &pPacket)
+{
+	//std::vector<CString> params = pPacket.trim().tokenize(" ");
+	/*
+	 * params[1] == _otherPlayer
+	 * All logged in IRC players, no matter if on RC or IrcConnection should be in a list. Initiated on GraalEngine,irc,login,- from RC, and when authenticated on IrcConnection
+	 * sendPacket(":" + _listServerAddress + " 311 " + _ircPlayer->getAccountName() + " " + _otherPlayer->getAccountName() + " " + _otherPlayer->getAccountName() + " dummy-host-name * :Real name");
+	 * sendPacket(":" + _listServerAddress + " 312 " + _ircPlayer->getAccountName() + " " + _otherPlayer->getAccountName() + " " + _otherPlayer->getServer()->getDashedName() + " :" + _otherPlayer->getServer()->getDescription()); // Server the user is connected to and its description
+	 * sendPacket(":" + _listServerAddress + " 671 " + _ircPlayer->getAccountName() + " " + _otherPlayer->getAccountName() + " :is using a secure connection"); // SSL connection
+	 * sendPacket(":" + _listServerAddress + " 317 " + _ircPlayer->getAccountName() + " " + _otherPlayer->getAccountName() + " 4442 1560774410 :seconds idle, signon time"); // If user has been idle for a while
+	 * sendPacket(":" + _listServerAddress + " 330 " + _ircPlayer->getAccountName() + " " + _otherPlayer->getAccountName() + " " + _otherPlayer->getAccountName() + " :is logged in as"); // In case we start to use nicknames properly, tell which account user is logged in as
+	 * sendPacket(":" + _listServerAddress + " 318 " + _ircPlayer->getAccountName() + " " + _otherPlayer->getAccountName() + " :End of /WHOIS list.");
+	 */
+
 	return true;
 }

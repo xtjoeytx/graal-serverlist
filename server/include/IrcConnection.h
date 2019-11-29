@@ -37,11 +37,15 @@ class IrcConnection
 		bool msgIRC_UNKNOWN(CString& pPacket);
 		bool msgIRC_USER(CString& pPacket);
 		bool msgIRC_PING(CString& pPacket);
+		bool msgIRC_PONG(CString& pPacket);
 		bool msgIRC_NICK(CString& pPacket);
 		bool msgIRC_PASS(CString& pPacket);
 		bool msgIRC_JOIN(CString& pPacket);
 		bool msgIRC_PART(CString& pPacket);
 		bool msgIRC_PRIVMSG(CString& pPacket);
+		bool msgIRC_MODE(CString& pPacket);
+		bool msgIRC_WHO(CString& pPacket);
+		bool msgIRC_WHOIS(CString& pPacket);
 
 		void authenticateUser();
 
