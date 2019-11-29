@@ -1326,15 +1326,24 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							ircServer->removePlayerFromChannel(channel, player->getIrcStub());
 						}
 					}
-					else if (params.size() == 6 && params[2] == "privmsg")
-					{
-						std::string from = params[3].text();
-						std::string channel = params[4].text();
-						std::string message = params[5].text();
+				}
+			}
+		}
 
-						ServerPlayer *player = getPlayer(from);
-						_listServer->getIrcServer()->sendTextToChannel(channel, message, player->getIrcStub());
-					}
+		// uh
+		if (params[0] == "GraalEngine")
+		{
+			if (params[1] == "irc")
+			{
+				if (params.size() == 6 && params[2] == "privmsg")
+				{
+					std::string from = params[3].text();
+					std::string channel = params[4].text();
+					std::string message = params[5].text();
+
+					ServerPlayer *fromPlayer = getPlayer(from);
+					_listServer->getIrcServer()->sendTextToChannel(channel, message, fromPlayer->getIrcStub());
+					printf("Sending msg to irc from RC %s to Channel |%s|: %s\n", from.c_str(), channel.c_str(), message.c_str());
 				}
 			}
 		}
