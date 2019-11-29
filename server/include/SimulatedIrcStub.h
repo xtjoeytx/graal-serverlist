@@ -12,6 +12,7 @@ class SimulatedIrcStub : public IrcStub
 {
 public:
 	SimulatedIrcStub(IrcServer *ircServer, ServerConnection *connection, ServerPlayer *player);
+	~SimulatedIrcStub();
 
 	void disconnect() override;
 

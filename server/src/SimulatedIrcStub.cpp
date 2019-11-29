@@ -3,8 +3,13 @@
 #include "ServerPlayer.h"
 
 SimulatedIrcStub::SimulatedIrcStub(IrcServer *ircServer, ServerConnection *connection, ServerPlayer *player)
-		: IrcStub(ircServer), _connection(connection), _player(player)
+	: IrcStub(ircServer), _connection(connection), _player(player)
 {
+}
+
+SimulatedIrcStub::~SimulatedIrcStub()
+{
+	_ircServer->removePlayer(this);
 }
 
 void SimulatedIrcStub::disconnect()

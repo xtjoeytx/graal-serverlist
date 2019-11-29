@@ -340,7 +340,7 @@ void ServerConnection::clearPlayerList()
 	IrcServer *ircServer = _listServer->getIrcServer();
 	for (auto it = playerList.begin(); it != playerList.end(); ++it) {
 		ServerPlayer *player = *it;
-		ircServer->removePlayer(player->getIrcStub());
+		//ircServer->removePlayer(player->getIrcStub());
 
 		delete player;
 	}
