@@ -49,7 +49,7 @@ IrcConnection::IrcConnection(IrcServer *ircServer, CSocket *pSocket)
 
 IrcConnection::~IrcConnection()
 {
-//	_listServer->removePlayer(&_player, this);
+	_ircServer->removePlayer(&_ircStub);
 
 	// delete socket
 	delete _socket;

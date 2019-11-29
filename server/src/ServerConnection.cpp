@@ -337,10 +337,12 @@ ServerPlayer * ServerConnection::getPlayer(const std::string & account, int type
 void ServerConnection::clearPlayerList()
 {
 	// clean playerlist
+	IrcServer *ircServer = _listServer->getIrcServer();
 	for (auto it = playerList.begin(); it != playerList.end(); ++it) {
-		//_listServer->removePlayer(*it, this);
+		ServerPlayer *player = *it;
+		ircServer->removePlayer(player->getIrcStub());
 
-		delete *it;
+		delete player;
 	}
 	playerList.clear();
 }
