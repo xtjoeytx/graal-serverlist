@@ -1343,7 +1343,6 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 
 					ServerPlayer *fromPlayer = getPlayer(from);
 					_listServer->getIrcServer()->sendTextToChannel(channel, message, fromPlayer->getIrcStub());
-					printf("Sending msg to irc from RC %s to Channel |%s|: %s\n", from.c_str(), channel.c_str(), message.c_str());
 				}
 			}
 		}
