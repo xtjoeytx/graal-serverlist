@@ -5,18 +5,19 @@
 bool IrcChannel::addUser(IrcStub *ircUser)
 {
 	assert(ircUser);
+	
+	auto insertIter = _users.insert(ircUser);
+	if (insertIter.second) {
+		ircUser->sendJoinedChannel(_channelName, _users);
 
-	auto it = _users.insert(ircUser);
-	if (!it.second) // it.second is true if inserted
-		return false;
-
-	ircUser->sendJoinedChannel(_channelName, _users);
-
-	for (auto ircStub : _users) {
-		ircStub->sendUserJoinedChannel(_channelName, ircUser);
+		for (auto ircStub : _users) {
+			if (ircStub != ircUser) {
+				ircStub->sendUserJoinedChannel(_channelName, ircUser);
+			}
+		}
 	}
 
-	return it.second;
+	return insertIter.second;
 }
 
 bool IrcChannel::removeUser(IrcStub *ircUser)
