@@ -12,6 +12,31 @@
 #include "MySQLBackend.h"
 #endif
 
+// TODO(joey): Move this somewhere else
+const char * getAccountError(AccountStatus status)
+{
+    switch (status)
+    {
+        case AccountStatus::Normal:
+            return "SUCCESS";
+
+        case AccountStatus::NotActivated:
+            return "Your account is not activated.";
+
+        case AccountStatus::Banned:
+            return "Your account is globally banned.";
+
+        case AccountStatus::InvalidPassword:
+            return "Account name or password is invalid.";
+
+        case AccountStatus::BackendError:
+            return "There was a problem verifying your account.  The SQL server is probably down.";
+
+        default:
+            return "Unknown server error.";
+    }
+}
+
 ListServer::ListServer(const std::string& homePath)
 	: _initialized(false), _running(false), _homePath(homePath), _dataStore(nullptr), _ircServer(this)
 {

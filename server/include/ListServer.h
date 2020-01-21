@@ -116,4 +116,6 @@ inline bool ListServer::setProfile(const PlayerProfile& profile) {
 	return _dataStore->setProfile(profile);
 }
 
+const char * getAccountError(AccountStatus status);
+
 #endif

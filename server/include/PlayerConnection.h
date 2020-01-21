@@ -48,7 +48,7 @@ public:
 
 	// send packet
 	void sendPacket(CString pPacket, bool pSendNow = false);
-	void sendServerList();
+	int sendServerList();
 
 	// packet-functions;
 	bool msgPLI_NULL(CString& pPacket);

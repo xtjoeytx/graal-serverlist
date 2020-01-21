@@ -192,7 +192,7 @@ void PlayerConnection::sendPacket(CString pPacket, bool pSendNow)
 		_fileQueue.sendCompress();
 }
 
-void PlayerConnection::sendServerList()
+int PlayerConnection::sendServerList()
 {
 	auto conn = _listServer->getConnections();
 
@@ -214,6 +214,8 @@ void PlayerConnection::sendServerList()
 	dataBuffer.writeGChar((unsigned char)serverCount);
 	dataBuffer.write(serverPacket);
 	sendPacket(dataBuffer);
+
+	return serverCount;
 }
 
 /*
@@ -249,21 +251,25 @@ bool PlayerConnection::msgPLI_SERVERLIST(CString& pPacket)
 	// read data
 	CString account = pPacket.readChars(pPacket.readGUChar());
 	CString password = pPacket.readChars(pPacket.readGUChar());
-	
+
 	// Verify account
 	AccountStatus status = _listServer->verifyAccount(account.text(), password.text());
 
 	switch (status)
 	{
-		case AccountStatus::Normal:
-			sendServerList();
-			sendPacket(CString() >> (char)PLO_STATUS << "Welcome to test, " << account << "\r" << "There are 5 server(s) online.");
-			sendPacket(CString() >> (char)PLO_SITEURL << "https://");
-			sendPacket(CString() >> (char)PLO_UPGURL << "https://");
-			break;
+		case AccountStatus::Normal: {
+            CSettings& settings = _listServer->getSettings();
+
+            int availableServers = sendServerList();
+            sendPacket(CString() >> (char) PLO_STATUS << "Welcome to " << settings.getStr("name") << ", " << account
+                                 << ".\r" << "There are " << CString(availableServers) << " server(s) online.");
+            sendPacket(CString() >> (char) PLO_SITEURL << settings.getStr("url"));
+            sendPacket(CString() >> (char) PLO_UPGURL << settings.getStr("donateUrl"));
+            break;
+        }
 
 		default:
-			//sendPacket(CString() >> (char)PLO_ERROR << getAccountError(res));
+			sendPacket(CString() >> (char)PLO_ERROR << getAccountError(status));
 			return false;
 	}
 
