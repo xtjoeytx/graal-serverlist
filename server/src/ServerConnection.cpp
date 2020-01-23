@@ -410,11 +410,16 @@ bool ServerConnection::parsePacket(CString& pPacket)
 		}
 		else curPacket = pPacket.readString("\n");
 
-		// read id & packet
+		// read id from packet
 		unsigned char id = curPacket.readGUChar();
+		if (id >= SVI_PACKETCOUNT) {
+            printf("Invalid packet received from Server [%d]: %s (%d)\n", id, curPacket.text() + 1, curPacket.length());
+            printf("\tServer Name: %s\n", getName().text());
+            printf("\tServer IP Address: %s\n", getIp().text());
+		    return false;
+		}
 
-		printf("Server Packet [%d]: %s (%d)\n", id, curPacket.text() + 1, curPacket.length());
-
+        printf("Server Packet [%d]: %s (%d)\n", id, curPacket.text() + 1, curPacket.length());
 		// valid packet, call function
 		bool ret = (*this.*serverFunctionTable[id])(curPacket);
 		if (!ret) {
