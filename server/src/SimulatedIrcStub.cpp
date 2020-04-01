@@ -17,7 +17,7 @@ void SimulatedIrcStub::disconnect()
 	// TODO(joey): unused
 }
 
-void SimulatedIrcStub::sendJoinedChannel(const std::string &channel, const std::unordered_set<IrcStub *> &users)
+void SimulatedIrcStub::sendJoinedChannel(const std::string &channel, const std::unordered_set<IrcUserData, IrcUserDataHash, IrcUserDataHash> &users)
 {
 	CString sendMsg = "GraalEngine,irc,join,";
 	sendMsg << CString(channel).gtokenize();

@@ -28,15 +28,16 @@ void RealIrcStub::sendUserLeftChannel(const std::string &channel, IrcStub *from)
 	_connection->sendPacket(ircPacket);
 }
 
-void RealIrcStub::sendJoinedChannel(const std::string &channel, const std::unordered_set<IrcStub *> &users)
+void RealIrcStub::sendJoinedChannel(const std::string &channel, const std::unordered_set<IrcUserData, IrcUserDataHash, IrcUserDataHash> &users)
 {
 	// Password enabled channels require the proper key
 	// sendPacket(":" + _listServerAddress + " 475 " + params[1] + " " + params[1] + " :Cannot join channel (+k) - bad key");
 
 	CString usersString;
 	std::vector<CString> usersStrList;
-	for (auto user : users)
+	for (auto userData : users)
 	{
+		auto user = userData.user;
 		size_t len = user->getNickName().size();
 		if (usersString.length() + len > 400)
 		{
@@ -44,7 +45,7 @@ void RealIrcStub::sendJoinedChannel(const std::string &channel, const std::unord
 			usersString.clear(400);
 		}
 
-		usersString << user->getNickName() << " ";
+		usersString << userData.mode << user->getNickName() << " ";
 	}
 	usersStrList.push_back(usersString);
 
