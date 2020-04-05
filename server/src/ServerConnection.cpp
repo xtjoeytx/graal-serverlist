@@ -1310,23 +1310,6 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 					}
 				}
 			}
-		}
-
-		// uh
-		if (params[0] == "GraalEngine")
-		{
-			if (params[1] == "irc")
-			{
-				if (params.size() == 6 && params[2] == "privmsg")
-				{
-					std::string from = params[3].text();
-					std::string channel = params[4].text();
-					std::string message = params[5].text();
-
-					ServerPlayer *fromPlayer = getPlayer(from);
-					_listServer->getIrcServer()->sendTextToChannel(channel, message, fromPlayer->getIrcStub());
-				}
-			}
 			else if (params[1] == "pmservers") // GraalEngine,pmservers,""
 			{
 				CString sendMsg;
@@ -1361,33 +1344,49 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 				}
 				sendTextForPlayer(player, sendMsg);
 			}
+			else if (params[1] == "lister") // -Serverlist,lister,simpleserverlist ----- -Serverlist is the weapon
+			{
+				if (params[2] == "simpleserverlist")
+				{
+					CString sendMsg;
+					sendMsg << params[0] << "\n" << params[1] << "\n" << params[2] << "\n";
+
+					// Assemble the serverlist.
+					auto serverList = _listServer->getConnections();
+					for (auto it = serverList.begin(); it != serverList.end(); ++it)
+					{
+						ServerConnection* server = *it;
+						//if (server->getTypeVal() == TYPE_HIDDEN) continue;
+
+						CString serverData;
+						serverData << server->getName() << "\n";
+						serverData << server->getType(PLV_POST22) << server->getName() << "\n";
+						serverData << CString((int)server->getPlayerCount()) << "\n";
+						sendMsg << serverData.gtokenize() << "\n";
+					}
+
+					// TODO(joey): Show hidden servers if friends are on them...?
+					//p << getOwnedServersPM(account);
+					sendMsg.gtokenizeI();
+					sendTextForPlayer(player, sendMsg);
+				}
+			}
 		}
 
-		if (params[1] == "lister") // -Serverlist,lister,simpleserverlist ----- -Serverlist is the weapon
+		// uh
+		if (params[0] == "GraalEngine")
 		{
-			if (params[2] == "simpleserverlist")
+			if (params[1] == "irc")
 			{
-				CString sendMsg;
-				sendMsg << params[0] << "\n" << params[1] << "\n" << params[2] << "\n";
-
-				// Assemble the serverlist.
-				auto serverList = _listServer->getConnections();
-				for (auto it = serverList.begin(); it != serverList.end(); ++it)
+				if (params.size() == 6 && params[2] == "privmsg")
 				{
-					ServerConnection* server = *it;
-					//if (server->getTypeVal() == TYPE_HIDDEN) continue;
+					std::string from = params[3].text();
+					std::string channel = params[4].text();
+					std::string message = params[5].text();
 
-					CString serverData;
-					serverData << server->getName() << "\n";
-					serverData << server->getType(PLV_POST22) << server->getName() << "\n";
-					serverData << CString((int)server->getPlayerCount()) << "\n";
-					sendMsg << serverData.gtokenize() << "\n";
+					ServerPlayer *fromPlayer = getPlayer(from);
+					_listServer->getIrcServer()->sendTextToChannel(channel, message, fromPlayer->getIrcStub());
 				}
-
-				// TODO(joey): Show hidden servers if friends are on them...?
-				//p << getOwnedServersPM(account);
-				sendMsg.gtokenizeI();
-				sendTextForPlayer(player, sendMsg);
 			}
 		}
 	}
