@@ -1296,7 +1296,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 				{
 					if (params.size() == 4)
 					{
-						IrcServer *ircServer = _listServer->getIrcServer();
+						IrcServer* ircServer = _listServer->getIrcServer();
 						if (params[2] == "join") // GraalEngine,irc,join,#channel
 						{
 							std::string channel = params[3].guntokenize().text();
@@ -1309,42 +1309,43 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 						}
 					}
 				}
-			}
-			else if (params[1] == "pmservers") // GraalEngine,pmservers,""
-			{
-				CString sendMsg;
-				sendMsg << params[0] << "\n" << params[1] << "\n" << params[2] << "\n";
-
-				// Assemble the serverlist.
-				auto serverList = _listServer->getConnections();
-				for (auto it = serverList.begin(); it != serverList.end(); ++it)
+				else if (params[1] == "pmservers") // GraalEngine,pmservers,""
 				{
-					ServerConnection* server = *it;
-					//if (server->getTypeVal() == TYPE_HIDDEN) continue;
+					CString sendMsg;
+					sendMsg << params[0] << "\n" << params[1] << "\n" << params[2] << "\n";
 
-					sendMsg << server->getName() << "\n";
+					// Assemble the serverlist.
+					auto serverList = _listServer->getConnections();
+					for (auto it = serverList.begin(); it != serverList.end(); ++it)
+					{
+						ServerConnection* server = *it;
+						//if (server->getTypeVal() == TYPE_HIDDEN) continue;
+
+						sendMsg << server->getName() << "\n";
+					}
+
+					// TODO(joey): Show hidden servers if friends are on them...?
+					//p << getOwnedServersPM(account);
+					sendMsg.gtokenizeI();
+					sendTextForPlayer(player, sendMsg);
 				}
-
-				// TODO(joey): Show hidden servers if friends are on them...?
-				//p << getOwnedServersPM(account);
-				sendMsg.gtokenizeI();
-				sendTextForPlayer(player, sendMsg);
-			}
-			else if (params[1] == "pmserverplayers")
-			{
-				CString sendMsg;
-
-				// get servers
-				auto serverList = _listServer->getConnections();
-				for (auto it = serverList.begin(); it != serverList.end(); ++it)
+				else if (params[1] == "pmserverplayers")
 				{
-					ServerConnection* server = *it;
-					if (server->getName() == params[2])
-						sendMsg << server->getPlayers();
+					CString sendMsg;
+
+					// get servers
+					auto serverList = _listServer->getConnections();
+					for (auto it = serverList.begin(); it != serverList.end(); ++it)
+					{
+						ServerConnection* server = *it;
+						if (server->getName() == params[2])
+							sendMsg << server->getPlayers();
+					}
+					sendTextForPlayer(player, sendMsg);
 				}
-				sendTextForPlayer(player, sendMsg);
 			}
-			else if (params[1] == "lister") // -Serverlist,lister,simpleserverlist ----- -Serverlist is the weapon
+			
+			if (params[1] == "lister") // -Serverlist,lister,simpleserverlist ----- -Serverlist is the weapon
 			{
 				if (params[2] == "simpleserverlist")
 				{
