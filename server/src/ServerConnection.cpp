@@ -190,16 +190,15 @@ void ServerConnection::kill()
 	delete this;
 }
 
-const CString ServerConnection::getPlayers()
+CString ServerConnection::getPlayers() const
 {
 	const int ANY_CLIENT = (int)(1 << 0) | (int)(1 << 4) | (int)(1 << 5);
 
 	// Update our player list.
 	CString playerlist;
-	for (auto it = playerList.begin(); it != playerList.end(); ++it)
+	for (auto player : playerList)
 	{
-		ServerPlayer *player = *it;
-		if ((player->getClientType() & ANY_CLIENT) != 0)
+        if ((player->getClientType() & ANY_CLIENT) != 0)
 			playerlist << CString(CString() << player->getAccountName() << "\n" << player->getNickName() << "\n").gtokenizeI() << "\n";
 	}
 
@@ -210,12 +209,7 @@ const CString ServerConnection::getPlayers()
 /*
 	Get-Value Functions
 */
-const CString& ServerConnection::getDescription()
-{
-	return description;
-}
-
-const CString ServerConnection::getIp(const CString& pIp)
+CString ServerConnection::getIp(const CString& pIp) const
 {
 	if (pIp == ip)
 	{
@@ -225,22 +219,7 @@ const CString ServerConnection::getIp(const CString& pIp)
 	return ip;
 }
 
-const CString& ServerConnection::getLanguage()
-{
-	return language;
-}
-
-const CString& ServerConnection::getName()
-{
-	return name;
-}
-
-const CString& ServerConnection::getPort()
-{
-	return port;
-}
-
-const CString ServerConnection::getType(int PLVER)
+CString ServerConnection::getType(int PLVER) const
 {
 	CString ret;
 	switch (serverhq_level)
@@ -266,7 +245,7 @@ const CString ServerConnection::getType(int PLVER)
 	return ret;
 }
 
-const CString ServerConnection::getServerPacket(int PLVER, const CString& pIp)
+CString ServerConnection::getServerPacket(int PLVER, const CString& pIp) const
 {
 	CString testIp = getIp(pIp);
 	CString pcount((int)playerList.size());
@@ -275,10 +254,9 @@ const CString ServerConnection::getServerPacket(int PLVER, const CString& pIp)
 
 ServerPlayer * ServerConnection::getPlayer(unsigned short id) const
 {
-	for (auto it = playerList.begin(); it != playerList.end(); ++it)
+	for (auto player : playerList)
 	{
-		ServerPlayer *player = *it;
-		if (player->getId() == id)
+        if (player->getId() == id)
 			return player;
 	}
 
@@ -287,10 +265,9 @@ ServerPlayer * ServerConnection::getPlayer(unsigned short id) const
 
 ServerPlayer * ServerConnection::getPlayer(const std::string & account) const
 {
-	for (auto it = playerList.begin(); it != playerList.end(); ++it)
+	for (auto player : playerList)
 	{
-		ServerPlayer *player = *it;
-		if (player->getAccountName() == account)
+        if (player->getAccountName() == account)
 			return player;
 	}
 
@@ -299,10 +276,9 @@ ServerPlayer * ServerConnection::getPlayer(const std::string & account) const
 
 ServerPlayer * ServerConnection::getPlayer(const std::string & account, int type) const
 {
-	for (auto it = playerList.begin(); it != playerList.end(); ++it)
+	for (auto player : playerList)
 	{
-		ServerPlayer *player = *it;
-		if (player->getClientType() == type && player->getAccountName() == account)
+        if (player->getClientType() == type && player->getAccountName() == account)
 			return player;
 	}
 
@@ -355,7 +331,7 @@ void ServerConnection::sendCompress()
 	if (sendBuffer.isEmpty())
 	{
 		// If we still have some data in the out buffer, try sending it again.
-		if (outBuffer.isEmpty() == false)
+		if (!outBuffer.isEmpty())
 		{
 			unsigned int dsize = outBuffer.length();
 			outBuffer.removeI(0, _socket->sendData(outBuffer.text(), &dsize));
@@ -777,10 +753,9 @@ bool ServerConnection::msgSVI_NICKNAME(CString& pPacket)
 	std::string nickName = pPacket.readChars(pPacket.readGUChar()).text();
 
 	// Find the player and adjust his nickname.
-	for (auto it = playerList.begin(); it != playerList.end(); ++it)
+	for (const auto& playerObject : playerList)
 	{
-		ServerPlayer *playerObject = *it;
-		if (playerObject->getAccountName() == accountName)
+        if (playerObject->getAccountName() == accountName)
 			playerObject->setNickName(nickName);
 	}
 
@@ -1221,13 +1196,18 @@ bool ServerConnection::msgSVI_SERVERINFO(CString& pPacket)
 	unsigned short playerId = pPacket.readGUShort();
 	CString servername = pPacket.readString("");
 
-	auto serverList = _listServer->getConnections();
-	for (auto it = serverList.begin(); it != serverList.end(); ++it)
+	// Fetch the players ip address so we can forward the client to the localip if its on the same host
+	CString userIp;
+    auto player = getPlayer(playerId);
+    if (player)
+        userIp = player->getIpAddress();
+
+    auto serverList = _listServer->getConnections();
+	for (const auto& server : serverList)
 	{
-		ServerConnection *server = *it;
-		if (servername.comparei(server->getName()))
+        if (servername.comparei(server->getName()))
 		{
-			CString serverPacket = CString(server->getName()) << "\n" << server->getName() << "\n" << server->getIp() << "\n" << server->getPort();
+			CString serverPacket = CString(server->getName()) << "\n" << server->getName() << "\n" << server->getIp(userIp) << "\n" << server->getPort();
 			sendPacket(CString() >> (char)SVO_SERVERINFO >> (short)playerId << serverPacket.gtokenize());
 			break;
 		}
@@ -1276,6 +1256,7 @@ bool ServerConnection::msgSVI_PMPLAYER(CString& pPacket)
 bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 {
 	unsigned short playerId = pPacket.readGUShort();
+
 	CString packet = pPacket.readString("");
 	std::vector<CString> params = packet.gCommaStrTokens();
 
@@ -1316,10 +1297,9 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 
 					// Assemble the serverlist.
 					auto serverList = _listServer->getConnections();
-					for (auto it = serverList.begin(); it != serverList.end(); ++it)
+					for (auto server : serverList)
 					{
-						ServerConnection* server = *it;
-						//if (server->getTypeVal() == TYPE_HIDDEN) continue;
+					    //if (server->getTypeVal() == TYPE_HIDDEN) continue;
 
 						sendMsg << server->getName() << "\n";
 					}

@@ -3,6 +3,7 @@
 #ifndef SERVERPLAYER_H
 #define SERVERPLAYER_H
 
+#include <string>
 #include "CString.h"
 
 enum
@@ -110,6 +111,7 @@ public:
 	double getPlayerY() const					{ return _y; }
 	int getAlignmentPoints() const				{ return _alignment; }
 	const std::string& getAccountName() const	{ return _accountName; }
+	const std::string& getIpAddress() const     { return _ipAddressStr; }
 	const std::string& getLevelName() const		{ return _levelName; }
 	const std::string& getNickName() const		{ return _nickName; }
 
@@ -129,6 +131,8 @@ protected:
 	unsigned char _clientType;
 	double _x, _y;
 	int _alignment;
+	uint16_t _ipAddress;
+	std::string _ipAddressStr;
 	std::string _accountName, _nickName;
 	std::string _levelName;
 };

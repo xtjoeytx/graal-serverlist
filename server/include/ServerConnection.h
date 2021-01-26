@@ -1,5 +1,7 @@
-#ifndef TSERVER_H
-#define TSERVER_H
+#pragma once
+
+#ifndef SERVERCONNECT_H
+#define SERVERCONNECT_H
 
 #include <time.h>
 #include "CSocket.h"
@@ -112,20 +114,21 @@ class ServerConnection
 		void kill();
 
 		// get-value functions
-		const CString& getDescription();
-		const CString getIp(const CString& pIp = "");
-		const CString& getLanguage();
-		const CString& getName();
-		const CString getPlayers();
-		const CString& getPort();
-		const CString getType(int PLVER);
-		const CString& getUrl() { return url; }
-		const CString& getVersion() { return version; }
-		const CString getServerPacket(int PLVER, const CString& pIp = "");
-		int getPlayerCount() const	{ return (int)playerList.size(); };
-		int getTypeVal() const		{ return serverhq_level; }
-		int getLastData()			{ return (int)difftime( time(0), lastData ); }
-		CSocket* getSock() const	{ return _socket; }
+        CString getIp(const CString& pIp = "") const;
+        CString getType(int PLVER) const;
+        CString getPlayers() const;
+        CString getServerPacket(int PLVER, const CString& pIp = "") const;
+
+		const CString& getDescription() const   { return description; }
+		const CString& getLanguage() const      { return language; }
+		const CString& getName() const          { return name; }
+		const CString& getPort() const          { return port; }
+		const CString& getUrl() const           { return url; }
+		const CString& getVersion() const       { return version; }
+		int getPlayerCount() const	            { return (int)playerList.size(); };
+		int getTypeVal() const		            { return serverhq_level; }
+		int getLastData() const		            { return (int)difftime( time(0), lastData ); }
+		CSocket* getSock() const	            { return _socket; }
 
 		ServerPlayer * getPlayer(unsigned short id) const;
 		ServerPlayer * getPlayer(const std::string& account) const;
@@ -195,4 +198,4 @@ class ServerConnection
 		int server_version;
 };
 
-#endif // TSERVER_H
+#endif // SERVERCONNECT_H

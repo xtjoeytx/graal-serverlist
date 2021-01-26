@@ -13,9 +13,9 @@ PlayerSocketFunction playerFunctionTable[PLI_PACKETCOUNT];
 
 void createPlayerPtrTable()
 {
-	// kinda like a memset-ish thing y'know
-	for (int packetId = 0; packetId < PLI_PACKETCOUNT; packetId++)
-		playerFunctionTable[packetId] = &PlayerConnection::msgPLI_NULL;
+    // set player function pointers to NULL
+	for (auto & packetId : playerFunctionTable)
+		packetId = &PlayerConnection::msgPLI_NULL;
 
 	// now set non-nulls
 	playerFunctionTable[PLI_V1VER] = &PlayerConnection::msgPLI_V1VER;
@@ -54,7 +54,7 @@ PlayerConnection::~PlayerConnection()
 bool PlayerConnection::doMain()
 {
 	// sock exist?
-	if (sock == NULL)
+	if (sock == nullptr)
 		return false;
 
 	// Grab the data from the socket and put it into our receive buffer.
@@ -75,7 +75,7 @@ bool PlayerConnection::doMain()
 		while (sockBuffer.length() >= 2)
 		{
 			// packet length
-			unsigned short len = (unsigned short)sockBuffer.readShort();
+			auto len = (unsigned short)sockBuffer.readShort();
 			if ((unsigned int)len > (unsigned int)sockBuffer.length() - 2)
 				break;
 
@@ -84,18 +84,19 @@ bool PlayerConnection::doMain()
 
 			switch (_inCodec.getGen())
 			{
-				case ENCRYPT_GEN_1:		// Gen 1 is not encrypted or compressed.
+                // Gen 1 is not encrypted or compressed.
+				case ENCRYPT_GEN_1:
 					break;
 
-					// Gen 2 and 3 are zlib compressed.  Gen 3 encrypts individual packets
-					// Uncompress so we can properly decrypt later on.
+                // Gen 2 and 3 are zlib compressed.  Gen 3 encrypts individual packets
+                // Uncompress so we can properly decrypt later on.
 				case ENCRYPT_GEN_2:
 				case ENCRYPT_GEN_3:
 					unBuffer.zuncompressI();
 					break;
 
-					// Gen 4 and up encrypt the whole combined and compressed packet.
-					// Decrypt and decompress.
+                // Gen 4 and up encrypt the whole combined and compressed packet.
+                // Decrypt and decompress.
 				default:
 					decryptPacket(unBuffer);
 					break;
@@ -230,7 +231,7 @@ bool PlayerConnection::msgPLI_NULL(CString& pPacket)
 
 bool PlayerConnection::msgPLI_V1VER(CString& pPacket)
 {
-	// TODO(joey): not sure what client this is for
+	// TODO(joey): not sure what client this is for - (20200126 - version 2.17 sends newmain
 
 	/*
 	// definitions
