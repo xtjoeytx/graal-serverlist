@@ -1,12 +1,11 @@
+#include <cassert>
 #include <chrono>
 #include <thread>
-#include <assert.h>
 #include "ListServer.h"
 #include "IrcConnection.h"
 #include "PlayerConnection.h"
 #include "ServerConnection.h"
 #include "ServerPlayer.h"
-#include "IrcChannel.h"
 
 #ifndef NO_MYSQL
 #include "MySQLBackend.h"
@@ -37,11 +36,11 @@ const char * getAccountError(AccountStatus status)
     }
 }
 
-ListServer::ListServer(const std::string& homePath)
-	: _initialized(false), _running(false), _homePath(homePath), _dataStore(nullptr), _ircServer(this)
+ListServer::ListServer(std::string homePath)
+	: _initialized(false), _running(false), _homePath(std::move(homePath)), _dataStore(nullptr), _ircServer(this)
 {
-	_clientLog.setFilename(_homePath + "clientlog.txt");
-	_serverLog.setFilename(_homePath + "serverlog.txt");
+	_clientLog.setFilename(/*_homePath +*/ "clientlog.txt");
+	_serverLog.setFilename(/*_homePath +*/ "serverlog.txt"); // note: CLog does its own homepath check
 }
 
 ListServer::~ListServer()
@@ -95,7 +94,7 @@ InitializeError ListServer::Initialize()
 
 
 	// TODO(joey): Create different data backends (likely do a text-based one as well)
-	_dataStore = new MySQLBackend(_settings.getStr("server").text(), _settings.getInt("port"), _settings.getStr("sockfile").text(),
+	_dataStore = std::make_unique<MySQLBackend>(_settings.getStr("server").text(), _settings.getInt("port"), _settings.getStr("sockfile").text(),
 		_settings.getStr("user").text(), _settings.getStr("password").text(), _settings.getStr("database").text());
 
 	// Connect to backend
@@ -103,7 +102,7 @@ InitializeError ListServer::Initialize()
 		return InitializeError::Backend_Error;
 
 	// Bind the irc socket
-	if (!_ircServer.Initialize(_dataStore, _homePath, 6667))
+	if (!_ircServer.Initialize(_dataStore.get(), _homePath, 6667))
 		return InitializeError::IrcSock_Listen;
 
 	_initialized = true;
@@ -116,13 +115,9 @@ void ListServer::Cleanup()
 		return;
 
 	// Delete the players
-	for (auto it = _playerConnections.begin(); it != _playerConnections.end(); ++it)
-		delete *it;
 	_playerConnections.clear();
 
 	// Delete the servers
-	for (auto it = _serverConnections.begin(); it != _serverConnections.end(); ++it)
-		delete *it;
 	_serverConnections.clear();
 
 	// Disconnect sockets
@@ -135,8 +130,7 @@ void ListServer::Cleanup()
 	if (_dataStore)
 	{
 		_dataStore->Cleanup();
-		delete _dataStore;
-		_dataStore = nullptr;
+		_dataStore.reset();
 	}
 
 	// Stop running
@@ -146,43 +140,49 @@ void ListServer::Cleanup()
 
 void ListServer::acceptSock(CSocket& socket, SocketType socketType)
 {
-	CSocket* newSock = socket.accept();
-	if (newSock == 0)
+	auto newSock = socket.accept();
+	if (newSock == nullptr)
 		return;
 
-	std::string ipAddress(newSock->getRemoteIp());
+	auto& log = (socketType == SocketType::Server ? getServerLog() : getClientLog());
 
+	std::string ipAddress(newSock->getRemoteIp());
 	if (_dataStore->isIpBanned(ipAddress))
 	{
-		getServerLog().append("New connection from %s was rejected due to an ip ban!\n", newSock->getRemoteIp());
+		log.out("New connection from %s was rejected due to an ip ban!\n", newSock->getRemoteIp());
 		newSock->disconnect();
 		delete newSock;
 		return;
 	}
 
-	getServerLog().append("New Connection from %s -> %s\n", ipAddress.c_str(), (socketType == SocketType::Server ? "Server" : "Player"));
+	log.out("New Connection from %s -> %s\n", ipAddress.c_str(), (socketType == SocketType::Server ? "Server" : "Player"));
 
 	switch (socketType)
 	{
 		case SocketType::PlayerOld:
 		case SocketType::Player:
 		{
-			PlayerConnection *newPlayer = new PlayerConnection(this, newSock);
-			_playerConnections.push_back(newPlayer);
+			auto newPlayer = std::make_unique<PlayerConnection>(this, newSock);
 
 			if (socketType == SocketType::PlayerOld)
 				newPlayer->sendServerList();
+
+			_playerConnections.push_back(std::move(newPlayer));
 			break;
 		}
 
 		case SocketType::Server:
-			_serverConnections.push_back(new ServerConnection(this, newSock));
+		{
+			_serverConnections.push_back(std::make_unique<ServerConnection>(this, newSock));
 			break;
+		}
 
 		default:
+		{
 			newSock->disconnect();
 			delete newSock;
 			break;
+		}
 	}
 }
 
@@ -193,8 +193,8 @@ bool ListServer::Main()
 
 	setRunning(true);
 
-	auto currentTimer = std::chrono::high_resolution_clock::now();
-	std::chrono::high_resolution_clock::time_point _lastTimer;
+	std::vector<std::unique_ptr<PlayerConnection>> removePlayers;
+	std::vector<std::unique_ptr<ServerConnection>> removeServers;
 
 	while (_running)
 	{
@@ -202,50 +202,74 @@ bool ListServer::Main()
 		acceptSock(_playerSock, SocketType::Player);
 		acceptSock(_serverSock, SocketType::Server);
 
-		// iterate player connections
-		for (auto it = _playerConnections.begin(); it != _playerConnections.end();)
+		// PLAYER LOOP
 		{
-			PlayerConnection *conn = *it;
-			if (conn->doMain())
-				++it;
-			else
+			// iterate player connections
+			for (auto it = _playerConnections.begin(); it != _playerConnections.end();)
 			{
-				delete conn;
-				it = _playerConnections.erase(it);
+				auto& conn = *it;
+				if (conn->doMain())
+					++it;
+				else
+				{
+					removePlayers.push_back(std::move(conn));
+					it = _playerConnections.erase(it);
+				}
 			}
+
+			// remove players
+			removePlayers.clear();
 		}
 
-		// iterate server connections
-		for (auto it = _serverConnections.begin(); it != _serverConnections.end();)
+		// SERVER LOOP
 		{
-			ServerConnection *conn = *it;
-			if (conn->doMain())
-				++it;
-			else
+			// iterate server connections
+			for (auto it = _serverConnections.begin(); it != _serverConnections.end();)
 			{
-				delete conn;
-				it = _serverConnections.erase(it);
+				auto& conn = *it;
+				if (conn->doMain())
+					++it;
+				else
+				{
+					removeServers.push_back(std::move(conn));
+					it = _serverConnections.erase(it);
+				}
 			}
+
+			// remove servers
+			for (auto& conn : removeServers)
+			{
+				CString dataPacket;
+				dataPacket.writeGChar(SVO_SENDTEXT);
+				dataPacket << "Listserver,Modify,Server," << conn->getName().gtokenize() << ",players=-1";
+				sendPacketToServers(dataPacket);
+			}
+			removeServers.clear();
 		}
 
+		// IRC Server main loop
 		_ircServer.Main();
 
-		// ping datastore (flush updates to db, or text whatever)
+		// Ping datastore (flush updates to db, or text)
 		_dataStore->Ping();
 
-		_lastTimer = currentTimer;
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
 	return true;
 }
 
+void ListServer::setRunning(bool status)
+{
+	std::lock_guard<std::mutex> guard(pc);
+	_running = status;
+}
+
 void ListServer::sendPacketToServers(const CString & packet, ServerConnection * sender) const
 {
-	for (auto it = _serverConnections.begin(); it != _serverConnections.end(); ++it)
+	for (const auto & conn : _serverConnections)
 	{
-		ServerConnection *conn = *it;
-		if (conn != sender)
+		if (sender != conn.get())
 			conn->sendPacket(packet);
 	}
 }

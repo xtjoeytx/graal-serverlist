@@ -9,7 +9,6 @@
 #include "IrcChannel.h"
 
 class IrcServer;
-class IrcChannel;
 
 class IrcStub
 {

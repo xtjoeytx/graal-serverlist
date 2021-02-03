@@ -1,7 +1,9 @@
-#ifndef TIRC_H
-#define TIRC_H
+#ifndef IRCCONNECTION_H
+#define IRCCONNECTION_H
 
-#include <time.h>
+#pragma once
+
+#include <ctime>
 #include "CSocket.h"
 #include "CString.h"
 #include "CEncryption.h"

@@ -1,7 +1,7 @@
-#pragma once
-
 #ifndef IDATABACKEND_H
 #define IDATABACKEND_H
+
+#pragma once
 
 #include <optional>
 #include <string>

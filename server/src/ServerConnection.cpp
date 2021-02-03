@@ -1,6 +1,6 @@
-#include <assert.h>
-#include <stdlib.h>
-#include <time.h>
+#include <cassert>
+#include <cstdlib>
+#include <ctime>
 #include "ListServer.h"
 #include "ServerConnection.h"
 #include "ServerPlayer.h"
@@ -20,11 +20,10 @@ typedef bool (ServerConnection::*ServerSocketFunction)(CString&);
 
 ServerSocketFunction serverFunctionTable[SVI_PACKETCOUNT];
 
-void createServerPtrTable()
+void ServerConnection::createServerPtrTable()
 {
-	// kinda like a memset-ish thing y'know
-	for (int packetId = 0; packetId < SVI_PACKETCOUNT; packetId++)
-		serverFunctionTable[packetId] = &ServerConnection::msgSVI_NULL;
+	for (auto & packetFn : serverFunctionTable)
+		packetFn = &ServerConnection::msgSVI_NULL;
 
 	// now set non-nulls
 	serverFunctionTable[SVI_SETNAME] = &ServerConnection::msgSVI_SETNAME;
@@ -64,14 +63,14 @@ void createServerPtrTable()
 	Constructor - Deconstructor
 */
 ServerConnection::ServerConnection(ListServer *listServer, CSocket *pSocket)
-: _listServer(listServer), _socket(pSocket), addedToSQL(false), isServerHQ(false),
+: _listServer(listServer), _socket(pSocket), addedToSQL(false), isServerHQ(false), isAuthorized(false),
 serverhq_level(1), server_version(VERSION_1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), rawPacketSize(0)
 {
-	static bool _setupServerPackets = false;
-	if (!_setupServerPackets)
+	static bool setupServerPackets = false;
+	if (!setupServerPackets)
 	{
-		createServerPtrTable();
-		_setupServerPackets = true;
+		ServerConnection::createServerPtrTable();
+		setupServerPackets = true;
 	}
 
 	_fileQueue.setCodec(ENCRYPT_GEN_1, 0);
@@ -95,15 +94,6 @@ ServerConnection::~ServerConnection()
 //	// Delete server from SQL serverlist.
 //	CString query = CString("DELETE FROM ") << settings->getStr("serverlist") << " WHERE name='" << name.escape() << "'";
 //	mySQL->add_simple_query(query.text());
-
-	// TODO(joey): very temporary, listserver will be responsible to tell servers when it disconnects
-	CString dataPacket;
-	dataPacket.writeGChar(SVO_SENDTEXT);
-	dataPacket << "Listserver,Modify,Server," << getName().gtokenize() << ",players=-1";
-	_listServer->sendPacketToServers(dataPacket, this);
-
-	// delete socket
-	delete _socket;
 }
 
 /*
@@ -112,7 +102,7 @@ ServerConnection::~ServerConnection()
 bool ServerConnection::doMain()
 {
 	// sock exist?
-	if (_socket == NULL)
+	if (_socket == nullptr)
 		return false;
 
 	// Grab the data from the socket and put it into our receive buffer.
@@ -135,7 +125,7 @@ bool ServerConnection::doMain()
 			while (sockBuffer.length() >= 2)
 			{
 				// packet length
-				unsigned short len = (unsigned short)sockBuffer.readShort();
+				auto len = (unsigned short)sockBuffer.readShort();
 				if ((unsigned int)len > (unsigned int)sockBuffer.length() - 2)
 					break;
 
@@ -196,7 +186,7 @@ CString ServerConnection::getPlayers() const
 
 	// Update our player list.
 	CString playerlist;
-	for (auto player : playerList)
+	for (const auto& player : playerList)
 	{
         if ((player->getClientType() & ANY_CLIENT) != 0)
 			playerlist << CString(CString() << player->getAccountName() << "\n" << player->getNickName() << "\n").gtokenizeI() << "\n";
@@ -213,9 +203,11 @@ CString ServerConnection::getIp(const CString& pIp) const
 {
 	if (pIp == ip)
 	{
-		if (localip.length() != 0) return localip;
-		return "127.0.0.1";
+		if (localip.isEmpty())
+			return "127.0.0.1";
+		return localip;
 	}
+
 	return ip;
 }
 
@@ -289,10 +281,8 @@ void ServerConnection::clearPlayerList()
 {
 	// clean playerlist
 	IrcServer *ircServer = _listServer->getIrcServer();
-	for (auto it = playerList.begin(); it != playerList.end(); ++it) {
-		ServerPlayer *player = *it;
+	for (auto player : playerList) {
 		//ircServer->removePlayer(player->getIrcStub());
-
 		delete player;
 	}
 	playerList.clear();
@@ -399,7 +389,7 @@ bool ServerConnection::parsePacket(CString& pPacket)
 		// valid packet, call function
 		bool ret = (*this.*serverFunctionTable[id])(curPacket);
 		if (!ret) {
-			//		serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, name.text());
+			//serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, name.text());
 		}
 
 		// Update the data timeout.
@@ -417,18 +407,32 @@ bool ServerConnection::msgSVI_NULL(CString& pPacket)
 	return true;
 }
 
+void sanitizeServerName(CString& serverName)
+{
+	// Remove all server type strings from the name of the server.
+	while (serverName.subString(0, 2) == "U " || serverName.subString(0, 2) == "P " || serverName.subString(0, 2) == "H " || serverName.subString(0, 2) == "3 ")
+		serverName.removeI(0, 2);
+}
+
 bool ServerConnection::msgSVI_SETNAME(CString& pPacket)
 {
+	CString serverName = pPacket.readString("");
 	CString oldName(name);
-	name = pPacket.readString("");
-	
-	// Remove all server type strings from the name of the server.
-	while (name.subString(0, 2) == "U " || name.subString(0, 2) == "P " || name.subString(0, 2) == "H " || name.subString(0, 2) == "3 ")
-		name.removeI(0, 2);
+
+	sanitizeServerName(serverName);
 
 	// Shouldn't we be checking for blank names?
-	if (name.isEmpty())
+	if (serverName.isEmpty())
 		return false;
+
+//	if (_listServer->updateServerName(this, serverName))
+//	{
+//
+//		return true;
+//	}
+
+	isAuthorized = true;
+	name = serverName;
 
 	// Remove the old server
 	if (!oldName.isEmpty())
@@ -660,7 +664,7 @@ bool ServerConnection::msgSVI_SETPLYR(CString& pPacket)
 			propPacket >> (char)PLPROP_ALIGNMENT >> (char)alignment;
 
 			// Create the player object
-			ServerPlayer *playerObject = new ServerPlayer(this, _listServer->getIrcServer());
+			auto playerObject = new ServerPlayer(this, _listServer->getIrcServer());
 			playerObject->setClientType(type);
 			playerObject->setProps(propPacket);
 			playerList.push_back(playerObject);
@@ -1111,12 +1115,18 @@ bool ServerConnection::msgSVI_NEWSERVER(CString& pPacket)
 	msgSVI_SETLOCALIP(localip);
 	msgSVI_SETPORT(port);			// Port last.
 
-	// TODO(joey): temporary
-	auto serverList = _listServer->getConnections();
-	for (auto it = serverList.begin(); it != serverList.end(); ++it)
+	// TODO(joey): Send remote ip address
 	{
-		ServerConnection *server = *it;
+		CString dataPacket;
+		dataPacket.writeGChar(SVO_SENDTEXT);
+		dataPacket << "Listserver,SetRemoteIp," << _socket->getRemoteIp();
+		sendPacket(dataPacket);
+	}
 
+	// TODO(joey): temporary
+	auto& serverList = _listServer->getConnections();
+	for (const auto& server : serverList)
+	{
 		CString dataPacket;
 		dataPacket.writeGChar(SVO_SENDTEXT);
 		dataPacket << "Listserver,Modify,Server," << server->getName().gtokenize() << ",players=" << CString(server->getPlayerCount());
@@ -1202,7 +1212,7 @@ bool ServerConnection::msgSVI_SERVERINFO(CString& pPacket)
     if (player)
         userIp = player->getIpAddress();
 
-    auto serverList = _listServer->getConnections();
+    auto& serverList = _listServer->getConnections();
 	for (const auto& server : serverList)
 	{
         if (servername.comparei(server->getName()))
@@ -1296,8 +1306,8 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 					sendMsg << params[0] << "\n" << params[1] << "\n" << params[2] << "\n";
 
 					// Assemble the serverlist.
-					auto serverList = _listServer->getConnections();
-					for (auto server : serverList)
+					auto& serverList = _listServer->getConnections();
+					for (auto& server : serverList)
 					{
 					    //if (server->getTypeVal() == TYPE_HIDDEN) continue;
 
@@ -1314,10 +1324,9 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 					CString sendMsg;
 
 					// get servers
-					auto serverList = _listServer->getConnections();
-					for (auto it = serverList.begin(); it != serverList.end(); ++it)
+					auto& serverList = _listServer->getConnections();
+					for (auto & server : serverList)
 					{
-						ServerConnection* server = *it;
 						if (server->getName() == params[2])
 							sendMsg << server->getPlayers();
 					}
@@ -1333,16 +1342,15 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 					sendMsg << params[0] << "\n" << params[1] << "\n" << params[2] << "\n";
 
 					// Assemble the serverlist.
-					auto serverList = _listServer->getConnections();
-					for (auto it = serverList.begin(); it != serverList.end(); ++it)
+					auto& serverList = _listServer->getConnections();
+					for (auto & server : serverList)
 					{
-						ServerConnection* server = *it;
 						//if (server->getTypeVal() == TYPE_HIDDEN) continue;
 
 						CString serverData;
 						serverData << server->getName() << "\n";
 						serverData << server->getType(PLV_POST22) << server->getName() << "\n";
-						serverData << CString((int)server->getPlayerCount()) << "\n";
+						serverData << CString(server->getPlayerCount()) << "\n";
 						sendMsg << serverData.gtokenize() << "\n";
 					}
 

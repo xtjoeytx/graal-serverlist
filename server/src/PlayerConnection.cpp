@@ -1,4 +1,4 @@
-#include <time.h>
+#include <ctime>
 #include "ListServer.h"
 #include "PlayerConnection.h"
 #include "ServerConnection.h"
@@ -30,7 +30,7 @@ void createPlayerPtrTable()
 	Constructor
 */
 PlayerConnection::PlayerConnection(ListServer *listServer, CSocket *pSocket)
-	: _listServer(listServer), sock(pSocket), _fileQueue(pSocket)
+	: _listServer(listServer), _socket(pSocket), _fileQueue(pSocket)
 {
 	static bool _setupPlayerPackets = false;
 	if (!_setupPlayerPackets)
@@ -45,7 +45,6 @@ PlayerConnection::PlayerConnection(ListServer *listServer, CSocket *pSocket)
 
 PlayerConnection::~PlayerConnection()
 {
-	delete sock;
 }
 
 /*
@@ -54,15 +53,15 @@ PlayerConnection::~PlayerConnection()
 bool PlayerConnection::doMain()
 {
 	// sock exist?
-	if (sock == nullptr)
+	if (_socket == nullptr)
 		return false;
 
 	// Grab the data from the socket and put it into our receive buffer.
 	unsigned int size = 0;
-	char* data = sock->getData(&size);
+	char* data = _socket->getData(&size);
 	if (size != 0)
 		sockBuffer.write(data, size);
-	else if (sock->getState() == SOCKET_STATE_DISCONNECTED)
+	else if (_socket->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
 
 	if (!sockBuffer.isEmpty())
@@ -195,19 +194,18 @@ void PlayerConnection::sendPacket(CString pPacket, bool pSendNow)
 
 int PlayerConnection::sendServerList()
 {
-	auto conn = _listServer->getConnections();
+	auto& serverConnections = _listServer->getConnections();
 
 	CString dataBuffer;
 	dataBuffer.writeGChar(PLO_SVRLIST);
 	
 	int serverCount = 0;
 	CString serverPacket;
-	for (auto it = conn.begin(); it != conn.end(); ++it)
+	for (auto & conn : serverConnections)
 	{
-		ServerConnection *serverObject = *it;
-		if (!serverObject->getName().isEmpty())
+		if (conn->isAuthenticated())
 		{
-			serverPacket << (*it)->getServerPacket(1, sock->getRemoteIp());
+			serverPacket << conn->getServerPacket(1, _socket->getRemoteIp());
 			serverCount++;
 		}
 	}

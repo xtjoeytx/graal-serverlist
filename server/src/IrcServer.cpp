@@ -68,7 +68,7 @@ bool IrcServer::Main()
 void IrcServer::acceptSock()
 {
 	CSocket *newSock = _ircSock.accept();
-	if (newSock == 0)
+	if (newSock == nullptr)
 		return;
 
 	std::string ipAddress(newSock->getRemoteIp());

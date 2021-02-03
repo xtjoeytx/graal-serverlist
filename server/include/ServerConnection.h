@@ -3,7 +3,8 @@
 #ifndef SERVERCONNECT_H
 #define SERVERCONNECT_H
 
-#include <time.h>
+#include <ctime>
+#include <memory>
 #include "CSocket.h"
 #include "CString.h"
 #include "CEncryption.h"
@@ -20,14 +21,14 @@ enum
 	SVI_SETIP			= 5,
 	SVI_SETPORT			= 6,
 	SVI_SETPLYR			= 7,
-	SVI_VERIACC			= 8,
+	SVI_VERIACC			= 8,	// deprecated
 	SVI_VERIGLD			= 9,
-	SVI_GETFILE			= 10,
+	SVI_GETFILE			= 10,	// deprecated
 	SVI_NICKNAME		= 11,
 	SVI_GETPROF			= 12,
 	SVI_SETPROF			= 13,
-	SVI_PLYRADD			= 14,		// Add player to the servers playerlist
-	SVI_PLYRREM			= 15,		// Remove player from the servers playerlist
+	SVI_PLYRADD			= 14,	// Add player to the servers playerlist
+	SVI_PLYRREM			= 15,	// Remove player from the servers playerlist
 	SVI_SVRPING			= 16,
 	SVI_VERIACC2		= 17,
 	SVI_SETLOCALIP		= 18,
@@ -49,21 +50,21 @@ enum
 
 enum
 {
-	SVO_VERIACC			= 0,
+	SVO_VERIACC			= 0,	// deprecated
 	SVO_VERIGLD			= 1,
-	SVO_FILESTART		= 2,
-	SVO_FILEEND			= 3,
-	SVO_FILEDATA		= 4,
-	SVO_NULL2			= 5,
-	SVO_NULL3			= 6,
+	SVO_FILESTART		= 2,	// deprecated
+	SVO_FILEEND			= 3,	// deprecated
+	SVO_FILEDATA		= 4,	// deprecated
+	SVO_VERSIONOLD		= 5,	// not implemented
+	SVO_VERSIONCURRENT	= 6,	// not implemented
 	SVO_PROFILE			= 7,
 	SVO_ERRMSG			= 8,
 	SVO_NULL4			= 9,
 	SVO_NULL5			= 10,
 	SVO_VERIACC2		= 11,
-	SVO_FILESTART2		= 12,
-	SVO_FILEDATA2		= 13,
-	SVO_FILEEND2		= 14,
+	SVO_FILESTART2		= 12,	// deprecated
+	SVO_FILEDATA2		= 13,	// deprecated
+	SVO_FILEEND2		= 14,	// deprecated
 	SVO_FILESTART3		= 15,
 	SVO_FILEDATA3		= 16,
 	SVO_FILEEND3		= 17,
@@ -119,6 +120,7 @@ class ServerConnection
         CString getPlayers() const;
         CString getServerPacket(int PLVER, const CString& pIp = "") const;
 
+		bool isAuthenticated() const			{ return isAuthorized; }
 		const CString& getDescription() const   { return description; }
 		const CString& getLanguage() const      { return language; }
 		const CString& getName() const          { return name; }
@@ -128,7 +130,7 @@ class ServerConnection
 		int getPlayerCount() const	            { return (int)playerList.size(); };
 		int getTypeVal() const		            { return serverhq_level; }
 		int getLastData() const		            { return (int)difftime( time(0), lastData ); }
-		CSocket* getSock() const	            { return _socket; }
+		CSocket* getSock() const	            { return _socket.get(); }
 
 		ServerPlayer * getPlayer(unsigned short id) const;
 		ServerPlayer * getPlayer(const std::string& account) const;
@@ -141,8 +143,11 @@ class ServerConnection
 		void sendCompress();
 		void sendPacket(CString pPacket, bool pSendNow = false);
 
-		// packet-functions;
+	private:
+		// packet-functions
+		static void createServerPtrTable();
 		bool parsePacket(CString& pPacket);
+
 		bool msgSVI_NULL(CString& pPacket);
 		bool msgSVI_SETNAME(CString& pPacket);
 		bool msgSVI_SETDESC(CString& pPacket);
@@ -179,7 +184,8 @@ class ServerConnection
 
 	private:
 		ListServer *_listServer;
-		CSocket *_socket;
+		//CSocket *_socket;
+		std::unique_ptr<CSocket> _socket;
 		
 		// Packet protocol
 		bool nextIsRaw;
@@ -188,6 +194,7 @@ class ServerConnection
 		CFileQueue _fileQueue;
 		CString sendBuffer, sockBuffer, outBuffer;
 
+		bool isAuthorized;
 		CString description, ip, language, name, port, url, version, localip;
 		std::vector<ServerPlayer *> playerList;
 		time_t lastPing, lastData, lastPlayerCount, lastUptimeCheck;

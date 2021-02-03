@@ -1,5 +1,7 @@
-#ifndef LISTSERVER_PLAYERCONNECTION_H
-#define LISTSERVER_PLAYERCONNECTION_H
+#ifndef PLAYERCONNECTION_H
+#define PLAYERCONNECTION_H
+
+#pragma once
 
 #include "CSocket.h"
 #include "CString.h"
@@ -65,7 +67,8 @@ private:
 	void decryptPacket(CString& pPacket);
 
 	ListServer *_listServer;
-	CSocket *sock;
+	std::unique_ptr<CSocket> _socket;
+
 	CString sendBuffer, sockBuffer, outBuffer;
 	CEncryption _inCodec;
 	CFileQueue _fileQueue;

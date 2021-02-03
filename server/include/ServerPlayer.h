@@ -1,7 +1,7 @@
-#pragma once
-
 #ifndef SERVERPLAYER_H
 #define SERVERPLAYER_H
+
+#pragma once
 
 #include <string>
 #include "CString.h"

@@ -9,8 +9,8 @@ class PlayerProfile
 {
 	public:
 		// Constructor
-		explicit PlayerProfile(const std::string& accountName)
-			: _accountName(accountName), _profileAge(0)
+		explicit PlayerProfile(std::string accountName)
+			: _accountName(std::move(accountName)), _profileAge(0)
 		{
 		}
 

@@ -1,7 +1,7 @@
-#pragma once
-
 #ifndef MYSQLBACKEND_H
 #define MYSQLBACKEND_H
+
+#pragma once
 
 #include <string>
 #include <mysql+++.h>

@@ -1,6 +1,4 @@
-#include <stdlib.h>
-#include <signal.h>
-#include <chrono>
+#include <csignal>
 #include <iostream>
 #include <thread>
 #include "ListServer.h"
@@ -99,11 +97,11 @@ const char * getErrorString(InitializeError error)
 			return "Could not connect to backend";
 
 		default:
-			return "";
+			return "Unknown Error";
 	}
 }
 
-ListServer *listServer = nullptr;
+std::unique_ptr<ListServer> listServer;
 std::thread listThread;
 
 int main(int argc, char *argv[])
@@ -116,7 +114,7 @@ int main(int argc, char *argv[])
 	std::string homePath = getBasePath();
 
 	// Setup listserver
-	listServer = new ListServer(homePath);
+	listServer = std::make_unique<ListServer>(homePath);
 	InitializeError err = listServer->Initialize();
 	if (err != InitializeError::None)
 	{
@@ -125,16 +123,14 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	listThread = std::thread(&ListServer::Main, listServer);
+	listThread = std::thread(&ListServer::Main, listServer.get());
 
-	// A CLI interface??? MAYBE... if I have time -joey
 	while (true)
 	{
 		std::string command;
 		std::cout << "Input Command: ";
 		std::cin >> command;
 
-		printf("Command sent: |%s|\n", command.c_str());
 		if (command == "quit")
 		{
 			listServer->setRunning(false);
@@ -143,20 +139,17 @@ int main(int argc, char *argv[])
 	}
 
 	listThread.join();
-	listServer->Cleanup();
-	delete listServer;
+	listServer.reset();
 	return 0;
 }
 
 void shutdownServer(int signal)
 {
-	if (listServer != nullptr)
+	if (listServer)
 	{
 		listServer->setRunning(false);
-
 		listThread.join();
-		listServer->Cleanup();
-		delete listServer;
+		listServer.reset();
 	}
 }
 

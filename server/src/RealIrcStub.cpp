@@ -45,7 +45,9 @@ void RealIrcStub::sendJoinedChannel(const std::string &channel, const std::unord
 			usersString.clear(400);
 		}
 
-		usersString << userData.mode << user->getNickName() << " ";
+		if (userData.mode != 0)
+			usersString.writeChar(userData.mode);
+		usersString << user->getNickName() << " ";
 	}
 	usersStrList.push_back(usersString);
 

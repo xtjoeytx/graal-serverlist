@@ -3,7 +3,8 @@
 
 #pragma once
 
-#include <assert.h>
+#include <cassert>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -45,7 +46,7 @@ enum class SocketType
 class ListServer
 {
 public:
-	explicit ListServer(const std::string& homePath);
+	explicit ListServer(std::string homePath);
 	~ListServer();
 
 	InitializeError Initialize();
@@ -56,10 +57,11 @@ public:
 	CLog & getServerLog()				{ return _serverLog; }
 	CSettings & getSettings()			{ return _settings; }
 	IrcServer * getIrcServer()  		{ return &_ircServer; }
-	CString getServerlistPacket() const { return CString(); }
-	std::vector<ServerConnection *> & getConnections() { return _serverConnections; }
+	const std::vector<std::unique_ptr<ServerConnection>> & getConnections() const;
 
-	// Backend functionality
+	void setRunning(bool status);
+
+	// Storage functionality
 	AccountStatus verifyAccount(const std::string& account, const std::string& password) const;
 	GuildStatus verifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) const;
 	std::optional<PlayerProfile> getProfile(const std::string& account) const;
@@ -68,29 +70,22 @@ public:
 	//void sendText(const CString& data);
 	//void sendText(const std::vector<CString>& stringList);
 
+	//
 	void sendPacketToServers(const CString& packet, ServerConnection *sender = nullptr) const;
-	
-	void setRunning(bool status)
-	{
-		std::lock_guard<std::mutex> guard(pc);
-		_running = status;
-	}
 
 private:
 	std::mutex pc;
 
 	bool _initialized;
 	bool _running;
-	CLog _clientLog;
-	CLog _serverLog;
+	CLog _clientLog, _serverLog;
 	CSettings _settings;
 	CSocket _playerSock, _serverSock;
 	std::string _homePath;
 
-	std::vector<PlayerConnection *> _playerConnections;
-	std::vector<ServerConnection *> _serverConnections;
-
-	IDataBackend *_dataStore;
+	std::vector<std::unique_ptr<PlayerConnection>> _playerConnections;
+	std::vector<std::unique_ptr<ServerConnection>> _serverConnections;
+	std::unique_ptr<IDataBackend> _dataStore;
 	IrcServer _ircServer;
 
 	// TBD:
@@ -99,6 +94,10 @@ private:
 	//
 	void acceptSock(CSocket& socket, SocketType socketType);
 };
+
+inline const std::vector<std::unique_ptr<ServerConnection>> &ListServer::getConnections() const {
+	return _serverConnections;
+}
 
 inline AccountStatus ListServer::verifyAccount(const std::string& account, const std::string& password) const {
 	return _dataStore->verifyAccount(account, password);

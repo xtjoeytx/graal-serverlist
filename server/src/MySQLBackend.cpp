@@ -19,7 +19,7 @@ MySQLBackend::MySQLBackend(const std::string& host, int port, const std::string&
 
 MySQLBackend::~MySQLBackend()
 {
-	this->Cleanup();
+	MySQLBackend::Cleanup();
 }
 
 int MySQLBackend::Initialize()

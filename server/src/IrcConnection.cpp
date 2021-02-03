@@ -1,10 +1,9 @@
-#include <stdlib.h>
-#include <time.h>
+#include <cstdlib>
+#include <ctime>
 #include "ListServer.h"
 #include "IrcConnection.h"
 #include "ServerConnection.h"
 #include "ServerPlayer.h"
-#include "CLog.h"
 
 /*
 	Pointer-Functions for Packets
@@ -61,7 +60,7 @@ IrcConnection::~IrcConnection()
 bool IrcConnection::doMain()
 {
 	// sock exist?
-	if (_socket == NULL)
+	if (_socket == nullptr)
 		return false;
 
 	// Grab the data from the socket and put it into our receive buffer.
@@ -126,7 +125,7 @@ void IrcConnection::sendCompress()
 	if (sendBuffer.isEmpty())
 	{
 		// If we still have some data in the out buffer, try sending it again.
-		if (outBuffer.isEmpty() == false)
+		if (!outBuffer.isEmpty())
 		{
 			unsigned int dsize = outBuffer.length();
 			outBuffer.removeI(0, _socket->sendData(outBuffer.text(), &dsize));

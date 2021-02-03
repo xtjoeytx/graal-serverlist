@@ -31,14 +31,14 @@ using IrcUserDataSet = std::unordered_set<IrcUserData, IrcUserDataHash, IrcUserD
 class IrcChannel
 {
 public:
-	IrcChannel(const std::string& name)
-		: _channelName(name) {
+	explicit IrcChannel(std::string name)
+		: _channelName(std::move(name)) {
 	}
 
 	size_t getUserCount() const;
 	const std::string& getChannelName() const;
 	const IrcUserDataSet& getUserList() const { return _users; }
-	const char getUserMode(const std::string& nickName) const;
+	char getUserMode(const std::string& nickName) const;
 	void setUserMode(std::string nickName, char mode);
 
 	bool addUser(IrcStub *ircUser);
@@ -61,7 +61,7 @@ inline const std::string& IrcChannel::getChannelName() const
 	return _channelName;
 }
 
-inline const char IrcChannel::getUserMode(const std::string& nickName) const
+inline char IrcChannel::getUserMode(const std::string& nickName) const
 {
 	auto it = _userMode.find(nickName);
 	return (it != _userMode.end() ? it->second : ' ');
