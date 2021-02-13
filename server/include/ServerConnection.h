@@ -1,7 +1,7 @@
-#pragma once
-
 #ifndef SERVERCONNECT_H
 #define SERVERCONNECT_H
+
+#pragma once
 
 #include <ctime>
 #include <memory>
@@ -9,6 +9,7 @@
 #include "CString.h"
 #include "CEncryption.h"
 #include "CFileQueue.h"
+#include "ServerHQ.h"
 
 enum
 {
@@ -87,17 +88,6 @@ enum
 	VERSION_3		= 2,
 };
 
-enum
-{
-	TYPE_HIDDEN		= 0,
-	TYPE_BRONZE		= 1,
-	TYPE_HOSTED		= 1,
-	TYPE_SILVER		= 2,
-	TYPE_CLASSIC	= 2,
-	TYPE_GOLD		= 3,
-	TYPE_3D			= 4,
-};
-
 class ListServer;
 class ServerPlayer;
 
@@ -109,28 +99,29 @@ class ServerConnection
 		~ServerConnection();
 
 		// main loop
-		bool doMain();
-
-		// kill client
-		void kill();
+		bool doMain(const time_t& now);
+		
+		void disconnectServer(const std::string& error);
+		void enableServerHQ(const ServerHQ& server);
 
 		// get-value functions
-        CString getIp(const CString& pIp = "") const;
-        CString getType(int PLVER) const;
-        CString getPlayers() const;
-        CString getServerPacket(int PLVER, const CString& pIp = "") const;
+		CString getIp(const CString& pIp = "") const;
+		CString getType(int PLVER) const;
+		CString getPlayers() const;
+		CString getServerPacket(int PLVER, const CString& pIp = "") const;
 
-		bool isAuthenticated() const			{ return isAuthorized; }
-		const CString& getDescription() const   { return description; }
-		const CString& getLanguage() const      { return language; }
-		const CString& getName() const          { return name; }
-		const CString& getPort() const          { return port; }
-		const CString& getUrl() const           { return url; }
-		const CString& getVersion() const       { return version; }
-		int getPlayerCount() const	            { return (int)playerList.size(); };
-		int getTypeVal() const		            { return serverhq_level; }
-		int getLastData() const		            { return (int)difftime( time(0), lastData ); }
-		CSocket* getSock() const	            { return _socket.get(); }
+		bool isAuthenticated() const			{ return _isAuthenticated; }
+		bool isServerHQ() const					{ return _isServerHQ; }
+		const CString& getDescription() const	{ return description; }
+		const CString& getLanguage() const		{ return language; }
+		const CString& getName() const			{ return name; }
+		const CString& getPort() const			{ return port; }
+		const CString& getUrl() const			{ return url; }
+		const CString& getVersion() const		{ return version; }
+		int getPlayerCount() const				{ return (int)playerList.size(); };
+		int getLastData() const					{ return (int)difftime(time(nullptr), _lastData); }
+		int64_t getCurrentUpTime() const		{ return (int64_t)difftime(time(nullptr), _startTime); }
+		size_t getUpTime() const				{ return _serverUpTime + getCurrentUpTime(); }
 
 		ServerPlayer * getPlayer(unsigned short id) const;
 		ServerPlayer * getPlayer(const std::string& account) const;
@@ -184,8 +175,10 @@ class ServerConnection
 
 	private:
 		ListServer *_listServer;
-		//CSocket *_socket;
 		std::unique_ptr<CSocket> _socket;
+
+		bool _disconnect;
+		std::string _disconnectMsg;
 		
 		// Packet protocol
 		bool nextIsRaw;
@@ -194,15 +187,16 @@ class ServerConnection
 		CFileQueue _fileQueue;
 		CString sendBuffer, sockBuffer, outBuffer;
 
-		bool isAuthorized;
+		bool _isAuthenticated;
 		CString description, ip, language, name, port, url, version, localip;
 		std::vector<ServerPlayer *> playerList;
-		time_t lastPing, lastData, lastPlayerCount, lastUptimeCheck;
-		bool addedToSQL;
-		bool isServerHQ;
-		CString serverhq_pass;
-		unsigned char serverhq_level;
+		time_t _lastData, _lastPing, _startTime;
 		int server_version;
+
+		bool _isServerHQ;
+		ServerHQLevel _serverLevel, _serverMaxLevel;
+		size_t _serverUpTime;
+		std::string _serverAuthToken;
 };
 
 #endif // SERVERCONNECT_H

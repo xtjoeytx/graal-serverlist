@@ -13,7 +13,7 @@ PlayerSocketFunction playerFunctionTable[PLI_PACKETCOUNT];
 
 void createPlayerPtrTable()
 {
-    // set player function pointers to NULL
+	// set player function pointers to NULL
 	for (auto & packetId : playerFunctionTable)
 		packetId = &PlayerConnection::msgPLI_NULL;
 
@@ -83,19 +83,19 @@ bool PlayerConnection::doMain()
 
 			switch (_inCodec.getGen())
 			{
-                // Gen 1 is not encrypted or compressed.
+				// Gen 1 is not encrypted or compressed.
 				case ENCRYPT_GEN_1:
 					break;
 
-                // Gen 2 and 3 are zlib compressed.  Gen 3 encrypts individual packets
-                // Uncompress so we can properly decrypt later on.
+				// Gen 2 and 3 are zlib compressed.  Gen 3 encrypts individual packets
+				// Uncompress so we can properly decrypt later on.
 				case ENCRYPT_GEN_2:
 				case ENCRYPT_GEN_3:
 					unBuffer.zuncompressI();
 					break;
 
-                // Gen 4 and up encrypt the whole combined and compressed packet.
-                // Decrypt and decompress.
+				// Gen 4 and up encrypt the whole combined and compressed packet.
+				// Decrypt and decompress.
 				default:
 					decryptPacket(unBuffer);
 					break;
@@ -257,15 +257,15 @@ bool PlayerConnection::msgPLI_SERVERLIST(CString& pPacket)
 	switch (status)
 	{
 		case AccountStatus::Normal: {
-            CSettings& settings = _listServer->getSettings();
+			CSettings& settings = _listServer->getSettings();
 
-            int availableServers = sendServerList();
-            sendPacket(CString() >> (char) PLO_STATUS << "Welcome to " << settings.getStr("name") << ", " << account
-                                 << ".\r" << "There are " << CString(availableServers) << " server(s) online.");
-            sendPacket(CString() >> (char) PLO_SITEURL << settings.getStr("url"));
-            sendPacket(CString() >> (char) PLO_UPGURL << settings.getStr("donateUrl"));
-            break;
-        }
+			int availableServers = sendServerList();
+			sendPacket(CString() >> (char) PLO_STATUS << "Welcome to " << settings.getStr("name") << ", " << account
+								 << ".\r" << "There are " << CString(availableServers) << " server(s) online.");
+			sendPacket(CString() >> (char) PLO_SITEURL << settings.getStr("url"));
+			sendPacket(CString() >> (char) PLO_UPGURL << settings.getStr("donateUrl"));
+			break;
+		}
 
 		default:
 			sendPacket(CString() >> (char)PLO_ERROR << getAccountError(status));

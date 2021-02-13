@@ -52,7 +52,7 @@ public:
 	void sendPacket(CString pPacket, bool pSendNow = false);
 	int sendServerList();
 
-	// packet-functions;
+	// packet-functions
 	bool msgPLI_NULL(CString& pPacket);
 	bool msgPLI_V1VER(CString& pPacket);
 	bool msgPLI_SERVERLIST(CString& pPacket);
@@ -62,14 +62,14 @@ public:
 	bool msgPLI_GRSECURELOGIN(CString& pPacket);
 
 private:
-	// Packet functions.
+	// Packet functions
 	bool parsePacket(CString& pPacket);
 	void decryptPacket(CString& pPacket);
 
 	ListServer *_listServer;
 	std::unique_ptr<CSocket> _socket;
 
-	CString sendBuffer, sockBuffer, outBuffer;
+	CString sockBuffer;
 	CEncryption _inCodec;
 	CFileQueue _fileQueue;
 	std::string _version;

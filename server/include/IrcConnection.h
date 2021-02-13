@@ -27,8 +27,7 @@ class IrcConnection
 		void kill();
 
 		// get-value functions
-		int getLastData()	{ return (int)difftime( time(0), lastData ); }
-		CSocket* getSock()	{ return _socket; }
+		int getLastData() const	{ return (int)difftime( time(nullptr), lastData ); }
 
 		// send-packet functions
 		void sendCompress();

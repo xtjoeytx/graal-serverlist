@@ -3,7 +3,7 @@
 #include "ListServer.h"
 
 IrcServer::IrcServer(ListServer *listServer)
-	: _initialized(false), _listServer(listServer)
+	: _initialized(false), _listServer(listServer), _dataStore(0)
 {
 
 }
@@ -22,7 +22,7 @@ bool IrcServer::Initialize(IDataBackend *dataStore, const std::string& homePath,
 	_ircSock.setProtocol(SOCKET_PROTOCOL_TCP);
 	_ircSock.setDescription("ircSock");
 
-	if (_ircSock.init(0, "6667"))
+	if (_ircSock.init(nullptr, "6667"))
 		return false; //InitializeError::IrcSock_Init;
 	if (_ircSock.connect())
 		return false; // InitializeError::IrcSock_Listen;

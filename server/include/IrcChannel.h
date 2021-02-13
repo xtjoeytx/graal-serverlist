@@ -39,7 +39,7 @@ public:
 	const std::string& getChannelName() const;
 	const IrcUserDataSet& getUserList() const { return _users; }
 	char getUserMode(const std::string& nickName) const;
-	void setUserMode(std::string nickName, char mode);
+	void setUserMode(const std::string& nickName, char mode);
 
 	bool addUser(IrcStub *ircUser);
 	bool removeUser(IrcStub *ircUser);

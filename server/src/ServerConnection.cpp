@@ -13,6 +13,26 @@ enum
 	PLV_22				= 2,
 };
 
+enum
+{
+	PLTYPE_AWAIT		= (int)(-1),
+	PLTYPE_CLIENT		= (int)(1 << 0),
+	PLTYPE_RC			= (int)(1 << 1),
+	PLTYPE_NPCSERVER	= (int)(1 << 2),
+	PLTYPE_NC			= (int)(1 << 3),
+	PLTYPE_CLIENT2		= (int)(1 << 4),
+	PLTYPE_CLIENT3		= (int)(1 << 5),
+	PLTYPE_RC2			= (int)(1 << 6),
+	PLTYPE_EXTERNAL		= (int)(1 << 7),	// IRC client?
+
+	PLTYPE_ANYCLIENT	= (int)(PLTYPE_CLIENT | PLTYPE_CLIENT2 | PLTYPE_CLIENT3),
+	PLTYPE_ANYRC		= (int)(PLTYPE_RC | PLTYPE_RC2),
+	PLTYPE_ANYNC		= (int)(PLTYPE_NC),
+	PLTYPE_ANYCONTROL	= (int)(PLTYPE_ANYRC | PLTYPE_ANYNC),
+	PLTYPE_ANYPLAYER	= (int)(PLTYPE_ANYCLIENT | PLTYPE_ANYRC),
+	PLTYPE_NONITERABLE	= (int)(PLTYPE_NPCSERVER | PLTYPE_ANYNC | PLTYPE_EXTERNAL)
+};
+
 /*
 	Pointer-Functions for Packets
 */
@@ -63,8 +83,9 @@ void ServerConnection::createServerPtrTable()
 	Constructor - Deconstructor
 */
 ServerConnection::ServerConnection(ListServer *listServer, CSocket *pSocket)
-: _listServer(listServer), _socket(pSocket), addedToSQL(false), isServerHQ(false), isAuthorized(false),
-serverhq_level(1), server_version(VERSION_1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), rawPacketSize(0)
+	: _listServer(listServer), _socket(pSocket), _isAuthenticated(false), _disconnect(false),
+		_isServerHQ(false), _serverLevel(ServerHQLevel::Bronze), _serverMaxLevel(ServerHQLevel::Bronze), _serverUpTime(0),
+		server_version(VERSION_1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), rawPacketSize(0)
 {
 	static bool setupServerPackets = false;
 	if (!setupServerPackets)
@@ -74,8 +95,8 @@ serverhq_level(1), server_version(VERSION_1), _fileQueue(pSocket), new_protocol(
 	}
 
 	_fileQueue.setCodec(ENCRYPT_GEN_1, 0);
+	_lastData = _lastPing = _startTime = time(nullptr);
 	language = "English";
-	lastPing = lastPlayerCount = lastData = lastUptimeCheck = time(0);
 }
 
 ServerConnection::~ServerConnection()
@@ -83,14 +104,6 @@ ServerConnection::~ServerConnection()
 	// Clear Playerlist
 	clearPlayerList();
 
-//	// Update our uptime.
-//	if (isServerHQ)
-//	{
-//		int uptime = (int)difftime(time(0), lastUptimeCheck);
-//		CString query = CString("UPDATE `") << settings->getStr("serverhq") << "` SET uptime=uptime+" << CString((int)uptime) << " WHERE name='" << name.escape() << "'";
-//		mySQL->add_simple_query(query.text());
-//	}
-//
 //	// Delete server from SQL serverlist.
 //	CString query = CString("DELETE FROM ") << settings->getStr("serverlist") << " WHERE name='" << name.escape() << "'";
 //	mySQL->add_simple_query(query.text());
@@ -99,7 +112,7 @@ ServerConnection::~ServerConnection()
 /*
 	Loops
 */
-bool ServerConnection::doMain()
+bool ServerConnection::doMain(const time_t& now)
 {
 	// sock exist?
 	if (_socket == nullptr)
@@ -113,9 +126,12 @@ bool ServerConnection::doMain()
 		sockBuffer.write(data, size);
 	else if (_socket->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
-	
+
 	if (!sockBuffer.isEmpty())
 	{
+		// Update the data timeout.
+		_lastData = now;
+
 		// definitions
 		CString unBuffer;
 
@@ -151,18 +167,28 @@ bool ServerConnection::doMain()
 
 				line = sockBuffer.subString(0, lineEnd + 1);
 				sockBuffer.removeI(0, line.length());
-				
+
 				if (!parsePacket(line))
 					return false;
 			} while (sockBuffer.bytesLeft() && !new_protocol);
 		}
 	}
 
-	// Send a ping every 30 seconds.
-	if ( (int)difftime( time(0), lastPing ) >= 30 )
+	// Handle disconnect
+	if (_disconnect)
 	{
-		lastPing = time(0);
-		sendPacket( CString() >> (char)SVO_PING );
+		if (!_disconnectMsg.empty())
+			sendPacket(CString() >> (char)SVO_ERRMSG << _disconnectMsg, true);
+
+		return false;
+	}
+
+	// Send a ping every 30 seconds.
+	auto diff = (int)difftime(now, _lastPing);
+	if (diff >= 30)
+	{
+		_lastPing = now;
+		sendPacket(CString() >> (char)SVO_PING);
 	}
 
 	// send out buffer
@@ -171,24 +197,30 @@ bool ServerConnection::doMain()
 }
 
 /*
-	Kill Client
+	Send disconnect message to the server
 */
-void ServerConnection::kill()
+void ServerConnection::disconnectServer(const std::string& errmsg)
 {
-	// Send Out-Buffer
-	sendCompress();
-	delete this;
+	_disconnect = true;
+	_disconnectMsg = errmsg;
+}
+
+void ServerConnection::enableServerHQ(const ServerHQ& server)
+{
+	_isServerHQ = true;
+	_serverMaxLevel = server.maxLevel;
+	_serverUpTime = server.uptime;
+
+	printf("Enabled serverhq for %s\n", server.serverName.c_str());
 }
 
 CString ServerConnection::getPlayers() const
 {
-	const int ANY_CLIENT = (int)(1 << 0) | (int)(1 << 4) | (int)(1 << 5);
-
 	// Update our player list.
 	CString playerlist;
 	for (const auto& player : playerList)
 	{
-        if ((player->getClientType() & ANY_CLIENT) != 0)
+		if ((player->getClientType() & PLTYPE_ANYCLIENT) != 0)
 			playerlist << CString(CString() << player->getAccountName() << "\n" << player->getNickName() << "\n").gtokenizeI() << "\n";
 	}
 
@@ -214,24 +246,25 @@ CString ServerConnection::getIp(const CString& pIp) const
 CString ServerConnection::getType(int PLVER) const
 {
 	CString ret;
-	switch (serverhq_level)
+	switch (_serverLevel)
 	{
-		case TYPE_3D:
+		case ServerHQLevel::G3D:
 			ret = "3 ";
 			break;
-		case TYPE_GOLD:
+		case ServerHQLevel::Gold:
 			ret = "P ";
 			break;
-		case TYPE_SILVER:
+		case ServerHQLevel::Classic:
 			break;
-		case TYPE_BRONZE:
+		case ServerHQLevel::Bronze:
 			ret = "H ";
 			break;
-		case TYPE_HIDDEN:
+		case ServerHQLevel::Hidden:
 			ret = "U ";
 			break;
 	}
-	if (PLVER == PLV_PRE22 && serverhq_level == TYPE_BRONZE)
+
+	if (PLVER == PLV_PRE22 && _serverLevel == ServerHQLevel::Bronze)
 		ret.clear();
 
 	return ret;
@@ -248,7 +281,7 @@ ServerPlayer * ServerConnection::getPlayer(unsigned short id) const
 {
 	for (auto player : playerList)
 	{
-        if (player->getId() == id)
+		if (player->getId() == id)
 			return player;
 	}
 
@@ -259,7 +292,7 @@ ServerPlayer * ServerConnection::getPlayer(const std::string & account) const
 {
 	for (auto player : playerList)
 	{
-        if (player->getAccountName() == account)
+		if (player->getAccountName() == account)
 			return player;
 	}
 
@@ -270,7 +303,7 @@ ServerPlayer * ServerConnection::getPlayer(const std::string & account, int type
 {
 	for (auto player : playerList)
 	{
-        if (player->getClientType() == type && player->getAccountName() == account)
+		if (player->getClientType() == type && player->getAccountName() == account)
 			return player;
 	}
 
@@ -328,7 +361,7 @@ void ServerConnection::sendCompress()
 		}
 		return;
 	}
-	
+
 	// add the send buffer to the out buffer
 	outBuffer << sendBuffer;
 
@@ -377,23 +410,23 @@ bool ServerConnection::parsePacket(CString& pPacket)
 		else curPacket = pPacket.readString("\n");
 
 		// read id from packet
-		unsigned char id = curPacket.readGUChar();
-		if (id >= SVI_PACKETCOUNT) {
-            printf("Invalid packet received from Server [%d]: %s (%d)\n", id, curPacket.text() + 1, curPacket.length());
-            printf("\tServer Name: %s\n", getName().text());
-            printf("\tServer IP Address: %s\n", getIp().text());
-		    return false;
+		uint8_t id = curPacket.readGUChar();
+		if (id >= SVI_PACKETCOUNT)
+		{
+			_listServer->getServerLog().out("Invalid packet received from Server [%d]: %s (%d)\n", id, curPacket.text() + 1, curPacket.length());
+			_listServer->getServerLog().out("\tServer Name: %s\n", getName().text());
+			_listServer->getServerLog().out("\tServer IP Address: %s:%s\n", getIp().text(), getPort().text());
+			return false;
 		}
 
-        printf("Server Packet [%d]: %s (%d)\n", id, curPacket.text() + 1, curPacket.length());
+		printf("Server Packet [%d]: %s (%d)\n", id, curPacket.text() + 1, curPacket.length());
+
 		// valid packet, call function
 		bool ret = (*this.*serverFunctionTable[id])(curPacket);
-		if (!ret) {
-			//serverlog.out("Packet %u failed for server %s.\n", (unsigned int)id, name.text());
+		if (!ret)
+		{
+			_listServer->getServerLog().out("Packet %u failed for server %s.\n", id, name.text());
 		}
-
-		// Update the data timeout.
-		lastData = time(0);
 	}
 
 	return true;
@@ -425,13 +458,11 @@ bool ServerConnection::msgSVI_SETNAME(CString& pPacket)
 	if (serverName.isEmpty())
 		return false;
 
-//	if (_listServer->updateServerName(this, serverName))
-//	{
-//
-//		return true;
-//	}
+	if (!_listServer->updateServerName(this, serverName.text(), _serverAuthToken)) {
+		return false;
+	}
 
-	isAuthorized = true;
+	_isAuthenticated = true;
 	name = serverName;
 
 	// Remove the old server
@@ -528,14 +559,12 @@ bool ServerConnection::msgSVI_SETNAME(CString& pPacket)
 bool ServerConnection::msgSVI_SETDESC(CString& pPacket)
 {
 	description = pPacket.readString("");
-	//SQLupdate("description", description);
 	return true;
 }
 
 bool ServerConnection::msgSVI_SETLANG(CString& pPacket)
 {
 	language = pPacket.readString("");
-	//SQLupdate("language", language);
 	return true;
 }
 
@@ -572,6 +601,10 @@ bool ServerConnection::msgSVI_SETVERS(CString& pPacket)
 				version = CString("Custom version: ") << ver;
 			break;
 		}
+
+		default:
+			version = ver;
+			break;
 	}
 	//SQLupdate("version", version);
 	return true;
@@ -580,15 +613,15 @@ bool ServerConnection::msgSVI_SETVERS(CString& pPacket)
 bool ServerConnection::msgSVI_SETURL(CString& pPacket)
 {
 	url = pPacket.readString("");
-	//SQLupdate("url", url);
 	return true;
 }
 
 bool ServerConnection::msgSVI_SETIP(CString& pPacket)
 {
 	ip = pPacket.readString("");
-	ip = (ip == "AUTO" ? _socket->getRemoteIp() : ip);
-	//SQLupdate("ip", ip);
+	if (ip == "AUTO")
+		ip = _socket->getRemoteIp();
+
 	return true;
 }
 
@@ -693,7 +726,7 @@ bool ServerConnection::msgSVI_VERIACC(CString& pPacket)
 
 bool ServerConnection::msgSVI_VERIGLD(CString& pPacket)
 {
-	unsigned short playerId = pPacket.readGUShort();
+	uint16_t playerId = pPacket.readGUShort();
 	CString account = pPacket.readChars(pPacket.readGUChar());
 	CString nickname = pPacket.readChars(pPacket.readGUChar());
 	CString guild = pPacket.readChars(pPacket.readGUChar());
@@ -704,6 +737,7 @@ bool ServerConnection::msgSVI_VERIGLD(CString& pPacket)
 	{
 		// TODO(joey): prune nickname from previous guilds.
 		CString newNick = nickname << " (" << guild << ")";
+
 		CString dataBuffer;
 		dataBuffer.writeGChar(SVO_VERIGLD);
 		dataBuffer.writeGShort(playerId);
@@ -759,7 +793,7 @@ bool ServerConnection::msgSVI_NICKNAME(CString& pPacket)
 	// Find the player and adjust his nickname.
 	for (const auto& playerObject : playerList)
 	{
-        if (playerObject->getAccountName() == accountName)
+		if (playerObject->getAccountName() == accountName)
 			playerObject->setNickName(nickName);
 	}
 
@@ -768,7 +802,7 @@ bool ServerConnection::msgSVI_NICKNAME(CString& pPacket)
 
 bool ServerConnection::msgSVI_GETPROF(CString& pPacket)
 {
-	unsigned short playerId = pPacket.readGUShort();
+	uint16_t playerId = pPacket.readGUShort();
 
 	// Fix old gservers that sent an incorrect packet.
 	pPacket.readGUChar();
@@ -834,7 +868,7 @@ bool ServerConnection::msgSVI_PLYRADD(CString& pPacket)
 {
 	ServerPlayer *playerObject;
 	CString propPacket;
-	unsigned char clientType;
+	uint8_t clientType;
 
 	if (new_protocol)
 	{
@@ -876,7 +910,7 @@ bool ServerConnection::msgSVI_PLYRADD(CString& pPacket)
 		playerObject = new ServerPlayer(this, _listServer->getIrcServer());
 		playerList.push_back(playerObject);
 	}
-	
+
 	// Set properties
 	playerObject->setClientType(clientType);
 	playerObject->setProps(propPacket);
@@ -1106,7 +1140,6 @@ bool ServerConnection::msgSVI_NEWSERVER(CString& pPacket)
 	CString localip = pPacket.readChars(pPacket.readGUChar());
 
 	// Set up the server.
-	if (msgSVI_SETNAME(name) == false) return false;
 	msgSVI_SETDESC(description);
 	msgSVI_SETLANG(language);
 	msgSVI_SETVERS(version);
@@ -1114,6 +1147,7 @@ bool ServerConnection::msgSVI_NEWSERVER(CString& pPacket)
 	msgSVI_SETIP(ip);
 	msgSVI_SETLOCALIP(localip);
 	msgSVI_SETPORT(port);			// Port last.
+	if (!msgSVI_SETNAME(name)) return false;
 
 	// TODO(joey): Send remote ip address
 	{
@@ -1138,13 +1172,15 @@ bool ServerConnection::msgSVI_NEWSERVER(CString& pPacket)
 
 bool ServerConnection::msgSVI_SERVERHQPASS(CString& pPacket)
 {
-	serverhq_pass = pPacket.readString("");
+	_serverAuthToken = pPacket.readString("").text();
 	return true;
 }
 
 bool ServerConnection::msgSVI_SERVERHQLEVEL(CString& pPacket)
 {
-	serverhq_level = pPacket.readGUChar();
+	_serverLevel = getServerHQLevel(pPacket.readGUChar());
+	if (_serverLevel > _serverMaxLevel)
+		_serverLevel = _serverMaxLevel;
 
 #ifndef NO_MYSQL
 //	// Ask what our max level and max players is.
@@ -1208,14 +1244,14 @@ bool ServerConnection::msgSVI_SERVERINFO(CString& pPacket)
 
 	// Fetch the players ip address so we can forward the client to the localip if its on the same host
 	CString userIp;
-    auto player = getPlayer(playerId);
-    if (player)
-        userIp = player->getIpAddress();
+	auto player = getPlayer(playerId);
+	if (player)
+		userIp = player->getIpAddress();
 
-    auto& serverList = _listServer->getConnections();
+	auto& serverList = _listServer->getConnections();
 	for (const auto& server : serverList)
 	{
-        if (servername.comparei(server->getName()))
+		if (servername.comparei(server->getName()))
 		{
 			CString serverPacket = CString(server->getName()) << "\n" << server->getName() << "\n" << server->getIp(userIp) << "\n" << server->getPort();
 			sendPacket(CString() >> (char)SVO_SERVERINFO >> (short)playerId << serverPacket.gtokenize());
@@ -1228,7 +1264,7 @@ bool ServerConnection::msgSVI_SERVERINFO(CString& pPacket)
 
 bool ServerConnection::msgSVI_PMPLAYER(CString& pPacket)
 {
-	unsigned short pid = pPacket.readGUShort();
+	uint16_t id = pPacket.readGUShort();
 	CString packet = pPacket.readString("");
 	CString data = packet.guntokenize();
 
@@ -1239,7 +1275,7 @@ bool ServerConnection::msgSVI_PMPLAYER(CString& pPacket)
 	CString type = data.readString("\n");
 	CString account2 = data.readString("\n");
 	CString message = data.readString("");
-	
+
 //	for (std::vector<ServerConnection*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
 //	{
 //		ServerConnection* server = *i;
@@ -1309,7 +1345,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 					auto& serverList = _listServer->getConnections();
 					for (auto& server : serverList)
 					{
-					    //if (server->getTypeVal() == TYPE_HIDDEN) continue;
+						//if (server->getTypeVal() == TYPE_HIDDEN) continue;
 
 						sendMsg << server->getName() << "\n";
 					}
@@ -1333,7 +1369,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 					sendTextForPlayer(player, sendMsg);
 				}
 			}
-			
+
 			if (params[1] == "lister") // -Serverlist,lister,simpleserverlist ----- -Serverlist is the weapon
 			{
 				if (params[2] == "simpleserverlist")
@@ -1385,7 +1421,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 
 bool ServerConnection::msgSVI_REQUESTSVRINFO(CString& pPacket)
 {
-	unsigned short pid = pPacket.readGUShort();
+	uint16_t pid = pPacket.readGUShort();
 	CString data = pPacket.readString("");
 
 	CString data2 = data.guntokenize();
@@ -1464,7 +1500,7 @@ bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
 
 bool ServerConnection::msgSVI_REQUESTBUDDIES(CString& pPacket)
 {
-	unsigned short pid = pPacket.readGUShort();
+	uint16_t pid = pPacket.readGUShort();
 	CString packet = pPacket.readString("");
 	CString data = packet.guntokenize();
 

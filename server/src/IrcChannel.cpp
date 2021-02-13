@@ -49,7 +49,7 @@ void IrcChannel::sendMessage(const std::string& message, IrcStub *sender)
 	}
 }
 
-void IrcChannel::setUserMode(std::string nickName, char mode)
+void IrcChannel::setUserMode(const std::string& nickName, char mode)
 {
 	_userMode[nickName] = mode;
 

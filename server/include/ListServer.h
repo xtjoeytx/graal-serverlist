@@ -73,6 +73,10 @@ public:
 	//
 	void sendPacketToServers(const CString& packet, ServerConnection *sender = nullptr) const;
 
+	bool updateServerName(ServerConnection *pConnection, const std::string &serverName, const std::string &authToken);
+	void removeServer(ServerConnection *pConnection);
+	void syncServers();
+
 private:
 	std::mutex pc;
 
@@ -87,9 +91,6 @@ private:
 	std::vector<std::unique_ptr<ServerConnection>> _serverConnections;
 	std::unique_ptr<IDataBackend> _dataStore;
 	IrcServer _ircServer;
-
-	// TBD:
-	std::vector<CString> _serverTypes;
 
 	//
 	void acceptSock(CSocket& socket, SocketType socketType);

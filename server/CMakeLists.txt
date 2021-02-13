@@ -31,9 +31,9 @@ set(
 		src/PlayerConnection.cpp
 		src/ServerConnection.cpp
 		src/IrcConnection.cpp
-        src/IrcServer.cpp
+		src/IrcServer.cpp
 		src/RealIrcStub.cpp
-        src/SimulatedIrcStub.cpp
+		src/SimulatedIrcStub.cpp
 )
 
 set(
@@ -48,10 +48,10 @@ set(
 		include/ServerConnection.h
 		include/IrcServer.h
 		include/IrcConnection.h
-        include/IrcStub.h
+		include/IrcStub.h
 		include/RealIrcStub.h
-        include/SimulatedIrcStub.h
-)
+		include/SimulatedIrcStub.h
+		include/ServerHQ.h)
 
 include_directories(
     # Include the CMake-generated version header from the build directory
@@ -115,7 +115,7 @@ if(APPLE)
 
     # Enable ARC (automatic reference counting) for OS X build
     set_property(
-        TARGET ${TARGET_NAME} APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc"
+		TARGET ${TARGET_NAME} APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc"
     )
 elseif(WIN32)
     add_executable(${TARGET_NAME} ${SOURCES} ${HEADERS})

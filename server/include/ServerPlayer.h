@@ -111,7 +111,7 @@ public:
 	double getPlayerY() const					{ return _y; }
 	int getAlignmentPoints() const				{ return _alignment; }
 	const std::string& getAccountName() const	{ return _accountName; }
-	const std::string& getIpAddress() const     { return _ipAddressStr; }
+	const std::string& getIpAddress() const		{ return _ipAddressStr; }
 	const std::string& getLevelName() const		{ return _levelName; }
 	const std::string& getNickName() const		{ return _nickName; }
 

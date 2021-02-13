@@ -43,7 +43,7 @@ IrcConnection::IrcConnection(IrcServer *ircServer, CSocket *pSocket)
 
 	_listServerAddress = _ircServer->getSettings().getStr("listServerAddress");
 	_accountStatus = AccountStatus::NotFound;
-	lastPing = lastData = time(0);
+	lastPing = lastData = time(nullptr);
 }
 
 IrcConnection::~IrcConnection()
@@ -95,9 +95,9 @@ bool IrcConnection::doMain()
 	}
 
 	// Send a ping every 30 seconds.
-	if ( (int)difftime( time(0), lastPing ) >= 30 )
+	if ( (int)difftime( time(nullptr), lastPing ) >= 30 )
 	{
-		lastPing = time(0);
+		lastPing = time(nullptr);
 		sendPacket( "PING :" + _listServerAddress );
 	}
 
@@ -274,7 +274,7 @@ bool IrcConnection::parsePacket(CString& pPacket)
 		else msgIRC_UNKNOWN(curPacket);
 
 		// Update the data timeout.
-		lastData = time(0);
+		lastData = time(nullptr);
 	}
 
 	return true;

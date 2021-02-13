@@ -23,7 +23,7 @@ void shutdownServer(int signal);
 typedef void (*sighandler_t)(int);
 
 // Home path of the serverlist.
-std::string getBasePath()
+std::string getBaseHomePath()
 {
 	CString homepath;
 
@@ -95,10 +95,9 @@ const char * getErrorString(InitializeError error)
 
 		case InitializeError::Backend_Error:
 			return "Could not connect to backend";
-
-		default:
-			return "Unknown Error";
 	}
+
+	return "Unknown Error";
 }
 
 std::unique_ptr<ListServer> listServer;
@@ -107,18 +106,19 @@ std::thread listThread;
 int main(int argc, char *argv[])
 {
 	// Shut down the server if we get a kill signal.
-	signal(SIGINT, (sighandler_t) shutdownServer);
-	signal(SIGTERM, (sighandler_t) shutdownServer);
+	signal(SIGBREAK, (sighandler_t)shutdownServer);
+	signal(SIGINT, (sighandler_t)shutdownServer);
+	signal(SIGTERM, (sighandler_t)shutdownServer);
 
 	// Grab the base path to the server executable.
-	std::string homePath = getBasePath();
+	std::string homePath = getBaseHomePath();
 
 	// Setup listserver
 	listServer = std::make_unique<ListServer>(homePath);
 	InitializeError err = listServer->Initialize();
 	if (err != InitializeError::None)
 	{
-		listServer->getServerLog().out("[Error] %s", getErrorString(err));
+		listServer->getServerLog().out("[Error] %s\n", getErrorString(err));
 		listServer->Cleanup();
 		return -1;
 	}

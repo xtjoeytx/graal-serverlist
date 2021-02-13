@@ -14,30 +14,30 @@
 // TODO(joey): Move this somewhere else
 const char * getAccountError(AccountStatus status)
 {
-    switch (status)
-    {
-        case AccountStatus::Normal:
-            return "SUCCESS";
+	switch (status)
+	{
+		case AccountStatus::Normal:
+			return "SUCCESS";
 
-        case AccountStatus::NotActivated:
-            return "Your account is not activated.";
+		case AccountStatus::NotActivated:
+			return "Your account is not activated.";
 
-        case AccountStatus::Banned:
-            return "Your account is globally banned.";
+		case AccountStatus::Banned:
+			return "Your account is globally banned.";
 
-        case AccountStatus::InvalidPassword:
-            return "Account name or password is invalid.";
+		case AccountStatus::InvalidPassword:
+			return "Account name or password is invalid.";
 
-        case AccountStatus::BackendError:
-            return "There was a problem verifying your account.  The SQL server is probably down.";
+		case AccountStatus::BackendError:
+			return "There was a problem verifying your account.  The SQL server is probably down.";
 
-        default:
-            return "Unknown server error.";
-    }
+		default:
+			return "Unknown server error.";
+	}
 }
 
 ListServer::ListServer(std::string homePath)
-	: _initialized(false), _running(false), _homePath(std::move(homePath)), _dataStore(nullptr), _ircServer(this)
+		: _initialized(false), _running(false), _homePath(std::move(homePath)), _dataStore(nullptr), _ircServer(this)
 {
 	_clientLog.setFilename(/*_homePath +*/ "clientlog.txt");
 	_serverLog.setFilename(/*_homePath +*/ "serverlog.txt"); // note: CLog does its own homepath check
@@ -58,9 +58,6 @@ InitializeError ListServer::Initialize()
 	_settings.setSeparator("=");
 	if (!_settings.loadFile(_homePath + "settings.ini"))
 		return InitializeError::InvalidSettings;
-
-	// Load server types
-	//_serverTypes = CString::loadToken("servertypes.txt", "\n", true);
 
 	// Bind the server socket
 	CString serverInterface = _settings.getStr("gserverInterface");
@@ -95,7 +92,7 @@ InitializeError ListServer::Initialize()
 
 	// TODO(joey): Create different data backends (likely do a text-based one as well)
 	_dataStore = std::make_unique<MySQLBackend>(_settings.getStr("server").text(), _settings.getInt("port"), _settings.getStr("sockfile").text(),
-		_settings.getStr("user").text(), _settings.getStr("password").text(), _settings.getStr("database").text());
+												_settings.getStr("user").text(), _settings.getStr("password").text(), _settings.getStr("database").text());
 
 	// Connect to backend
 	if (_dataStore->Initialize())
@@ -113,6 +110,9 @@ void ListServer::Cleanup()
 {
 	if (!_initialized)
 		return;
+
+	// Sync servers to database
+	syncServers();
 
 	// Delete the players
 	_playerConnections.clear();
@@ -176,13 +176,6 @@ void ListServer::acceptSock(CSocket& socket, SocketType socketType)
 			_serverConnections.push_back(std::make_unique<ServerConnection>(this, newSock));
 			break;
 		}
-
-		default:
-		{
-			newSock->disconnect();
-			delete newSock;
-			break;
-		}
 	}
 }
 
@@ -196,8 +189,12 @@ bool ListServer::Main()
 	std::vector<std::unique_ptr<PlayerConnection>> removePlayers;
 	std::vector<std::unique_ptr<ServerConnection>> removeServers;
 
+	time_t lastSync = time(nullptr);
+
 	while (_running)
 	{
+		time_t now = time(nullptr);
+
 		// accept sockets
 		acceptSock(_playerSock, SocketType::Player);
 		acceptSock(_serverSock, SocketType::Server);
@@ -227,7 +224,7 @@ bool ListServer::Main()
 			for (auto it = _serverConnections.begin(); it != _serverConnections.end();)
 			{
 				auto& conn = *it;
-				if (conn->doMain())
+				if (conn->doMain(now))
 					++it;
 				else
 				{
@@ -238,17 +235,18 @@ bool ListServer::Main()
 
 			// remove servers
 			for (auto& conn : removeServers)
-			{
-				CString dataPacket;
-				dataPacket.writeGChar(SVO_SENDTEXT);
-				dataPacket << "Listserver,Modify,Server," << conn->getName().gtokenize() << ",players=-1";
-				sendPacketToServers(dataPacket);
-			}
+				removeServer(conn.get());
 			removeServers.clear();
 		}
 
 		// IRC Server main loop
 		_ircServer.Main();
+
+		// Persist serverhq data
+		if (difftime(now, lastSync) >= 300) {
+			syncServers();
+			lastSync = now;
+		}
 
 		// Ping datastore (flush updates to db, or text)
 		_dataStore->Ping();
@@ -271,5 +269,83 @@ void ListServer::sendPacketToServers(const CString & packet, ServerConnection * 
 	{
 		if (sender != conn.get())
 			conn->sendPacket(packet);
+	}
+}
+
+bool ListServer::updateServerName(ServerConnection *pConnection, const std::string &serverName, const std::string &authToken)
+{
+	auto response = _dataStore->verifyServerHQ(serverName, authToken);
+
+	switch (response.status)
+	{
+		case ServerHQStatus::BackendError:
+			pConnection->disconnectServer("Could not establish connection to database");
+			return false;
+
+		case ServerHQStatus::InvalidPassword:
+		case ServerHQStatus::NotActivated:
+			pConnection->disconnectServer("Could not authenticate your server");
+			return false;
+
+		case ServerHQStatus::Unregistered:
+		case ServerHQStatus::Valid:
+			break;
+	}
+
+	bool authoritative = (response.status == ServerHQStatus::Valid);
+
+	// TODO(joey): non-authoritative servers could technically disconnect each other and hijack names
+	if (authoritative)
+	{
+		for (auto& conn : _serverConnections)
+		{
+			if (pConnection != conn.get() && conn->getName() == serverName)
+			{
+				conn->disconnectServer("Servername is already in use!");
+			}
+		}
+	
+		pConnection->enableServerHQ(response.serverHq);
+	}
+	else
+	{
+		for (auto& conn : _serverConnections)
+		{
+			if (pConnection != conn.get() && conn->getName() == serverName)
+			{
+				if (pConnection->getIp() == conn->getIp() && pConnection->getPort() == conn->getPort())
+				{
+					conn->disconnectServer("A duplicate server has been found, disconnecting original server.");
+					return true;
+				}
+
+				pConnection->disconnectServer("Servername is already in use!");
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+void ListServer::removeServer(ServerConnection *conn)
+{
+	_dataStore->updateServerUpTime(conn->getName().text(), conn->getUpTime());
+
+	// Notify other servers this server will be removed
+	CString dataPacket;
+	dataPacket.writeGChar(SVO_SENDTEXT);
+	dataPacket << "Listserver,Modify,Server," << conn->getName().gtokenize() << ",players=-1";
+	sendPacketToServers(dataPacket);
+}
+
+void ListServer::syncServers()
+{
+	for (auto& conn : _serverConnections)
+	{
+		if (conn->isServerHQ())
+		{
+			_dataStore->updateServerUpTime(conn->getName().text(), conn->getUpTime());
+		}
 	}
 }

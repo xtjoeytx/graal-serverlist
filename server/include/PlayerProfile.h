@@ -1,7 +1,7 @@
-#pragma once
-
 #ifndef PLAYERPROFILE_H
 #define PLAYERPROFILE_H
+
+#pragma once
 
 #include <string>
 

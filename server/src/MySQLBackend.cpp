@@ -1,9 +1,9 @@
 #include <vector>
 #include "MySQLBackend.h"
 
-MySQLBackend::MySQLBackend(const std::string& host, int port, const std::string& socket,
-	const std::string& user, const std::string& password, const std::string& database)
-	: IDataBackend()
+MySQLBackend::MySQLBackend(const std::string& host, unsigned int port, const std::string& socket,
+						   const std::string& user, const std::string& password, const std::string& database)
+		: IDataBackend()
 {
 	// TODO(joey): The library doesn't support socket, i'll fork and add it eventually
 	_connectionOptions.server = host;
@@ -160,14 +160,76 @@ bool MySQLBackend::setProfile(const PlayerProfile& profile)
 	try {
 		daotk::mysql::prepared_stmt stmt(_connection, query);
 		stmt.bind_param(profile.getName(), profile.getAge(), profile.getGender(), profile.getCountry(),
-			profile.getMessenger(), profile.getEmail(), profile.getWebsite(), profile.getHangout(), profile.getQuote(),
-			profile.getAccountName());
+						profile.getMessenger(), profile.getEmail(), profile.getWebsite(), profile.getHangout(), profile.getQuote(),
+						profile.getAccountName());
 
 		if (stmt.execute())
 			return (_connection.affected_rows() == 1);
 	}
 	catch (std::exception& exp) {
 		printf("SetProfile Exception: %s\n", exp.what());
+	}
+
+	return false;
+}
+
+ServerHQResponse MySQLBackend::verifyServerHQ(const std::string& serverName, const std::string& token)
+{
+	ServerHQResponse response{};
+
+	const std::string query = "SELECT name, maxlevel, activated, uptime, password, MD5(CONCAT(MD5(?), `salt`)) " \
+		"FROM graal_serverhq " \
+		"WHERE `name` = ? LIMIT 1";
+
+	try {
+		std::string name, password, tokenHashed;
+		int activated, maxlevel;
+		size_t uptime;
+
+		daotk::mysql::prepared_stmt stmt(_connection, query);
+		stmt.bind_param(token, serverName);
+		stmt.bind_result(name, maxlevel, activated, uptime, password, tokenHashed);
+
+		if (stmt.execute())
+		{
+			if (stmt.fetch())
+			{
+				if (tokenHashed == password)
+				{
+					response.status = (activated ? ServerHQStatus::Valid : ServerHQStatus::NotActivated);
+					response.serverHq.serverName = name;
+					response.serverHq.uptime = uptime;
+
+					response.serverHq.maxLevel = getServerHQLevel(maxlevel);
+					if (response.serverHq.maxLevel < ServerHQLevel::Bronze)
+						response.serverHq.maxLevel = ServerHQLevel::Bronze;
+				}
+				else response.status = ServerHQStatus::InvalidPassword;
+			}
+			else response.status = ServerHQStatus::Unregistered;
+		}
+	}
+	catch (std::exception& exp) {
+		printf("verifyServerHQ Exception: %s\n", exp.what());
+		response.status = ServerHQStatus::BackendError;
+	}
+
+	return response;
+}
+
+bool MySQLBackend::updateServerUpTime(const std::string& serverName, size_t uptime)
+{
+	const std::string query = "UPDATE graal_serverhq SET `uptime` = ?, `lastconnected` = NOW() WHERE `name` = ? AND `uptime` < ? LIMIT 1";
+
+	try {
+		daotk::mysql::prepared_stmt stmt(_connection, query);
+		stmt.bind_param(uptime, serverName, uptime);
+
+		if (stmt.execute())
+			return (_connection.affected_rows() == 1);
+	}
+	catch (std::exception& exp) {
+		printf("updateServerUpTime Exception: %s\n", exp.what());
 	}
 
 	return false;

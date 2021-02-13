@@ -3,14 +3,14 @@
 
 std::string getIpString(uint32_t ipaddr)
 {
-    uint8_t a1 = (ipaddr >> 24) & 0xFF;
-    uint8_t a2 = (ipaddr >> 16) & 0xFF;
-    uint8_t a3 = (ipaddr >> 8) & 0xFF;
-    uint8_t a4 = ipaddr & 0xFF;
+	uint8_t a1 = (ipaddr >> 24) & 0xFF;
+	uint8_t a2 = (ipaddr >> 16) & 0xFF;
+	uint8_t a3 = (ipaddr >> 8) & 0xFF;
+	uint8_t a4 = ipaddr & 0xFF;
 
-    char buf[16];
-    sprintf(buf, "%d.%d.%d.%d", a1, a2, a3, a4);
-    return std::string(buf);
+	char buf[16];
+	sprintf(buf, "%d.%d.%d.%d", a1, a2, a3, a4);
+	return std::string(buf);
 }
 
 ServerPlayer::ServerPlayer(ServerConnection *serverConnection, IrcServer *ircServer)
@@ -57,10 +57,10 @@ void ServerPlayer::setProps(CString& pPacket)
 				_alignment = pPacket.readGUChar();
 				break;
 
-		    case PLPROP_IPADDR: // PLPROP_IPADDR
-                _ipAddress = pPacket.readGUInt5();
-                _ipAddressStr = getIpString(_ipAddress);
-                break;
+			case PLPROP_IPADDR: // PLPROP_IPADDR
+				_ipAddress = pPacket.readGUInt5();
+				_ipAddressStr = getIpString(_ipAddress);
+				break;
 
 			case PLPROP_ACCOUNTNAME: // PLPROP_ACCOUNTNAME
 				_accountName = pPacket.readChars(pPacket.readGUChar()).text();
