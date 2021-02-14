@@ -315,7 +315,7 @@ bool ListServer::updateServerName(ServerConnection *pConnection, const std::stri
 			{
 				if (pConnection->getIp() == conn->getIp() && pConnection->getPort() == conn->getPort())
 				{
-					conn->disconnectServer("A duplicate server has been found, disconnecting original server.");
+					conn->disconnectServer("A duplicate server has been found, disconnecting server!");
 					return true;
 				}
 

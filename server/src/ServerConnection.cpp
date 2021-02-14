@@ -589,6 +589,8 @@ bool ServerConnection::msgSVI_SETVERS(CString& pPacket)
 		{
 			if (ver.match("?.??.?") || ver.match("?.?.?"))
 				version = CString("Version: ") << ver;
+			else if (ver.match("?.??.?-beta") || ver.match("?.?.?-beta"))
+				version = CString("Beta Version: ") << ver.subString(0, ver.find('-'));
 			else if (ver.find("SVN") != -1)
 			{
 				CString ver2 = ver.removeAll("SVN").trim();
