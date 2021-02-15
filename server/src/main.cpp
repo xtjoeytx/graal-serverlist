@@ -15,12 +15,15 @@
 #else
 	#include <unistd.h>
 	#include <dirent.h>
+	#ifndef SIGBREAK
+		#define SIGBREAK SIGQUIT
+	#endif
 #endif
-
-void shutdownServer(int signal);
 
 // Function pointer for signal handling.
 typedef void (*sighandler_t)(int);
+
+void shutdownServer(int signal);
 
 // Home path of the serverlist.
 std::string getBaseHomePath()
@@ -106,6 +109,7 @@ std::thread listThread;
 int main(int argc, char *argv[])
 {
 	// Shut down the server if we get a kill signal.
+	signal(SIGABRT, (sighandler_t)shutdownServer);
 	signal(SIGBREAK, (sighandler_t)shutdownServer);
 	signal(SIGINT, (sighandler_t)shutdownServer);
 	signal(SIGTERM, (sighandler_t)shutdownServer);
