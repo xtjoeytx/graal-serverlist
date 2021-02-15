@@ -737,7 +737,6 @@ bool ServerConnection::msgSVI_VERIGLD(CString& pPacket)
 	GuildStatus status = _listServer->verifyGuild(account.text(), nickname.text(), guild.text());
 	if (status == GuildStatus::Valid)
 	{
-		// TODO(joey): prune nickname from previous guilds.
 		CString newNick = nickname << " (" << guild << ")";
 
 		CString dataBuffer;

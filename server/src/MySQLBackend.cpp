@@ -106,8 +106,32 @@ AccountStatus MySQLBackend::verifyAccount(const std::string& account, const std:
 
 GuildStatus MySQLBackend::verifyGuild(const std::string& account, const std::string& nickname, const std::string& guild)
 {
-	std::string queryTest = "SELECT account, activated, banned FROM graal_users WHERE " \
-	"account = ? AND password=MD5(CONCAT(MD5(?),`salt`)) LIMIT 1";
+	const std::string query = "SELECT gm.nickname, gg.restrictnick " \
+		"FROM `graal_guilds_members` gm JOIN `graal_guilds` gg on gg.name = gm.guild " \
+		"WHERE gg.status = 1 and gg.name = ? and gm.account = ? LIMIT 1";
+	
+	try {
+		std::string guildNick;
+		int restrictNick;
+
+		daotk::mysql::prepared_stmt stmt(_connection, query);
+		stmt.bind_param(guild, account);
+		stmt.bind_result(guildNick, restrictNick);
+
+		if (stmt.execute())
+		{
+			if (stmt.fetch())
+			{
+				if (restrictNick && nickname != guildNick)
+					return GuildStatus::Invalid;
+
+				return GuildStatus::Valid;
+			}
+		}
+	}
+	catch (std::exception& exp) {
+		printf("VerifyGuild Exception: %s\n", exp.what());
+	}
 
 	return GuildStatus::Invalid;
 }
