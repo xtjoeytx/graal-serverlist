@@ -154,6 +154,7 @@ void shutdownServer(int signal)
 		listServer->setRunning(false);
 		listThread.join();
 		listServer.reset();
+		exit(0);
 	}
 }
 
