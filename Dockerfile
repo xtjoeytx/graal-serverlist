@@ -12,6 +12,7 @@ RUN apk add --update --virtual .listserver-build-dependencies \
 		autoconf \
 		curl-dev \
 		openssl-dev \
+	&& rm -rf /listserver/build \
 	&& mkdir /listserver/build \
 	&& cd /listserver/build \
 	&& cmake .. -Wno-dev -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE="-O3 -ffast-math" \
