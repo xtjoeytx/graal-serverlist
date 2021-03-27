@@ -28,5 +28,5 @@ RUN apk add --update libstdc++ libatomic
 WORKDIR /listserver
 VOLUME [ "/gserver/settings.ini", "/gserver/ipbans.txt" ]
 ENTRYPOINT ["./listserver"]
-EXPOSE [ 14900, 14922, 14923 ]
+EXPOSE 14900 14922 14923
 CMD []
