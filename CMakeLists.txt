@@ -65,8 +65,8 @@ configure_file(
 	${PROJECT_BINARY_DIR}/server/include/IConfig.h
 )
 
-option(NOSTATIC "Don't compile as a static runtime." OFF)
-if(NOSTATIC)
+option(STATIC "Compile as a static runtime." ON)
+if(NOT STATIC)
 	message("Don't compile as a static runtime.")
 	set(BUILD_SHARED_LIBS TRUE CACHE BOOL "-" FORCE)
 else()
@@ -75,8 +75,8 @@ else()
 	set(BUILD_SHARED_LIBS FALSE CACHE BOOL "-" FORCE)
 endif()
 
-option(NOMYSQL "Don't compile with MySQL support." OFF)
-if(NOMYSQL)
+option(MYSQL "Compile with MySQL support." ON)
+if(NOT MYSQL)
 	message("Don't compile with MySQL support.")
 	add_definitions(-DNO_MYSQL)
 else()
@@ -140,7 +140,7 @@ elseif(WIN32)
 elseif(AROS)
 elseif(AMIGA)
 else()
-	if(NOT NOSTATIC)
+	if(STATIC)
 	#	SET(CMAKE_EXE_LINKER_FLAGS "-static")
 	endif()
 
@@ -150,12 +150,12 @@ else()
 endif()
 
 # Prefer static linkage
-if(NOT NOSTATIC)
+if(STATIC)
 	set(SUFFIXES_ORIG ${CMAKE_FIND_LIBRARY_SUFFIXES})
 	set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif()
 
-if(NOT NOMYSQL)
+if(MYSQL)
 	find_package(MySQL)
 	if(NOT MYSQL_FOUND)
 		add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient EXCLUDE_FROM_ALL)
@@ -200,7 +200,7 @@ include(CPack)
 add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/gs2lib)
 
 # Restore library suffixes
-if(NOT NOSTATIC)
+if(STATIC)
 	set(CMAKE_FIND_LIBRARY_SUFFIXES ${SUFFIXES_ORIG})
 endif()
 
