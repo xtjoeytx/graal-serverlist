@@ -2,7 +2,7 @@
 	"builds": [
 		{
 			"DockerRoot": "xtjoeytx",
-			"DockerImage": "listserver",
+			"DockerImage": "graal-serverlist",
 			"DockerTag": "production",
 			"Dockerfile": "Dockerfile",
 			"BuildIfSuccessful": ""
