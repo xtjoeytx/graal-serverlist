@@ -89,10 +89,13 @@ InitializeError ListServer::Initialize()
 
 	// TODO(joey): Old player sock?? Unsure what its for, leaving out for now. (11/25/19) - its for v141
 
-
+#ifndef NO_MYSQL
 	// TODO(joey): Create different data backends (likely do a text-based one as well)
 	_dataStore = std::make_unique<MySQLBackend>(_settings.getStr("server").text(), _settings.getInt("port"), _settings.getStr("sockfile").text(),
-												_settings.getStr("user").text(), _settings.getStr("password").text(), _settings.getStr("database").text());
+												 _settings.getStr("user").text(), _settings.getStr("password").text(), _settings.getStr("database").text());
+#endif
+
+	// TODO(shitai): building with MYSQL turned off will cause the listserver to crash
 
 	// Connect to backend
 	if (_dataStore->Initialize())
@@ -304,7 +307,7 @@ bool ListServer::updateServerName(ServerConnection *pConnection, const std::stri
 				conn->disconnectServer("Servername is already in use!");
 			}
 		}
-	
+
 		pConnection->enableServerHQ(response.serverHq);
 	}
 	else
