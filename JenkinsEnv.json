@@ -1,0 +1,11 @@
+{
+	"builds": [
+		{
+			"DockerRoot": "xtjoeytx",
+			"DockerImage": "listserver",
+			"DockerTag": "production",
+			"Dockerfile": "Dockerfile",
+			"BuildIfSuccessful": ""
+		}
+	]
+}

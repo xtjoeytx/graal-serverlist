@@ -147,6 +147,7 @@ else()
 	add_definitions(-D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=1)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
+	add_compile_options(-Wno-error -Wno-dev)
 endif()
 
 # Prefer static linkage
@@ -156,8 +157,9 @@ if(STATIC)
 endif()
 
 if(MYSQL)
-	find_package(MySQL)
+	find_package(MySQL 5.7)
 	if(NOT MYSQL_FOUND)
+		message("MySQL not found, building ourselves")
 		add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient EXCLUDE_FROM_ALL)
 	endif()
 endif()

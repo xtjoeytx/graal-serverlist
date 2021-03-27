@@ -104,6 +104,8 @@ if(MYSQL)
 		)
 		include_directories(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient/include)
 		include_directories(${PROJECT_BINARY_DIR}/dependencies/mysqlclient/include)
+	else()
+		include_directories(${MYSQL_INCLUDE_DIR})
 	endif()
 endif()
 

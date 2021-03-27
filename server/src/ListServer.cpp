@@ -62,6 +62,8 @@ InitializeError ListServer::Initialize()
 	// Bind the server socket
 	CString serverInterface = _settings.getStr("gserverInterface");
 
+	bool use_env = getenv("USE_ENV");
+
 	if (serverInterface == "AUTO")
 		serverInterface.clear();
 	_serverSock.setType(SOCKET_TYPE_SERVER);
@@ -90,9 +92,21 @@ InitializeError ListServer::Initialize()
 	// TODO(joey): Old player sock?? Unsure what its for, leaving out for now. (11/25/19) - its for v141
 
 #ifndef NO_MYSQL
+	const char * mysql_server = _settings.getStr("server").text();
+	unsigned int mysql_port = _settings.getInt("port");
+	const char * mysql_user = _settings.getStr("user").text();
+	const char * mysql_password = _settings.getStr("password").text();
+	const char * mysql_database = _settings.getStr("database").text();
+
+	if (use_env && getenv("MYSQL_HOST") != nullptr) mysql_server = getenv("MYSQL_HOST");
+	if (use_env && getenv("MYSQL_PORT") != nullptr) mysql_port = atoi(getenv("MYSQL_PORT"));
+	if (use_env && getenv("MYSQL_USER") != nullptr) mysql_user = getenv("MYSQL_USER");
+	if (use_env && getenv("MYSQL_PASSWORD") != nullptr) mysql_password = getenv("MYSQL_PASSWORD");
+	if (use_env && getenv("MYSQL_DATABASE") != nullptr) mysql_database = getenv("MYSQL_DATABASE");
+
 	// TODO(joey): Create different data backends (likely do a text-based one as well)
-	_dataStore = std::make_unique<MySQLBackend>(_settings.getStr("server").text(), _settings.getInt("port"), _settings.getStr("sockfile").text(),
-												 _settings.getStr("user").text(), _settings.getStr("password").text(), _settings.getStr("database").text());
+	_dataStore = std::make_unique<MySQLBackend>(mysql_server, mysql_port, _settings.getStr("sockfile").text(),
+												mysql_user, mysql_password, mysql_database);
 #endif
 
 	// TODO(shitai): building with MYSQL turned off will cause the listserver to crash

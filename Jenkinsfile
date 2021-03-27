@@ -38,87 +38,71 @@ def killall_jobs() {
 	echo "Done killing"
 }
 
-def buildStep(dockerImage, generator, os, defines) {
-	def split_job_name = env.JOB_NAME.split(/\/{1}/)
-	def fixed_job_name = split_job_name[1].replace('%2F',' ')
-    def fixed_os = os.replace(' ','-')
-	try{
-		stage("Building on \"${dockerImage}\" with \"${generator}\" for \"${os}\"...") {
-			properties([pipelineTriggers([githubPush()])])
-			def commondir = env.WORKSPACE + '/../' + fixed_job_name + '/'
+def buildStep(DOCKER_ROOT, DOCKERIMAGE, DOCKERTAG, DOCKERFILE, BUILD_NEXT) {
+	def split_job_name = env.JOB_NAME.split(/\/{1}/);
+	def fixed_job_name = split_job_name[1].replace('%2F',' ');
 
-			docker.image("${dockerImage}").inside("-u 0:0 -e BUILDER_UID=1001 -e BUILDER_GID=1001 -e BUILDER_USER=gserver -e BUILDER_GROUP=gserver") {
-				sh "sudo apt update"
-				sh "sudo apt install -y gcc-multilib"
+	try {
+		checkout scm;
 
-				checkout scm
+		def buildenv = "${DOCKERTAG}";
+		def tag = '';
+		if (env.BRANCH_NAME.equals('master')) {
+			tag = "latest";
+		} else {
+			tag = "${env.BRANCH_NAME.replace('/','-')}";
+		}
 
-				if (env.CHANGE_ID) {
-					echo 'Trying to build pull request'
-				}
+		docker.withRegistry("https://index.docker.io/v1/", "dockergraal") {
+			def customImage
+			stage("Building ${DOCKERIMAGE}:${tag}...") {
+				customImage = docker.build("${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", "--build-arg BUILDENV=${buildenv} --network=host --pull -f ${DOCKERFILE} .");
+			}
 
-				if (!env.CHANGE_ID) {
-					sh "rm -rfv publishing/deploy/*"
-					sh "mkdir -p publishing/deploy/listserver"
-				}
-
-				sh "mkdir -p build/"
-				sh "mkdir -p lib/"
-				sh "sudo rm -rfv build/*"
-
-				slackSend color: "good", channel: "#jenkins", message: "Starting ${os} build target..."
-				dir("build") {
-					sh "cmake -G\"${generator}\" ${defines} -DVER_EXTRA=\"-${fixed_os}-${fixed_job_name}\" .. || true" // Temporary fix for Windows MingW builds
-					sh "cmake --build . --config Release --target package -- -j 8"
-
-					archiveArtifacts artifacts: '*.zip,*.tar.gz,*.tgz'
-				}
-
-				slackSend color: "good", channel: "#jenkins", message: "Build ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${os} DockerImage: ${dockerImage} Generator: ${generator} successful!"
+			stage("Pushing to docker hub registry...") {
+				customImage.push();
+				discordSend description: "Docker Image: ${DOCKER_ROOT}/${DOCKERIMAGE}:${tag}", footer: "", link: env.BUILD_URL, result: currentBuild.currentResult, title: "Build Successful: ${fixed_job_name} #${env.BUILD_NUMBER}", webhookURL: env.GS2EMU_WEBHOOK
 			}
 		}
+
+		if (!BUILD_NEXT.equals('')) {
+			build "${BUILD_NEXT}/${env.BRANCH_NAME}";
+		}
 	} catch(err) {
-		slackSend color: "danger", channel: "#jenkins", message: "Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER} Target: ${os} DockerImage: ${dockerImage} Generator: ${generator} (<${env.BUILD_URL}|Open>)"
 		currentBuild.result = 'FAILURE'
-		notify('Build failed')
+
+		discordSend description: "", footer: "", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${split_job_name[0]}] Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER}", webhookURL: env.GS2EMU_WEBHOOK
+
+		notify("Build Failed: ${fixed_job_name} #${env.BUILD_NUMBER}")
 		throw err
 	}
 }
 
 node('master') {
-	killall_jobs()
-	def fixed_job_name = env.JOB_NAME.replace('%2F','/')
-	slackSend color: "good", channel: "#jenkins", message: "Build Started: ${fixed_job_name} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
-	parallel (
-		//'Win64-NoMySQL': {
-		//	node {
-		//		buildStep('dockcross/windows-static-x64:latest', 'Unix Makefiles', 'Windows x86_64 NoMySQL', "-DNOMYSQL=TRUE")
-		//	}
-		//},
-		//'Win64': {
-		//	node {
-		//		buildStep('dockcross/windows-static-x64:latest', 'Unix Makefiles', 'Windows x86_64', "-DNOMYSQL=FALSE")
-		//	}
-		//},
-		//'Linux x86_64-NoMySQL': {
-		//	node {
-		//		buildStep('desertbit/crossbuild:linux-x86_64', 'Unix Makefiles', 'Linux x86_64 NoMySQL', "-DNOMYSQL=TRUE")
-		//	}
-		//},
-		'Linux x86_64': {
+	killall_jobs();
+	def split_job_name = env.JOB_NAME.split(/\/{1}/);
+	def fixed_job_name = split_job_name[1].replace('%2F',' ');
+	checkout(scm);
+
+	env.COMMIT_MSG = sh (
+		script: 'git log -1 --pretty=%B ${GIT_COMMIT}',
+		returnStdout: true
+	).trim();
+
+	discordSend description: "${env.COMMIT_MSG}", footer: "", link: env.BUILD_URL, result: currentBuild.currentResult, title: "[${split_job_name[0]}] Build Started: ${fixed_job_name} #${env.BUILD_NUMBER}", webhookURL: env.GS2EMU_WEBHOOK
+
+	def branches = [:]
+	def project = readJSON file: "JenkinsEnv.json";
+
+	project.builds.each { v ->
+		branches["Build ${v.DockerRoot}/${v.DockerImage}:${v.DockerTag}"] = {
 			node {
-				buildStep('desertbit/crossbuild:linux-x86_64', 'Unix Makefiles', 'Linux x86_64', "-DNOMYSQL=FALSE")
-			}
-		},
-		//'Linux ARMv7-NoMySQL': {
-		//	node {
-		//		buildStep('desertbit/crossbuild:linux-armv7', 'Unix Makefiles', 'Linux RasPi NoMySQL', '-DNOMYSQL=TRUE')
-		//	}
-		//},
-		'Linux ARMv7': {
-			node {
-				buildStep('desertbit/crossbuild:linux-armv7', 'Unix Makefiles', 'Linux RasPi', '-DNOMYSQL=FALSE')
+				buildStep(v.DockerRoot, v.DockerImage, v.DockerTag, v.Dockerfile, v.BuildIfSuccessful)
 			}
 		}
-    )
+	}
+
+	sh "rm -rf ./*"
+
+	parallel branches;
 }
