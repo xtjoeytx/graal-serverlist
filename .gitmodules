@@ -2,3 +2,9 @@
 	path = dependencies/gs2lib
 	url = https://xtjoeytx@bitbucket.org/xtjoeytx/gs2lib.git
 	branch = master
+[submodule "dependencies/mysql-modern-cpp"]
+	path = dependencies/mysql-modern-cpp
+	url = https://github.com/daotrungkien/mysql-modern-cpp.git
+[submodule "dependencies/mysqlclient"]
+	path = dependencies/mysqlclient
+	url = https://github.com/MariaDB/mariadb-connector-c.git

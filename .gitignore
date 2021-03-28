@@ -9,3 +9,4 @@ lib/
 ..gitignore.swp
 .vs/
 dependencies/.cipd/
+bin/*log.txt

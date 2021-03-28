@@ -24,6 +24,11 @@ file(GLOB TEXT
     settings.ini
 )
 
-set(INSTALL_DEST ".")
+install(FILES ${TEXT} DESTINATION ".")
 
-install(FILES ${TEXT} DESTINATION ${INSTALL_DEST})
+file(GLOB DOCS
+	 ../docs/sql_account_creation.txt
+	 ../docs/sql_tables.txt
+	 )
+
+install(FILES ${DOCS} DESTINATION "docs/")
