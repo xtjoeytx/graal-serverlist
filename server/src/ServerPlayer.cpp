@@ -1,4 +1,3 @@
-#include <cstdint>
 #include "ServerPlayer.h"
 
 std::string getIpString(uint32_t ipaddr)
@@ -9,7 +8,7 @@ std::string getIpString(uint32_t ipaddr)
 	uint8_t a4 = ipaddr & 0xFF;
 
 	char buf[16];
-	sprintf(buf, "%d.%d.%d.%d", a1, a2, a3, a4);
+	sprintf(buf, "%d.%d.%d.%d", a4, a3, a2, a1);
 	return std::string(buf);
 }
 
@@ -58,7 +57,7 @@ void ServerPlayer::setProps(CString& pPacket)
 				break;
 
 			case PLPROP_IPADDR: // PLPROP_IPADDR
-				_ipAddress = pPacket.readGUInt5();
+				_ipAddress = pPacket.readGInt5();
 				_ipAddressStr = getIpString(_ipAddress);
 				break;
 

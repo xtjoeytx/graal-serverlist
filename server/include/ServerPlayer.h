@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include "CString.h"
 
@@ -105,8 +106,8 @@ public:
 	ServerPlayer(ServerConnection *serverConnection, IrcServer *ircServer);
 	~ServerPlayer();
 
-	unsigned short getId() const				{ return _id; }
-	unsigned char getClientType() const			{ return _clientType; }
+	uint16_t getId() const						{ return _id; }
+	uint8_t getClientType() const				{ return _clientType; }
 	double getPlayerX() const					{ return _x; }
 	double getPlayerY() const					{ return _y; }
 	int getAlignmentPoints() const				{ return _alignment; }
@@ -115,8 +116,8 @@ public:
 	const std::string& getLevelName() const		{ return _levelName; }
 	const std::string& getNickName() const		{ return _nickName; }
 
-	void setClientType(unsigned char type) { _clientType = type; }
-	void setNickName(const std::string& nickname) { _nickName = nickname; }
+	void setClientType(uint8_t type)				{ _clientType = type; }
+	void setNickName(const std::string& nickname)	{ _nickName = nickname; }
 
 	// Prop manipulation
 	void setProps(CString& pPacket);
@@ -127,11 +128,11 @@ public:
 
 protected:
 	SimulatedIrcStub ircStub;
-	unsigned short _id;
-	unsigned char _clientType;
+	uint16_t _id;
+	uint8_t _clientType;
 	double _x, _y;
 	int _alignment;
-	uint16_t _ipAddress;
+	uint32_t _ipAddress;
 	std::string _ipAddressStr;
 	std::string _accountName, _nickName;
 	std::string _levelName;
