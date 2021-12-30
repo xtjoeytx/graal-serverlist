@@ -89,14 +89,22 @@ InitializeError ListServer::Initialize()
 	if (_playerSock.connect())
 		return InitializeError::PlayerSock_Listen;
 
-	// TODO(joey): Old player sock?? Unsure what its for, leaving out for now. (11/25/19) - its for v141
+	// Bind the player socket (v 1.41)
+	_playerSockOld.setType(SOCKET_TYPE_SERVER);
+	_playerSockOld.setProtocol(SOCKET_PROTOCOL_TCP);
+	_playerSockOld.setDescription("playerSockOld");
+
+	if (_playerSockOld.init((clientInterface.isEmpty() ? 0 : clientInterface.text()), _settings.getStr("clientPortOld").text()))
+		return InitializeError::PlayerSock_Init;
+	if (_playerSockOld.connect())
+		return InitializeError::PlayerSock_Listen;
 
 #ifndef NO_MYSQL
-	const char * mysql_server = _settings.getStr("server").text();
-	unsigned int mysql_port = _settings.getInt("port");
-	const char * mysql_user = _settings.getStr("user").text();
-	const char * mysql_password = _settings.getStr("password").text();
-	const char * mysql_database = _settings.getStr("database").text();
+	auto mysql_server = _settings.getStr("server");
+	auto mysql_port = _settings.getInt("port");
+	auto mysql_user = _settings.getStr("user");
+	auto mysql_password = _settings.getStr("password");
+	auto mysql_database = _settings.getStr("database");
 
 	if (use_env && getenv("MYSQL_HOST") != nullptr) mysql_server = getenv("MYSQL_HOST");
 	if (use_env && getenv("MYSQL_PORT") != nullptr) mysql_port = atoi(getenv("MYSQL_PORT"));
@@ -105,8 +113,8 @@ InitializeError ListServer::Initialize()
 	if (use_env && getenv("MYSQL_DATABASE") != nullptr) mysql_database = getenv("MYSQL_DATABASE");
 
 	// TODO(joey): Create different data backends (likely do a text-based one as well)
-	_dataStore = std::make_unique<MySQLBackend>(mysql_server, mysql_port, _settings.getStr("sockfile").text(),
-												mysql_user, mysql_password, mysql_database);
+	_dataStore = std::make_unique<MySQLBackend>(mysql_server.text(), mysql_port, _settings.getStr("sockfile").text(),
+												mysql_user.text(), mysql_password.text(), mysql_database.text());
 #endif
 
 	// TODO(shitai): building with MYSQL turned off will cause the listserver to crash
@@ -140,6 +148,7 @@ void ListServer::Cleanup()
 	// Disconnect sockets
 	_serverSock.disconnect();
 	_playerSock.disconnect();
+	_playerSockOld.disconnect();
 
 	// Cleanup the IRC Server
 	_ircServer.Cleanup();
@@ -214,6 +223,7 @@ bool ListServer::Main()
 
 		// accept sockets
 		acceptSock(_playerSock, SocketType::Player);
+		acceptSock(_playerSockOld, SocketType::PlayerOld);
 		acceptSock(_serverSock, SocketType::Server);
 
 		// PLAYER LOOP

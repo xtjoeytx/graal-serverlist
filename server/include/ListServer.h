@@ -84,7 +84,7 @@ private:
 	bool _running;
 	CLog _clientLog, _serverLog;
 	CSettings _settings;
-	CSocket _playerSock, _serverSock;
+	CSocket _playerSock, _playerSockOld, _serverSock;
 	std::string _homePath;
 
 	std::vector<std::unique_ptr<PlayerConnection>> _playerConnections;
