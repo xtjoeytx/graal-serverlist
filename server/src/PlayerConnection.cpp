@@ -30,7 +30,7 @@ void createPlayerPtrTable()
 	Constructor
 */
 PlayerConnection::PlayerConnection(ListServer *listServer, CSocket *pSocket)
-	: _listServer(listServer), _socket(pSocket), _fileQueue(pSocket)
+	: _listServer(listServer), _socket(pSocket), _fileQueue(pSocket), _clientType(ClientType::Version1)
 {
 	static bool _setupPlayerPackets = false;
 	if (!_setupPlayerPackets)
@@ -194,7 +194,7 @@ void PlayerConnection::sendPacket(CString pPacket, bool pSendNow)
 
 int PlayerConnection::sendServerList()
 {
-	auto& serverConnections = _listServer->getConnections();
+	const auto& serverConnections = _listServer->getConnections();
 
 	CString dataBuffer;
 	dataBuffer.writeGChar(PLO_SVRLIST);
@@ -203,16 +203,16 @@ int PlayerConnection::sendServerList()
 	CString serverPacket;
 	for (auto & conn : serverConnections)
 	{
-		if (conn->isAuthenticated())
+		if (conn->isAuthenticated() && conn->canAcceptClient(_clientType))
 		{
-			serverPacket << conn->getServerPacket(1, _socket->getRemoteIp());
+			serverPacket << conn->getServerPacket(_clientType, _socket->getRemoteIp());
 			serverCount++;
 		}
 	}
 	
 	dataBuffer.writeGChar((unsigned char)serverCount);
 	dataBuffer.write(serverPacket);
-	sendPacket(dataBuffer);
+	sendPacket(dataBuffer, true);
 
 	return serverCount;
 }
@@ -242,6 +242,8 @@ bool PlayerConnection::msgPLI_V1VER(CString& pPacket)
 	*/
 
 	_version = pPacket.readString("").text();
+	_clientType = ClientType::Version2;
+
 	return true;
 }
 
@@ -256,7 +258,8 @@ bool PlayerConnection::msgPLI_SERVERLIST(CString& pPacket)
 
 	switch (status)
 	{
-		case AccountStatus::Normal: {
+		case AccountStatus::Normal:
+		{
 			CSettings& settings = _listServer->getSettings();
 
 			int availableServers = sendServerList();
@@ -268,8 +271,10 @@ bool PlayerConnection::msgPLI_SERVERLIST(CString& pPacket)
 		}
 
 		default:
-			sendPacket(CString() >> (char)PLO_ERROR << getAccountError(status));
+		{
+			sendPacket(CString() >> (char)PLO_ERROR << getAccountError(status), true);
 			return false;
+		}
 	}
 
 	return true;
@@ -279,29 +284,36 @@ bool PlayerConnection::msgPLI_V2VER(CString& pPacket)
 {
 	// TODO(joey): No idea what client actually uses this, but leaving it in for compatibility.
 	unsigned char key = pPacket.readGUChar();
-	_version = pPacket.readString("").text(); // == newmain
+	_version = pPacket.readChars(8).text();
+	//pPacket.readString("");
 
 	_fileQueue.setCodec(ENCRYPT_GEN_4, key);
 	_inCodec.reset(key);
 	_inCodec.setGen(ENCRYPT_GEN_4);
+	_clientType = ClientType::Version2;
 	return true;
 }
 
 bool PlayerConnection::msgPLI_V2SERVERLISTRC(CString& pPacket)
 {
 	unsigned char key = pPacket.readGChar();
-	_version = pPacket.readString("").text();
+	_version = pPacket.readChars(8).text();
 
 	_fileQueue.setCodec(ENCRYPT_GEN_5, key);
 	_inCodec.setGen(ENCRYPT_GEN_5);
 	_inCodec.reset(key);
+	_clientType = ClientType::AllServers;
 	return true;
 }
 
 bool PlayerConnection::msgPLI_V2ENCRYPTKEYCL(CString& pPacket)
 {
 	unsigned char key = pPacket.readGUChar();
-	_version = pPacket.readString("").text();
+	_version = pPacket.readChars(8).text();
+
+	// newmain (for clients), rc, rc2
+	auto clientType = pPacket.readString("");
+	_clientType = (clientType == "newmain" ? ClientType::Version3 : ClientType::AllServers);
 
 	_fileQueue.setCodec(ENCRYPT_GEN_5, key);
 	_inCodec.setGen(ENCRYPT_GEN_5);

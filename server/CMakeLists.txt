@@ -34,6 +34,7 @@ set(
 		src/IrcServer.cpp
 		src/RealIrcStub.cpp
 		src/SimulatedIrcStub.cpp
+		src/ClientType.cpp
 )
 
 set(
@@ -51,7 +52,8 @@ set(
 		include/IrcStub.h
 		include/RealIrcStub.h
 		include/SimulatedIrcStub.h
-		include/ServerHQ.h)
+		include/ServerHQ.h
+		include/ClientType.h)
 
 include_directories(
     # Include the CMake-generated version header from the build directory

@@ -10,6 +10,7 @@
 #include "CEncryption.h"
 #include "CFileQueue.h"
 #include "ServerHQ.h"
+#include "ClientType.h"
 
 enum
 {
@@ -81,18 +82,17 @@ enum
 	SVO_RAWDATA			= 100,
 };
 
-enum
-{
-	VERSION_1		= 0,
-	VERSION_2		= 1,
-	VERSION_3		= 2,
-};
-
 class ListServer;
 class ServerPlayer;
 
 class ServerConnection
 {
+	enum class ProtocolVersion {
+		Version1,
+		Version2,
+		Unknown
+	};
+
 	public:
 		// constructor-destructor
 		ServerConnection(ListServer *listServer, CSocket *pSocket);
@@ -101,14 +101,15 @@ class ServerConnection
 		// main loop
 		bool doMain(const time_t& now);
 		
+		bool canAcceptClient(ClientType clientType);
 		void disconnectServer(const std::string& error);
 		void enableServerHQ(const ServerHQ& server);
 
 		// get-value functions
 		CString getIp(const CString& pIp = "") const;
-		CString getType(int PLVER) const;
+		CString getType(ClientType clientType) const;
 		CString getPlayers() const;
-		CString getServerPacket(int PLVER, const CString& pIp = "") const;
+		CString getServerPacket(ClientType clientType, const CString& clientIp = "") const;
 
 		bool isAuthenticated() const			{ return _isAuthenticated; }
 		bool isServerHQ() const					{ return _isServerHQ; }
@@ -127,7 +128,8 @@ class ServerConnection
 		ServerPlayer * getPlayer(const std::string& account) const;
 		ServerPlayer * getPlayer(const std::string& account, int type) const;
 		void clearPlayerList();
-		void sendTextForPlayer(ServerPlayer *player, const CString & data);
+		void sendText(const CString& data);
+		void sendTextForPlayer(ServerPlayer *player, const CString& data);
 		void updatePlayers();
 
 		// send-packet functions
@@ -191,7 +193,8 @@ class ServerConnection
 		CString description, ip, language, name, port, url, version, localip;
 		std::vector<ServerPlayer *> playerList;
 		time_t _lastData, _lastPing, _startTime;
-		int server_version;
+		ProtocolVersion _serverProtocol;
+		uint8_t _allowedVersionsMask;
 
 		bool _isServerHQ;
 		ServerHQLevel _serverLevel, _serverMaxLevel;

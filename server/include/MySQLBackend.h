@@ -29,12 +29,18 @@ class MySQLBackend : public IDataBackend
 		std::optional<PlayerProfile> getProfile(const std::string& account) override;
 		bool setProfile(const PlayerProfile& profile) override;
 
+		bool addBuddy(const std::string& account, const std::string& buddyAccount) override;
+		bool removeBuddy(const std::string& account, const std::string& buddyAccount) override;
+		std::optional<std::vector<std::string>> getBuddyList(const std::string& account) override;
+
 		ServerHQResponse verifyServerHQ(const std::string& serverName, const std::string& token) override;
 		bool updateServerUpTime(const std::string& serverName, size_t uptime) override;
 
 	private:
 		daotk::mysql::connection _connection;
 		daotk::mysql::connect_options _connectionOptions;
+
+		std::string escapeStr(const std::string& input);
 };
 
 inline bool MySQLBackend::isConnected() const

@@ -14,7 +14,6 @@ MySQLBackend::MySQLBackend(const std::string& host, unsigned int port, const std
 
 	// Auto-reconnect
 	_connectionOptions.autoreconnect = true;
-
 }
 
 MySQLBackend::~MySQLBackend()
@@ -197,6 +196,91 @@ bool MySQLBackend::setProfile(const PlayerProfile& profile)
 	return false;
 }
 
+bool MySQLBackend::addBuddy(const std::string& account, const std::string& buddyAccount)
+{
+	const std::string query = "SELECT id FROM `graal_users` WHERE `account` = '%s' LIMIT 1";
+	
+	try {
+		auto user_id = _connection.query(query, escapeStr(account).c_str()).get_value<std::optional<int>>();
+		auto buddy_id = _connection.query(query, escapeStr(buddyAccount).c_str()).get_value<std::optional<int>>();
+
+		if (user_id && buddy_id)
+		{
+			const std::string insertQuery = "INSERT INTO graal_buddies(users_id, friend_id) values (?, ?)";
+
+			daotk::mysql::prepared_stmt stmt(_connection, insertQuery);
+			stmt.bind_param(user_id.value(), buddy_id.value());
+
+			if (stmt.execute())
+				return (_connection.affected_rows() == 1);
+		}
+	}
+	catch (std::exception& exp) {
+		printf("addBuddy Exception: %s\n", exp.what());
+	}
+
+	return false;
+}
+
+bool MySQLBackend::removeBuddy(const std::string& account, const std::string& buddyAccount)
+{
+	const std::string query = "SELECT id FROM `graal_users` WHERE `account` = '%s' LIMIT 1";
+
+	try {
+		auto user_id = _connection.query(query, escapeStr(account).c_str()).get_value<std::optional<int>>();
+		auto buddy_id = _connection.query(query, escapeStr(buddyAccount).c_str()).get_value<std::optional<int>>();
+
+		if (user_id && buddy_id)
+		{
+			const std::string insertQuery = "DELETE FROM `graal_buddies` WHERE `users_id` = ? AND `friend_id` = ? LIMIT 1";
+
+			daotk::mysql::prepared_stmt stmt(_connection, insertQuery);
+			stmt.bind_param(user_id.value(), buddy_id.value());
+
+			if (stmt.execute())
+				return (_connection.affected_rows() == 1);
+		}
+	}
+	catch (std::exception& exp) {
+		printf("removeBuddy Exception: %s\n", exp.what());
+	}
+
+	return false;
+}
+
+std::optional<std::vector<std::string>> MySQLBackend::getBuddyList(const std::string& account)
+{
+	const std::string query = "SELECT id FROM `graal_users` WHERE `account` = '%s' LIMIT 1";
+
+	try {
+		auto user_id = _connection.query(query, escapeStr(account).c_str()).get_value<std::optional<int>>();
+		if (user_id)
+		{
+			const std::string getBuddiesQuery = "select gu.account from graal_buddies gb join graal_users gu on gu.id = gb.friend_id where gb.users_id = ?";
+
+			std::string buddy;
+
+			daotk::mysql::prepared_stmt stmt(_connection, getBuddiesQuery);
+			stmt.bind_param(user_id.value());
+			stmt.bind_result(buddy);
+			if (stmt.execute())
+			{
+				std::vector<std::string> buddies;
+				while (stmt.fetch())
+					buddies.push_back(buddy);
+
+				return buddies;
+			}
+
+		}
+	}
+	catch (std::exception& exp) {
+		printf("getBuddyList Exception: %s\n", exp.what());
+	}
+
+	return std::nullopt;
+}
+
 ServerHQResponse MySQLBackend::verifyServerHQ(const std::string& serverName, const std::string& token)
 {
 	ServerHQResponse response{};
@@ -257,4 +341,20 @@ bool MySQLBackend::updateServerUpTime(const std::string& serverName, size_t upti
 	}
 
 	return false;
+}
+
+std::string MySQLBackend::escapeStr(const std::string& input)
+{
+	if (input.length() < 512)
+	{
+		char sbuf[1024];
+		mysql_real_escape_string(_connection.get_raw_connection(), sbuf, input.c_str(), input.length());
+		return std::string{ sbuf };
+	}
+
+	char* buf = new char[input.length() * 2 + 1];
+	mysql_real_escape_string(_connection.get_raw_connection(), buf, input.c_str(), input.length());
+	std::string res(buf);
+	delete[] buf;
+	return res;
 }

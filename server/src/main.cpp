@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 
 	listThread = std::thread(&ListServer::Main, listServer.get());
 
-	while (true)
+	while (listServer)
 	{
 		std::string command;
 		std::cout << "Input Command: ";
@@ -142,7 +142,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	listThread.join();
+	if (listThread.joinable())
+		listThread.join();
 	listServer.reset();
 	return 0;
 }
@@ -152,7 +153,8 @@ void shutdownServer(int signal)
 	if (listServer)
 	{
 		listServer->setRunning(false);
-		listThread.join();
+		if (listThread.joinable())
+			listThread.join();
 		listServer.reset();
 		exit(0);
 	}

@@ -19,6 +19,9 @@ const char * getAccountError(AccountStatus status)
 		case AccountStatus::Normal:
 			return "SUCCESS";
 
+		case AccountStatus::NotFound:
+			return "No account exists by that name.";
+
 		case AccountStatus::NotActivated:
 			return "Your account is not activated.";
 

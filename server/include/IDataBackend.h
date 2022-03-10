@@ -48,6 +48,10 @@ class IDataBackend
 		virtual std::optional<PlayerProfile> getProfile(const std::string& account) = 0;
 		virtual bool setProfile(const PlayerProfile& profile) = 0;
 
+		virtual bool addBuddy(const std::string& account, const std::string& buddyAccount) = 0;
+		virtual bool removeBuddy(const std::string& account, const std::string& buddyAccount) = 0;
+		virtual std::optional<std::vector<std::string>> getBuddyList(const std::string& account) = 0;
+
 		// Server HQ
 		virtual ServerHQResponse verifyServerHQ(const std::string& serverName, const std::string& token) = 0;
 		virtual bool updateServerUpTime(const std::string& serverName, size_t uptime) = 0;

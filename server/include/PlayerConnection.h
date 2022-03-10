@@ -7,6 +7,7 @@
 #include "CString.h"
 #include "CEncryption.h"
 #include "CFileQueue.h"
+#include "ClientType.h"
 
 enum
 {
@@ -73,6 +74,8 @@ private:
 	CEncryption _inCodec;
 	CFileQueue _fileQueue;
 	std::string _version;
+
+	ClientType _clientType;
 };
 
 #endif //LISTSERVER_PLAYERCONNECTION_H

@@ -1,10 +1,11 @@
 #include <cassert>
 #include <cstdlib>
 #include <ctime>
+#include <CLog.h>
+#include <IUtil.h>
 #include "ListServer.h"
 #include "ServerConnection.h"
 #include "ServerPlayer.h"
-#include "CLog.h"
 
 enum
 {
@@ -75,6 +76,7 @@ void ServerConnection::createServerPtrTable()
 	serverFunctionTable[SVI_REQUESTLIST] = &ServerConnection::msgSVI_REQUESTLIST;
 	serverFunctionTable[SVI_REQUESTSVRINFO] = &ServerConnection::msgSVI_REQUESTSVRINFO;
 	serverFunctionTable[SVI_REQUESTBUDDIES] = &ServerConnection::msgSVI_REQUESTBUDDIES;
+	serverFunctionTable[SVI_PMPLAYER] = &ServerConnection::msgSVI_PMPLAYER;
 	serverFunctionTable[SVI_REGISTERV3] = &ServerConnection::msgSVI_REGISTERV3;
 	serverFunctionTable[SVI_SENDTEXT] = &ServerConnection::msgSVI_SENDTEXT;
 }
@@ -85,7 +87,8 @@ void ServerConnection::createServerPtrTable()
 ServerConnection::ServerConnection(ListServer *listServer, CSocket *pSocket)
 	: _listServer(listServer), _socket(pSocket), _isAuthenticated(false), _disconnect(false),
 		_isServerHQ(false), _serverLevel(ServerHQLevel::Bronze), _serverMaxLevel(ServerHQLevel::Bronze), _serverUpTime(0),
-		server_version(VERSION_1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), rawPacketSize(0)
+		_serverProtocol(ProtocolVersion::Version1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), rawPacketSize(0),
+		_allowedVersionsMask(uint8_t(ClientType::AllServers))
 {
 	static bool setupServerPackets = false;
 	if (!setupServerPackets)
@@ -196,6 +199,14 @@ bool ServerConnection::doMain(const time_t& now)
 	return true;
 }
 
+bool ServerConnection::canAcceptClient(ClientType clientType)
+{
+	if (clientType == ClientType::AllServers)
+		return true;
+
+	return (_allowedVersionsMask & static_cast<uint8_t>(clientType)) != 0;
+}
+
 /*
 	Send disconnect message to the server
 */
@@ -221,10 +232,9 @@ CString ServerConnection::getPlayers() const
 	for (const auto& player : playerList)
 	{
 		if ((player->getClientType() & PLTYPE_ANYCLIENT) != 0)
-			playerlist << CString(CString() << player->getAccountName() << "\n" << player->getNickName() << "\n").gtokenizeI() << "\n";
+			playerlist << CString(CString() << player->getAccountName() << "\n" << player->getNickName()).gtokenize() << "\n";
 	}
 
-	playerlist.gtokenizeI();
 	return playerlist;
 }
 
@@ -243,38 +253,34 @@ CString ServerConnection::getIp(const CString& pIp) const
 	return ip;
 }
 
-CString ServerConnection::getType(int PLVER) const
+CString ServerConnection::getType(ClientType clientType) const
 {
-	CString ret;
+	if (clientType == ClientType::Version1)
+		return "";
+
 	switch (_serverLevel)
 	{
 		case ServerHQLevel::G3D:
-			ret = "3 ";
-			break;
+			return "3 ";
 		case ServerHQLevel::Gold:
-			ret = "P ";
-			break;
+			return "P ";
 		case ServerHQLevel::Classic:
-			break;
+			return "";
 		case ServerHQLevel::Bronze:
-			ret = "H ";
-			break;
+			return "H ";
 		case ServerHQLevel::Hidden:
-			ret = "U ";
-			break;
+			return "U ";
+
+		default:
+			return "";
 	}
-
-	if (PLVER == PLV_PRE22 && _serverLevel == ServerHQLevel::Bronze)
-		ret.clear();
-
-	return ret;
 }
 
-CString ServerConnection::getServerPacket(int PLVER, const CString& pIp) const
+CString ServerConnection::getServerPacket(ClientType clientType, const CString& clientIp) const
 {
-	CString testIp = getIp(pIp);
-	CString pcount((int)playerList.size());
-	return CString() >> (char)8 >> (char)(getType(PLVER).length() + getName().length()) << getType(PLVER) << getName() >> (char)getLanguage().length() << getLanguage() >> (char)getDescription().length() << getDescription() >> (char)getUrl().length() << getUrl() >> (char)getVersion().length() << getVersion() >> (char)pcount.length() << pcount >> (char)testIp.length() << testIp >> (char)getPort().length() << getPort();
+	CString serverIp = getIp(clientIp);
+	CString playerCount((int)playerList.size());
+	return CString() >> (char)8 >> (char)(getType(clientType).length() + getName().length()) << getType(clientType) << getName() >> (char)getLanguage().length() << getLanguage() >> (char)getDescription().length() << getDescription() >> (char)getUrl().length() << getUrl() >> (char)getVersion().length() << getVersion() >> (char)playerCount.length() << playerCount >> (char)serverIp.length() << serverIp >> (char)getPort().length() << getPort();
 }
 
 ServerPlayer * ServerConnection::getPlayer(unsigned short id) const
@@ -321,7 +327,15 @@ void ServerConnection::clearPlayerList()
 	playerList.clear();
 }
 
-void ServerConnection::sendTextForPlayer(ServerPlayer * player, const CString & data)
+void ServerConnection::sendText(const CString& data)
+{
+	CString dataPacket;
+	dataPacket.writeGChar(SVO_SENDTEXT);
+	dataPacket << data;
+	sendPacket(dataPacket);
+}
+
+void ServerConnection::sendTextForPlayer(ServerPlayer *player, const CString& data)
 {
 	assert(player);
 
@@ -571,9 +585,9 @@ bool ServerConnection::msgSVI_SETLANG(CString& pPacket)
 bool ServerConnection::msgSVI_SETVERS(CString& pPacket)
 {
 	CString ver(pPacket.readString(""));
-	switch (server_version)
+	switch (_serverProtocol)
 	{
-		case VERSION_1:
+		case ProtocolVersion::Version1:
 		{
 			int verNum = atoi(ver.text());
 			if (verNum == 0)
@@ -585,7 +599,7 @@ bool ServerConnection::msgSVI_SETVERS(CString& pPacket)
 			break;
 		}
 
-		case VERSION_2:
+		case ProtocolVersion::Version2:
 		{
 			if (ver.match("?.??.?") || ver.match("?.?.?"))
 				version = CString("Version: ") << ver;
@@ -721,7 +735,7 @@ bool ServerConnection::msgSVI_VERIACC(CString& pPacket)
 
 	// Verify the account.
 	AccountStatus status = _listServer->verifyAccount(account.text(), password.text());
-
+	
 	sendPacket(CString() >> (char)SVO_VERIACC >> (char)account.length() << account << getAccountError(status));
 	return true;
 }
@@ -1129,7 +1143,7 @@ bool ServerConnection::msgSVI_GETFILE3(CString& pPacket)
 
 bool ServerConnection::msgSVI_NEWSERVER(CString& pPacket)
 {
-	server_version = VERSION_2;
+	_serverProtocol = ProtocolVersion::Version2;
 
 	CString name = pPacket.readChars(pPacket.readGUChar());
 	CString description = pPacket.readChars(pPacket.readGUChar());
@@ -1359,6 +1373,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 				else if (params[1] == "pmserverplayers")
 				{
 					CString sendMsg;
+					sendMsg << params[0] << "\n" << params[1] << "\n" << params[2] << "\n";
 
 					// get servers
 					auto& serverList = _listServer->getConnections();
@@ -1367,10 +1382,11 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 						if (server->getName() == params[2])
 							sendMsg << server->getPlayers();
 					}
-					sendTextForPlayer(player, sendMsg);
+					sendTextForPlayer(player, sendMsg.gtokenize());
 				}
 			}
 
+			// This is the one case where params[0] may not be GraalEngine
 			if (params[1] == "lister") // -Serverlist,lister,simpleserverlist ----- -Serverlist is the weapon
 			{
 				if (params[2] == "simpleserverlist")
@@ -1382,19 +1398,51 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 					auto& serverList = _listServer->getConnections();
 					for (auto & server : serverList)
 					{
-						//if (server->getTypeVal() == TYPE_HIDDEN) continue;
+						if (server->isAuthenticated() && server->canAcceptClient(ClientType::Version4))
+						{
+							//if (server->getTypeVal() == TYPE_HIDDEN) continue;
 
-						CString serverData;
-						serverData << server->getName() << "\n";
-						serverData << server->getType(PLV_POST22) << server->getName() << "\n";
-						serverData << CString(server->getPlayerCount()) << "\n";
-						sendMsg << serverData.gtokenize() << "\n";
+							CString serverData;
+							serverData << server->getName() << "\n";
+							serverData << server->getType(ClientType::AllServers) << server->getName() << "\n";
+							serverData << CString(server->getPlayerCount()) << "\n";
+							sendMsg << serverData.gtokenize() << "\n";
+						}
 					}
 
 					// TODO(joey): Show hidden servers if friends are on them...?
 					//p << getOwnedServersPM(account);
 					sendMsg.gtokenizeI();
 					sendTextForPlayer(player, sendMsg);
+				}
+				else if (params.size() == 5 && params[2] == "verifybuddies")
+				{
+					// params[3] -> boolean $pref::Graal::loadbuddylistfromserver
+					// params[4] -> checksum (from crc32)
+
+					if (params[3] == "1")
+					{
+						CString sendMsg;
+						sendMsg << params[0] << "\n" << params[1] << "\n" << "buddylist" << "\n";
+
+						auto buddyList = _listServer->getDataStore()->getBuddyList(player->getAccountName());
+						if (buddyList)
+						{
+							for (const auto& buddy : buddyList.value())
+								sendMsg << buddy << "\n";
+						}
+
+						sendTextForPlayer(player, sendMsg.gtokenize());
+					}
+				}
+				else if (params.size() == 4)
+				{
+					if (params[2] == "addbuddy") {
+						_listServer->getDataStore()->addBuddy(player->getAccountName(), params[3].text());
+					}
+					else if (params[2] == "deletebuddy") {
+						_listServer->getDataStore()->removeBuddy(player->getAccountName(), params[3].text());
+					}
 				}
 			}
 		}
@@ -1411,7 +1459,8 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 					std::string message = params[5].text();
 
 					ServerPlayer *fromPlayer = getPlayer(from);
-					_listServer->getIrcServer()->sendTextToChannel(channel, message, fromPlayer->getIrcStub());
+					if (fromPlayer)
+						_listServer->getIrcServer()->sendTextToChannel(channel, message, fromPlayer->getIrcStub());
 				}
 			}
 		}
@@ -1491,6 +1540,25 @@ bool ServerConnection::msgSVI_SENDTEXT(CString& pPacket)
 
 					ServerPlayer *player = getPlayer(from);
 					_listServer->getIrcServer()->sendTextToChannel(channel, message, player->getIrcStub());
+				}
+			}
+		}
+		else if (params[0] == "Listserver")
+		{
+			if (params[1] == "settings")
+			{
+				if (params[2] == "allowedversions")
+				{
+					_allowedVersionsMask = 0;
+
+					auto versionCount = params.size() - 3;
+					if (versionCount > 0)
+					{
+						for (size_t i = 0; i < versionCount; i++)
+						{
+							_allowedVersionsMask |= getVersionMask(params[3 + i]);
+						}
+					}
 				}
 			}
 		}

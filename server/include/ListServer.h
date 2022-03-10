@@ -57,6 +57,7 @@ public:
 	CLog & getServerLog()				{ return _serverLog; }
 	CSettings & getSettings()			{ return _settings; }
 	IrcServer * getIrcServer()  		{ return &_ircServer; }
+	IDataBackend * getDataStore()		{ return _dataStore.get(); }
 	const std::vector<std::unique_ptr<ServerConnection>> & getConnections() const;
 
 	void setRunning(bool status);
