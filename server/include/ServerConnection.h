@@ -123,7 +123,7 @@ class ServerConnection
 		int getLastData() const					{ return (int)difftime(time(nullptr), _lastData); }
 		int64_t getCurrentUpTime() const		{ return (int64_t)difftime(time(nullptr), _startTime); }
 		size_t getUpTime() const				{ return _serverUpTime + getCurrentUpTime(); }
-
+		ServerHQLevel getServerLevel() const	{ return _serverLevel; }
 		ServerPlayer * getPlayer(unsigned short id) const;
 		ServerPlayer * getPlayer(const std::string& account) const;
 		ServerPlayer * getPlayer(const std::string& account, int type) const;

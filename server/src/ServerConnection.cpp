@@ -1360,9 +1360,11 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 					auto& serverList = _listServer->getConnections();
 					for (auto& server : serverList)
 					{
-						//if (server->getTypeVal() == TYPE_HIDDEN) continue;
+						if (server->getServerLevel() == ServerHQLevel::Hidden)
+							continue;
 
-						sendMsg << server->getName() << "\n";
+						if (server->canAcceptClient(ClientType::Version4))
+							sendMsg << server->getName() << "\n";
 					}
 
 					// TODO(joey): Show hidden servers if friends are on them...?
