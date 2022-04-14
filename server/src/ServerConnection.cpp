@@ -87,7 +87,7 @@ void ServerConnection::createServerPtrTable()
 ServerConnection::ServerConnection(ListServer *listServer, CSocket *pSocket)
 	: _listServer(listServer), _socket(pSocket), _isAuthenticated(false), _disconnect(false),
 		_isServerHQ(false), _serverLevel(ServerHQLevel::Bronze), _serverMaxLevel(ServerHQLevel::Bronze), _serverUpTime(0),
-		_serverProtocol(ProtocolVersion::Version1), _fileQueue(pSocket), new_protocol(false), nextIsRaw(false), rawPacketSize(0),
+		_serverProtocol(ProtocolVersion::Version1), _fileQueue(pSocket), new_protocol(false), packetCount(0), nextIsRaw(false), rawPacketSize(0),
 		_allowedVersionsMask(uint8_t(ClientType::AllServers))
 {
 	static bool setupServerPackets = false;
@@ -134,6 +134,34 @@ bool ServerConnection::doMain(const time_t& now)
 	{
 		// Update the data timeout.
 		_lastData = now;
+
+		if (packetCount == 0)
+		{
+			packetCount++;
+
+			if (sockBuffer.bytesLeft() >= 8)
+			{
+				if (sockBuffer.subString(0, 8) == "GNP1905C")
+				{
+					_listServer->getServerLog().out("New Protocol client connected! Forwarding client!\n");
+
+					auto server = _listServer->getServer("Offline");
+
+					if (server)
+					{
+						CString pPacket = CString() << "offline,Offline," << server->getIp() << "," << server->getPort();
+
+						sendGNPPacket(PLO_SERVERWARP, pPacket);
+
+					}
+					else
+					{
+						sendGNPPacket(PLO_DISCMESSAGE, CString() << "No available server! Try again later");
+					}
+					return false;
+				}
+			}
+		}
 
 		// definitions
 		CString unBuffer;
@@ -197,6 +225,18 @@ bool ServerConnection::doMain(const time_t& now)
 	// send out buffer
 	sendCompress();
 	return true;
+}
+
+void ServerConnection::sendGNPPacket(char packetType, CString &pPacket) {
+	// We ignore appendNL here because new protocol doesn't end with newlines
+	CString buf2 = CString() << (char)0 << (char)0/*packetCount*/;
+	buf2.writeInt3(pPacket.length() + 6, false);
+	buf2.writeChar(packetType, false);
+	buf2.write(pPacket.text(), pPacket.length(), true);
+
+	// send buffer
+	unsigned int dsize = buf2.length();
+	_socket->sendData(buf2.text(), &dsize);
 }
 
 bool ServerConnection::canAcceptClient(ClientType clientType)
@@ -735,7 +775,7 @@ bool ServerConnection::msgSVI_VERIACC(CString& pPacket)
 
 	// Verify the account.
 	AccountStatus status = _listServer->verifyAccount(account.text(), password.text());
-	
+
 	sendPacket(CString() >> (char)SVO_VERIACC >> (char)account.length() << account << getAccountError(status));
 	return true;
 }
