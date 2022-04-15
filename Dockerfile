@@ -12,6 +12,7 @@ RUN apk add --update --virtual .listserver-build-dependencies \
 		autoconf \
 		curl-dev \
 		openssl-dev \
+		bzip2-dev \
 	&& rm -rf /listserver/build \
 	&& mkdir /listserver/build \
 	&& cd /listserver/build \
