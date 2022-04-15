@@ -12,6 +12,7 @@ RUN apk add --update --virtual .listserver-build-dependencies \
 		autoconf \
 		curl-dev \
 		openssl-dev \
+		bzip2-dev \
 	&& rm -rf /listserver/build \
 	&& mkdir /listserver/build \
 	&& cd /listserver/build \
@@ -26,7 +27,7 @@ ARG CACHE_DATE=2016-01-01
 COPY --from=build-env /listserver/bin /listserver
 RUN apk add --update libstdc++ libatomic
 WORKDIR /listserver
-VOLUME [ "/gserver/settings.ini", "/gserver/ipbans.txt" ]
+#VOLUME [ "/listserver/settings.ini", "/listserver/ipbans.txt" ]
 ENTRYPOINT ["./listserver"]
 EXPOSE 14900 14922 14923 6667
 CMD []

@@ -52,6 +52,12 @@ enum
 
 enum
 {
+	PLO_DISCMESSAGE		= 16,
+	PLO_SERVERWARP		= 178,
+};
+
+enum
+{
 	SVO_VERIACC			= 0,	// deprecated
 	SVO_VERIGLD			= 1,
 	SVO_FILESTART		= 2,	// deprecated
@@ -100,7 +106,7 @@ class ServerConnection
 
 		// main loop
 		bool doMain(const time_t& now);
-		
+
 		bool canAcceptClient(ClientType clientType);
 		void disconnectServer(const std::string& error);
 		void enableServerHQ(const ServerHQ& server);
@@ -181,13 +187,14 @@ class ServerConnection
 
 		bool _disconnect;
 		std::string _disconnectMsg;
-		
+
 		// Packet protocol
 		bool nextIsRaw;
 		int rawPacketSize;
 		bool new_protocol;
 		CFileQueue _fileQueue;
 		CString sendBuffer, sockBuffer, outBuffer;
+		int packetCount;
 
 		bool _isAuthenticated;
 		CString description, ip, language, name, port, url, version, localip;
@@ -200,6 +207,8 @@ class ServerConnection
 		ServerHQLevel _serverLevel, _serverMaxLevel;
 		size_t _serverUpTime;
 		std::string _serverAuthToken;
+
+	void sendGNPPacket(char packetType, CString &pPacket);
 };
 
 #endif // SERVERCONNECT_H

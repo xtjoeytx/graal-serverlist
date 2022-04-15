@@ -118,13 +118,13 @@ InitializeError ListServer::Initialize()
 	// TODO(joey): Create different data backends (likely do a text-based one as well)
 	_dataStore = std::make_unique<MySQLBackend>(mysql_server.text(), mysql_port, _settings.getStr("sockfile").text(),
 												mysql_user.text(), mysql_password.text(), mysql_database.text());
-#endif
 
 	// TODO(shitai): building with MYSQL turned off will cause the listserver to crash
 
 	// Connect to backend
 	if (_dataStore->Initialize())
 		return InitializeError::Backend_Error;
+#endif
 
 	// Bind the irc socket
 	if (!_ircServer.Initialize(_dataStore.get(), _homePath, 6667))
@@ -176,6 +176,7 @@ void ListServer::acceptSock(CSocket& socket, SocketType socketType)
 	auto& log = (socketType == SocketType::Server ? getServerLog() : getClientLog());
 
 	std::string ipAddress(newSock->getRemoteIp());
+#ifndef NO_MYSQL
 	if (_dataStore->isIpBanned(ipAddress))
 	{
 		log.out("New connection from %s was rejected due to an ip ban!\n", newSock->getRemoteIp());
@@ -183,7 +184,7 @@ void ListServer::acceptSock(CSocket& socket, SocketType socketType)
 		delete newSock;
 		return;
 	}
-
+#endif
 	log.out("New Connection from %s -> %s\n", ipAddress.c_str(), (socketType == SocketType::Server ? "Server" : "Player"));
 
 	switch (socketType)
@@ -278,9 +279,10 @@ bool ListServer::Main()
 			lastSync = now;
 		}
 
+#ifndef NO_MYSQL
 		// Ping datastore (flush updates to db, or text)
 		_dataStore->Ping();
-
+#endif
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 
@@ -304,7 +306,9 @@ void ListServer::sendPacketToServers(const CString & packet, ServerConnection * 
 
 bool ListServer::updateServerName(ServerConnection *pConnection, const std::string &serverName, const std::string &authToken)
 {
+#ifndef NO_MYSQL
 	auto response = _dataStore->verifyServerHQ(serverName, authToken);
+
 
 	switch (response.status)
 	{
@@ -354,14 +358,15 @@ bool ListServer::updateServerName(ServerConnection *pConnection, const std::stri
 			}
 		}
 	}
-
+#endif
 	return true;
 }
 
 void ListServer::removeServer(ServerConnection *conn)
 {
+#ifndef NO_MYSQL
 	_dataStore->updateServerUpTime(conn->getName().text(), conn->getUpTime());
-
+#endif
 	// Notify other servers this server will be removed
 	CString dataPacket;
 	dataPacket.writeGChar(SVO_SENDTEXT);
@@ -378,4 +383,17 @@ void ListServer::syncServers()
 			_dataStore->updateServerUpTime(conn->getName().text(), conn->getUpTime());
 		}
 	}
+}
+
+const ServerConnection* ListServer::getServer(const CString& serverName) const
+{
+	const auto& serverConnections = getConnections();
+	for (auto & conn : serverConnections)
+	{
+		// Compare account names.
+		if (conn->getName().toLower() == serverName.toLower())
+			return conn.get();
+	}
+
+	return nullptr;
 }

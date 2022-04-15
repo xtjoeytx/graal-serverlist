@@ -59,6 +59,7 @@ public:
 	IrcServer * getIrcServer()  		{ return &_ircServer; }
 	IDataBackend * getDataStore()		{ return _dataStore.get(); }
 	const std::vector<std::unique_ptr<ServerConnection>> & getConnections() const;
+	const ServerConnection * getServer(const CString& serverName) const;
 
 	void setRunning(bool status);
 
@@ -102,7 +103,11 @@ inline const std::vector<std::unique_ptr<ServerConnection>> &ListServer::getConn
 }
 
 inline AccountStatus ListServer::verifyAccount(const std::string& account, const std::string& password) const {
+#ifndef NO_MYSQL
 	return _dataStore->verifyAccount(account, password);
+#else
+	return (AccountStatus)0;
+#endif
 }
 
 inline GuildStatus ListServer::verifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) const {

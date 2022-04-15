@@ -198,18 +198,21 @@ int PlayerConnection::sendServerList()
 
 	CString dataBuffer;
 	dataBuffer.writeGChar(PLO_SVRLIST);
-	
+
 	int serverCount = 0;
 	CString serverPacket;
 	for (auto & conn : serverConnections)
 	{
+		if (conn->getName().toLower() == "offline" && _clientType != ClientType::AllServers)
+			continue;
+
 		if (conn->isAuthenticated() && conn->canAcceptClient(_clientType))
 		{
 			serverPacket << conn->getServerPacket(_clientType, _socket->getRemoteIp());
 			serverCount++;
 		}
 	}
-	
+
 	dataBuffer.writeGChar((unsigned char)serverCount);
 	dataBuffer.write(serverPacket);
 	sendPacket(dataBuffer, true);
