@@ -148,7 +148,7 @@ bool ServerConnection::doMain(const time_t& now)
 			if (sockBuffer.bytesLeft() >= 8)
 			{
 				CString potentialVersion = sockBuffer.subString(0, 8);
-				if (std::find(forwardingVersions.begin(), forwardingVersions.end(), potentialVersion.text()) != forwardingVersions.end()) {
+				if (potentialVersion == "GNP1905C") {
 					handleOfflineForwarding();
 					return false;
 				}
