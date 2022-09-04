@@ -100,3 +100,15 @@ CREATE TABLE `graal_buddies` (
   CONSTRAINT `graal_buddies_graal_users_id_fk` FOREIGN KEY (`users_id`) REFERENCES `graal_users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `graal_buddies_graal_users_id_fk_2` FOREIGN KEY (`friend_id`) REFERENCES `graal_users` (`id`) ON DELETE CASCADE
 );
+
+CREATE TABLE `graal_pcids` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `platform` varchar(128) DEFAULT NULL,
+  `hdd-md5hash` varchar(32) DEFAULT NULL,
+  `nic-md5hash` varchar(32) DEFAULT NULL,
+  `android-id` varchar(128) DEFAULT NULL,
+  `firstconnected` datetime DEFAULT '0000-00-00 00:00:00',
+  `lastconnected` datetime DEFAULT '0000-00-00 00:00:00',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `graal_pcids_hash_uindex` (`platform`,`hdd-md5hash`,`nic-md5hash`,`android-id`)
+);

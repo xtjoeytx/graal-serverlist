@@ -68,6 +68,55 @@ bool MySQLBackend::isIpBanned(const std::string& ipAddress)
 	return false;
 }
 
+std::optional<int64_t> MySQLBackend::getDeviceId(const DeviceIdentity & ident)
+{
+	const std::string query = "SELECT id FROM graal_pcids WHERE " \
+		"`platform` = ? AND `hdd-md5hash` = ? AND `nic-md5hash` = ? AND `android-id` = ? LIMIT 1";
+
+	try {
+		int64_t pcid;
+
+		// search for an existing identity in the database
+		daotk::mysql::prepared_stmt stmt(_connection, query);
+		stmt.bind_param(ident.platform, ident.hdd_hash, ident.nic_hash, ident.android_id);
+		stmt.bind_result(pcid);
+		if (stmt.execute() && stmt.fetch())
+			return pcid;
+
+		// insert hashes into pcid list and grab insert id as the pc-id
+		const std::string insertQuery = "INSERT INTO graal_pcids(`platform`, `hdd-md5hash`, `nic-md5hash`, `android-id`, `firstconnected`) values (?, ?, ?, ?, NOW())";
+
+		daotk::mysql::prepared_stmt insertStmt(_connection, insertQuery);
+		insertStmt.bind_param(ident.platform, ident.hdd_hash, ident.nic_hash, ident.android_id);
+		if (insertStmt.execute() && _connection.affected_rows() == 1)
+			return _connection.last_insert_id();
+	}
+	catch (std::exception& exp) {
+		printf("getDeviceId Exception: %s\n", exp.what());
+		return std::nullopt;
+	}
+
+	return std::optional<int64_t>();
+}
+
+bool MySQLBackend::updateDeviceIdTime(int64_t deviceId)
+{
+	const std::string query = "UPDATE graal_pcids SET `lastconnected` = NOW() WHERE `id` = ? LIMIT 1";
+
+	try {
+		daotk::mysql::prepared_stmt stmt(_connection, query);
+		stmt.bind_param(deviceId);
+
+		if (stmt.execute())
+			return (_connection.affected_rows() == 1);
+	}
+	catch (std::exception& exp) {
+		printf("updateDeviceIdTime Exception: %s\n", exp.what());
+	}
+
+	return false;
+}
+
 AccountStatus MySQLBackend::verifyAccount(const std::string& account, const std::string& password)
 {
 	const std::string query = "SELECT account, activated, banned FROM graal_users WHERE " \

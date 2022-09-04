@@ -5,6 +5,7 @@
 
 #include <optional>
 #include <string>
+#include "DeviceIdentity.h"
 #include "PlayerProfile.h"
 #include "ServerHQ.h"
 
@@ -41,6 +42,9 @@ class IDataBackend
 		/// Methods for interfacing with the backend.
 		// 
 		virtual bool isIpBanned(const std::string& ipAddress) = 0;
+
+		virtual bool updateDeviceIdTime(int64_t deviceId) = 0;
+		virtual std::optional<int64_t> getDeviceId(const DeviceIdentity& ident) = 0;
 
 		virtual AccountStatus verifyAccount(const std::string& account, const std::string& password) = 0;
 		virtual GuildStatus verifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) = 0;

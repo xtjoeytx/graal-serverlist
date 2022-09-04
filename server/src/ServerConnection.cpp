@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <ctime>
+#include <array>
 #include <CLog.h>
 #include <IUtil.h>
 #include "ListServer.h"
@@ -32,6 +33,11 @@ enum
 	PLTYPE_ANYCONTROL	= (int)(PLTYPE_ANYRC | PLTYPE_ANYNC),
 	PLTYPE_ANYPLAYER	= (int)(PLTYPE_ANYCLIENT | PLTYPE_ANYRC),
 	PLTYPE_NONITERABLE	= (int)(PLTYPE_NPCSERVER | PLTYPE_ANYNC | PLTYPE_EXTERNAL)
+};
+
+// Version ids that will get forwarded to offline server
+const auto forwardingVersions = std::array{
+	"GNP1905C"
 };
 
 /*
@@ -141,23 +147,9 @@ bool ServerConnection::doMain(const time_t& now)
 
 			if (sockBuffer.bytesLeft() >= 8)
 			{
-				if (sockBuffer.subString(0, 8) == "GNP1905C")
-				{
-					_listServer->getServerLog().out("New Protocol client connected! Forwarding client!\n");
-
-					auto server = _listServer->getServer("Offline");
-
-					if (server)
-					{
-						CString pPacket = CString() << "offline,Offline," << server->getIp() << "," << server->getPort();
-
-						sendGNPPacket(PLO_SERVERWARP, pPacket);
-
-					}
-					else
-					{
-						sendGNPPacket(PLO_DISCMESSAGE, CString() << "No available server! Try again later");
-					}
+				CString potentialVersion = sockBuffer.subString(0, 8);
+				if (std::find(forwardingVersions.begin(), forwardingVersions.end(), potentialVersion.text()) != forwardingVersions.end()) {
+					handleOfflineForwarding();
 					return false;
 				}
 			}
@@ -227,7 +219,25 @@ bool ServerConnection::doMain(const time_t& now)
 	return true;
 }
 
-void ServerConnection::sendGNPPacket(char packetType, CString &pPacket) {
+void ServerConnection::handleOfflineForwarding()
+{
+	_listServer->getServerLog().out("New Protocol client connected! Forwarding client!\n");
+
+	auto server = _listServer->getServer("Offline");
+
+	if (server)
+	{
+		CString pPacket = CString() << "offline,Offline," << server->getIp() << "," << server->getPort();
+		sendGNPPacket(PLO_SERVERWARP, pPacket);
+	}
+	else
+	{
+		sendGNPPacket(PLO_DISCMESSAGE, CString() << "No available server! Try again later");
+	}
+}
+
+void ServerConnection::sendGNPPacket(char packetType, CString &pPacket)
+{
 	// We ignore appendNL here because new protocol doesn't end with newlines
 	CString buf2 = CString() << (char)0 << (char)0/*packetCount*/;
 	buf2.writeInt3(pPacket.length() + 6, false);
@@ -897,24 +907,27 @@ bool ServerConnection::msgSVI_SETPROF(CString& pPacket)
 	pPacket.readGUChar();
 
 	// Read the account name in.
-	CString accountName = pPacket.readChars(pPacket.readGUChar());
+	std::string accountName = pPacket.readChars(pPacket.readGUChar()).text();
 
-	// TODO(joey): Verify this is a player on the server.
+	// Verify this is a player on the server.
+	auto player = getPlayer(accountName);
+	if (player)
+	{
+		// Construct profile from packet
+		PlayerProfile newProfile(accountName);
+		newProfile.setName(pPacket.readChars(pPacket.readGUChar()).text());
+		newProfile.setAge(strtoint(pPacket.readChars(pPacket.readGUChar())));
+		newProfile.setGender(pPacket.readChars(pPacket.readGUChar()).text());
+		newProfile.setCountry(pPacket.readChars(pPacket.readGUChar()).text());
+		newProfile.setMessenger(pPacket.readChars(pPacket.readGUChar()).text());
+		newProfile.setEmail(pPacket.readChars(pPacket.readGUChar()).text());
+		newProfile.setWebsite(pPacket.readChars(pPacket.readGUChar()).text());
+		newProfile.setHangout(pPacket.readChars(pPacket.readGUChar()).text());
+		newProfile.setQuote(pPacket.readChars(pPacket.readGUChar()).text());
 
-	// Construct profile from packet
-	PlayerProfile newProfile(accountName.text());
-	newProfile.setName(pPacket.readChars(pPacket.readGUChar()).text());
-	newProfile.setAge(strtoint(pPacket.readChars(pPacket.readGUChar())));
-	newProfile.setGender(pPacket.readChars(pPacket.readGUChar()).text());
-	newProfile.setCountry(pPacket.readChars(pPacket.readGUChar()).text());
-	newProfile.setMessenger(pPacket.readChars(pPacket.readGUChar()).text());
-	newProfile.setEmail(pPacket.readChars(pPacket.readGUChar()).text());
-	newProfile.setWebsite(pPacket.readChars(pPacket.readGUChar()).text());
-	newProfile.setHangout(pPacket.readChars(pPacket.readGUChar()).text());
-	newProfile.setQuote(pPacket.readChars(pPacket.readGUChar()).text());
-
-	// Set profile
-	_listServer->setProfile(newProfile);
+		// Set profile
+		_listServer->setProfile(newProfile);
+	}
 
 	return true;
 }
@@ -1041,10 +1054,31 @@ bool ServerConnection::msgSVI_VERIACC2(CString& pPacket)
 	unsigned short id = pPacket.readGUShort();
 	unsigned char type = pPacket.readGUChar();
 
-	// Verify the account.
-	AccountStatus status = _listServer->verifyAccount(account.text(), password.text());
-	sendPacket(CString() >> (char)SVO_VERIACC2 >> (char)account.length() << account >> (short)id >> (char)type << getAccountError(status));
+	CString identity;
+	if (pPacket.bytesLeft())
+		identity = pPacket.readChars(pPacket.readGUShort());
 
+	// Validate account credentials
+	AccountStatus status = _listServer->verifyAccount(account.text(), password.text());
+
+	// Check if the packet has identity-data to fetch a pc id
+	if (status == AccountStatus::Normal && identity.length())
+	{
+		auto pcId = _listServer->getDataStore()->getDeviceId(identity);
+		if (pcId.has_value())
+		{
+			_listServer->getDataStore()->updateDeviceIdTime(pcId.value());
+
+			// Guest accounts account-names get set to 'pc:id'
+			auto pcIdAsString = std::to_string(pcId.value());
+			if (account == "guest")
+				account = CString("pc:") << pcIdAsString;
+
+			sendPacket(CString() >> (char)SVO_ASSIGNPCID >> (short)id >> (char)type << (char)pcIdAsString.length() << pcIdAsString);
+		}
+	}
+
+	sendPacket(CString() >> (char)SVO_VERIACC2 >> (char)account.length() << account >> (short)id >> (char)type << getAccountError(status));
 	return true;
 }
 
@@ -1431,10 +1465,12 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 			// This is the one case where params[0] may not be GraalEngine
 			if (params[1] == "lister") // -Serverlist,lister,simpleserverlist ----- -Serverlist is the weapon
 			{
-				if (params[2] == "simpleserverlist")
+				// simplelist is what is sent from the client, simpleserverlist is the response but we butchered
+				// the initial request so i'm leaving it for older gservers
+				if (params[2] == "simplelist" || params[2] == "simpleserverlist")
 				{
 					CString sendMsg;
-					sendMsg << params[0] << "\n" << params[1] << "\n" << params[2] << "\n";
+					sendMsg << params[0] << "\n" << params[1] << "\n" << "simpleserverlist" << "\n";
 
 					// Assemble the serverlist.
 					auto& serverList = _listServer->getConnections();

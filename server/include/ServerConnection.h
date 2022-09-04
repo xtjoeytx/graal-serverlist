@@ -80,10 +80,11 @@ enum
 	SVO_REQUESTTEXT		= 19,
 	SVO_SENDTEXT		= 20,
 	SVO_PMPLAYER		= 29,
-	SVO_NEWSERVER		= 30,
-	SVO_DELSERVER		= 31,
-	SVO_SERVERADDPLYR	= 32,
-	SVO_SERVERDELPLYR	= 33,
+	SVO_ASSIGNPCID		= 30,
+	//SVO_NEWSERVER		= 30,
+	//SVO_DELSERVER		= 31,
+	//SVO_SERVERADDPLYR	= 32,
+	//SVO_SERVERDELPLYR	= 33,
 	SVO_PING			= 99,
 	SVO_RAWDATA			= 100,
 };
@@ -143,6 +144,8 @@ class ServerConnection
 		void sendPacket(CString pPacket, bool pSendNow = false);
 
 	private:
+		void handleOfflineForwarding();
+
 		// packet-functions
 		static void createServerPtrTable();
 		bool parsePacket(CString& pPacket);
