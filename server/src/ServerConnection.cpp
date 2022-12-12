@@ -1542,7 +1542,8 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 
 bool ServerConnection::msgSVI_REQUESTSVRINFO(CString& pPacket)
 {
-	uint16_t pid = pPacket.readGUShort();
+	uint16_t playerId = pPacket.readGUShort();
+	ServerPlayer *player = getPlayer(playerId);
 	CString data = pPacket.readString("");
 
 	CString data2 = data.guntokenize();
@@ -1566,16 +1567,18 @@ bool ServerConnection::msgSVI_REQUESTSVRINFO(CString& pPacket)
 			p << weapon << "\n";
 			p << type << "\n";
 			p << option << "\n";
+			p << player->getAccountName() << "\n";
 			p << server->getName() << "\n";
 			p << server->getType(ClientType::AllServers) << server->getName() << "\n";
-			p << server->getDescription() << "\n";
+			p << server->getPlayerCount() << "\n";
 			p << server->getLanguage() << "\n";
-			p << server->getVersion() << "\n";
+			p << server->getDescription() << "\n";
 			p << server->getUrl() << "\n";
+			p << server->getVersion() << "\n";
 			p.gtokenizeI();
 
 			// Send the server info back to the server.
-			sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << p);
+			sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)playerId << p);
 			return true;
 		}
 	}
