@@ -4,6 +4,9 @@
 #pragma once
 
 #include <string>
+#ifndef my_bool
+typedef bool my_bool;
+#endif
 #include <mysql+++.h>
 #include "IDataBackend.h"
 
@@ -21,13 +24,13 @@ class MySQLBackend : public IDataBackend
 		std::string getLastError() const override;
 
 		/// Methods for interfacing with the backend.
-		// 
+		//
 		bool isIpBanned(const std::string& ipAddress) override;
 		std::optional<int64_t> getDeviceId(const DeviceIdentity & ident) override;
 		bool updateDeviceIdTime(int64_t deviceId) override;
 		AccountStatus verifyAccount(const std::string& account, const std::string& password) override;
 		GuildStatus verifyGuild(const std::string& account, const std::string& nickname, const std::string& guild) override;
-		
+
 		std::optional<PlayerProfile> getProfile(const std::string& account) override;
 		bool setProfile(const PlayerProfile& profile) override;
 

@@ -143,7 +143,7 @@ target_link_libraries(${TARGET_NAME} gs2lib)
 
 if(MYSQL)
 	if(MYSQL_FOUND)
-		target_link_libraries(${TARGET_NAME} ${MYSQL_LIBRARY})
+		target_link_libraries(${TARGET_NAME} ${MYSQL_LIBRARY} ssl crypto zstd)
 	else()
 		add_dependencies(${TARGET_NAME} mariadbclient)
 		target_link_libraries(${TARGET_NAME} mariadbclient)
