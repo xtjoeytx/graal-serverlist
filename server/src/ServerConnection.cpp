@@ -1406,7 +1406,7 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 
 		if (player != nullptr)
 		{
-			if (params[0] == "GraalEngine")
+			//if (params[0] == "GraalEngine") // Only GraalEngine on v5 and older
 			{
 				if (params[1] == "irc")
 				{
@@ -1423,6 +1423,16 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 							std::string channel = params[3].guntokenize().text();
 							ircServer->removePlayerFromChannel(channel, player->getIrcStub());
 						}
+					}
+					else if (params.size() == 6 && params[2] == "privmsg")
+					{
+						std::string from = params[3].text();
+						std::string channel = params[4].text();
+						std::string message = params[5].text();
+
+						ServerPlayer *fromPlayer = getPlayer(from);
+						if (fromPlayer)
+							_listServer->getIrcServer()->sendTextToChannel(channel, message, player->getIrcStub());
 					}
 				}
 				else if (params[1] == "pmservers") // GraalEngine,pmservers,""
@@ -1460,85 +1470,68 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 					}
 					sendTextForPlayer(player, sendMsg.gtokenize());
 				}
-			}
 
-			// This is the one case where params[0] may not be GraalEngine
-			if (params[1] == "lister") // -Serverlist,lister,simpleserverlist ----- -Serverlist is the weapon
-			{
-				// simplelist is what is sent from the client, simpleserverlist is the response but we butchered
-				// the initial request so i'm leaving it for older gservers
-				if (params[2] == "simplelist" || params[2] == "simpleserverlist")
+
+				// This is the one case where params[0] may not be GraalEngine
+				if (params[1] == "lister") // -Serverlist,lister,simpleserverlist ----- -Serverlist is the weapon
 				{
-					CString sendMsg;
-					sendMsg << params[0] << "\n" << params[1] << "\n" << "simpleserverlist" << "\n";
-
-					// Assemble the serverlist.
-					auto& serverList = _listServer->getConnections();
-					for (auto & server : serverList)
-					{
-						if (server->isAuthenticated() && server->canAcceptClient(ClientType::Version4))
-						{
-							//if (server->getTypeVal() == TYPE_HIDDEN) continue;
-
-							CString serverData;
-							serverData << server->getName() << "\n";
-							serverData << server->getType(ClientType::AllServers) << server->getName() << "\n";
-							serverData << CString(server->getPlayerCount()) << "\n";
-							sendMsg << serverData.gtokenize() << "\n";
-						}
-					}
-
-					// TODO(joey): Show hidden servers if friends are on them...?
-					//p << getOwnedServersPM(account);
-					sendMsg.gtokenizeI();
-					sendTextForPlayer(player, sendMsg);
-				}
-				else if (params.size() == 5 && params[2] == "verifybuddies")
-				{
-					// params[3] -> boolean $pref::Graal::loadbuddylistfromserver
-					// params[4] -> checksum (from crc32)
-
-					if (params[3] == "1")
+					// simplelist is what is sent from the client, simpleserverlist is the response but we butchered
+					// the initial request so i'm leaving it for older gservers
+					if (params[2] == "simplelist" || params[2] == "simpleserverlist")
 					{
 						CString sendMsg;
-						sendMsg << params[0] << "\n" << params[1] << "\n" << "buddylist" << "\n";
+						sendMsg << params[0] << "\n" << params[1] << "\n" << "simpleserverlist" << "\n";
 
-						auto buddyList = _listServer->getDataStore()->getBuddyList(player->getAccountName());
-						if (buddyList)
+						// Assemble the serverlist.
+						auto& serverList = _listServer->getConnections();
+						for (auto & server : serverList)
 						{
-							for (const auto& buddy : buddyList.value())
-								sendMsg << buddy << "\n";
+							if (server->isAuthenticated() && server->canAcceptClient(ClientType::Version4))
+							{
+								//if (server->getTypeVal() == TYPE_HIDDEN) continue;
+
+								CString serverData;
+								serverData << server->getName() << "\n";
+								serverData << server->getType(ClientType::AllServers) << server->getName() << "\n";
+								serverData << CString(server->getPlayerCount()) << "\n";
+								sendMsg << serverData.gtokenize() << "\n";
+							}
 						}
 
-						sendTextForPlayer(player, sendMsg.gtokenize());
+						// TODO(joey): Show hidden servers if friends are on them...?
+						//p << getOwnedServersPM(account);
+						sendMsg.gtokenizeI();
+						sendTextForPlayer(player, sendMsg);
 					}
-				}
-				else if (params.size() == 4)
-				{
-					if (params[2] == "addbuddy") {
-						_listServer->getDataStore()->addBuddy(player->getAccountName(), params[3].text());
-					}
-					else if (params[2] == "deletebuddy") {
-						_listServer->getDataStore()->removeBuddy(player->getAccountName(), params[3].text());
-					}
-				}
-			}
-		}
+					else if (params.size() == 5 && params[2] == "verifybuddies")
+					{
+						// params[3] -> boolean $pref::Graal::loadbuddylistfromserver
+						// params[4] -> checksum (from crc32)
 
-		// uh
-		if (params[0] == "GraalEngine")
-		{
-			if (params[1] == "irc")
-			{
-				if (params.size() == 6 && params[2] == "privmsg")
-				{
-					std::string from = params[3].text();
-					std::string channel = params[4].text();
-					std::string message = params[5].text();
+						if (params[3] == "1")
+						{
+							CString sendMsg;
+							sendMsg << params[0] << "\n" << params[1] << "\n" << "buddylist" << "\n";
 
-					ServerPlayer *fromPlayer = getPlayer(from);
-					if (fromPlayer)
-						_listServer->getIrcServer()->sendTextToChannel(channel, message, fromPlayer->getIrcStub());
+							auto buddyList = _listServer->getDataStore()->getBuddyList(player->getAccountName());
+							if (buddyList)
+							{
+								for (const auto& buddy : buddyList.value())
+									sendMsg << buddy << "\n";
+							}
+
+							sendTextForPlayer(player, sendMsg.gtokenize());
+						}
+					}
+					else if (params.size() == 4)
+					{
+						if (params[2] == "addbuddy") {
+							_listServer->getDataStore()->addBuddy(player->getAccountName(), params[3].text());
+						}
+						else if (params[2] == "deletebuddy") {
+							_listServer->getDataStore()->removeBuddy(player->getAccountName(), params[3].text());
+						}
+					}
 				}
 			}
 		}
@@ -1561,31 +1554,31 @@ bool ServerConnection::msgSVI_REQUESTSVRINFO(CString& pPacket)
 	// Untokenize our params.
 	params.guntokenizeI();
 
-//	// Find the server.
-//	CString servername = params.readString("\n");
-//	for (std::vector<ServerConnection*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
-//	{
-//		ServerConnection* server = *i;
-//		if (server == 0) continue;
-//		if (servername.comparei(server->getName()))
-//		{
-//			CString p;
-//			p << weapon << "\n";
-//			p << type << "\n";
-//			p << option << "\n";
-//			p << server->getName() << "\n";
-//			p << server->getType(PLV_POST22) << server->getName() << "\n";
-//			p << server->getDescription() << "\n";
-//			p << server->getLanguage() << "\n";
-//			p << server->getVersion() << "\n";
-//			p << server->getUrl() << "\n";
-//			p.gtokenizeI();
-//
-//			// Send the server info back to the server.
-//			sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << p);
-//			return true;
-//		}
-//	}
+	// Find the server.
+	CString servername = params.readString("\n");
+	auto& serverList = _listServer->getConnections();
+	for (auto& server : serverList)
+	{
+		if (server == nullptr) continue;
+		if (servername.comparei(server->getName()))
+		{
+			CString p;
+			p << weapon << "\n";
+			p << type << "\n";
+			p << option << "\n";
+			p << server->getName() << "\n";
+			p << server->getType(ClientType::AllServers) << server->getName() << "\n";
+			p << server->getDescription() << "\n";
+			p << server->getLanguage() << "\n";
+			p << server->getVersion() << "\n";
+			p << server->getUrl() << "\n";
+			p.gtokenizeI();
+
+			// Send the server info back to the server.
+			sendPacket(CString() >> (char)SVO_REQUESTTEXT >> (short)pid << p);
+			return true;
+		}
+	}
 
 	return true;
 }
