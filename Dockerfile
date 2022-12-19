@@ -1,5 +1,5 @@
 # ListServer Build Environment
-FROM alpine:3.12 AS build-env
+FROM alpine:3.16 AS build-env
 COPY ./ /listserver
 RUN apk add --update --virtual .listserver-build-dependencies \
 		cmake \
@@ -22,10 +22,10 @@ RUN apk add --update --virtual .listserver-build-dependencies \
 	&& apk del --purge .listserver-build-dependencies
 
 # ListServer Run Environment
-FROM alpine:3.12
+FROM alpine:3.16
 ARG CACHE_DATE=2016-01-01
 COPY --from=build-env /listserver/bin /listserver
-RUN apk add --update libstdc++ libatomic
+RUN apk add --update libstdc++ libatomic libbz2
 WORKDIR /listserver
 #VOLUME [ "/listserver/settings.ini", "/listserver/ipbans.txt" ]
 ENTRYPOINT ["./listserver"]

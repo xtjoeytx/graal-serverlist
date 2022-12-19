@@ -4,9 +4,6 @@
 #pragma once
 
 #include <string>
-#ifndef my_bool
-typedef bool my_bool;
-#endif
 #include <mysql+++.h>
 #include "IDataBackend.h"
 
