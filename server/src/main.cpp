@@ -1,34 +1,35 @@
 #include <csignal>
 #include <iostream>
 #include <thread>
-#include "ListServer.h"
-#include "PlayerConnection.h"
-#include "ServerConnection.h"
-
-#include "IConfig.h"
 
 #ifdef _WIN32
-	#ifndef WIN32_LEAN_AND_MEAN
-		#define WIN32_LEAN_AND_MEAN
-	#endif
-	#include <windows.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #else
-	#include <unistd.h>
+#include <unistd.h>
 	#include <dirent.h>
 	#ifndef SIGBREAK
 		#define SIGBREAK SIGQUIT
 	#endif
 #endif
 
+#include "ListServer.h"
+#include "PlayerConnection.h"
+#include "ServerConnection.h"
+
+#include "IConfig.h"
+#include "main.h"
+
+
 // Function pointer for signal handling.
 typedef void (*sighandler_t)(int);
-
-void shutdownServer(int signal);
 
 // Home path of the serverlist.
 std::string getBaseHomePath()
 {
-	CString homepath;
+	CString homePath;
 
 #if defined(_WIN32) || defined(_WIN64)
 	// Get the path.
@@ -37,19 +38,19 @@ std::string getBaseHomePath()
 
 	// Find the program exe and remove it from the path.
 	// Assign the path to homepath.
-	homepath = path;
-	int pos = homepath.findl('\\');
-	if (pos == -1) homepath.clear();
-	else if (pos != (homepath.length() - 1))
-		homepath.removeI(++pos, homepath.length());
+	homePath = path;
+	int pos = homePath.findl('\\');
+	if (pos == -1) homePath.clear();
+	else if (pos != (homePath.length() - 1))
+		homePath.removeI(++pos, homePath.length());
 #elif __APPLE__
 	char path[255];
 	if (!getcwd(path, sizeof(path)))
 		printf("Error getting CWD\n");
 
-	homepath = path;
-	if (homepath[homepath.length() - 1] != '/')
-		homepath << '/';
+	homePath = path;
+	if (homePath[homepath.length() - 1] != '/')
+		homePath << '/';
 #else
 	// Get the path to the program.
 	char path[260];
@@ -62,10 +63,10 @@ std::string getBaseHomePath()
 	{
 		end++;
 		if (end != 0) *end = '\0';
-		homepath = path;
+		homePath = path;
 	}
 #endif
-	return homepath.text();
+	return homePath.text();
 }
 
 const char * getErrorString(InitializeError error)
@@ -104,6 +105,7 @@ const char * getErrorString(InitializeError error)
 }
 
 std::unique_ptr<ListServer> listServer;
+std::atomic_bool daemonMode;
 std::thread listThread;
 
 int main(int argc, char *argv[])
@@ -119,21 +121,32 @@ int main(int argc, char *argv[])
 
 	// Setup listserver
 	listServer = std::make_unique<ListServer>(homePath);
+
+	if (parseArgs(argc, argv))
+		return 1;
+
 	InitializeError err = listServer->Initialize();
 	if (err != InitializeError::None)
 	{
-		listServer->getServerLog().out("[Error] %s\n", getErrorString(err));
+		listServer->getServerLog().setTimeStampsInCliEnabled(false);
+		listServer->getServerLog().out("[InitializeError] %s\n", getErrorString(err));
 		listServer->Cleanup();
 		return -1;
 	}
+
+	listServer->getServerLog().setLogToCliEnabled(!daemonMode);
+	listServer->getClientLog().setLogToCliEnabled(!daemonMode);
 
 	listThread = std::thread(&ListServer::Main, listServer.get());
 
 	while (listServer)
 	{
 		std::string command;
-		std::cout << "Input Command: ";
-		std::cin >> command;
+
+		if (!daemonMode) {
+			std::cout << "Input Command: ";
+			std::cin >> command;
+		}
 
 		if (command == "quit")
 		{
@@ -158,6 +171,60 @@ void shutdownServer(int signal)
 		listServer.reset();
 		exit(0);
 	}
+}
+
+bool parseArgs(int argc, char* argv[])
+{
+	std::vector<CString> args;
+	bool useEnv = getenv("USE_ENV");
+
+	if (!useEnv) {
+		for ( int argPos = 0; argPos < argc; ++argPos )
+			args.emplace_back(argv[argPos]);
+
+		for ( auto argPos = args.begin(); argPos != args.end(); ++argPos ) {
+			if ((*argPos).find("--") == 0 ) {
+				CString key((*argPos).subString(2));
+				if ( key == "help" ) {
+					printHelp(args[0].text());
+					return true;
+				} else if ( key == "daemon" ) {
+					daemonMode = true;
+				}
+			} else if ((*argPos)[0] == '-' ) {
+				for ( int j = 1; j < (*argPos).length(); ++j ) {
+					if ((*argPos)[j] == 'h' ) {
+						printHelp(args[0].text());
+						return true;
+					}
+					if ((*argPos)[j] == 'd' ) {
+						daemonMode = true;
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		if ( getenv("DAEMON") )
+			daemonMode = true;
+	}
+
+	return false;
+}
+
+void printHelp(const char* pname)
+{
+	listServer->getServerLog().setTimeStampsInCliEnabled(false);
+	listServer->getServerLog().out("OpenGraal ListServer version %s\n", LISTSERVER_VERSION);
+
+	listServer->getServerLog().out("USAGE: %s [options]\n\n", pname);
+	listServer->getServerLog().out("Commands:\n\n");
+	listServer->getServerLog().out(" -h, --help\t\tPrints out this help text.\n");
+	listServer->getServerLog().out(" -d, --daemon\tStarts the ListServer in daemon mode, with no output to console\n");
+
+	listServer->getServerLog().out("\n");
+	listServer->getServerLog().setTimeStampsInCliEnabled(true);
 }
 
 /*
@@ -338,7 +405,7 @@ void shutdownServer(int signal)
 				iter = serverList.erase(iter);
 				continue;
 			}
-			
+
 			++iter;
 		}
 

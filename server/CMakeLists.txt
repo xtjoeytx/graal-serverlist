@@ -40,6 +40,7 @@ set(
 set(
     HEADERS
 		${PROJECT_BINARY_DIR}/server/include/IConfig.h
+		include/main.h
 		include/ListServer.h
 		include/IDataBackend.h
 		include/PlayerProfile.h

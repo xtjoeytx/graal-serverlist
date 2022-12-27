@@ -26,6 +26,9 @@ set(CMAKE_DEBUG_POSTFIX _d)
 
 set(BIN_DIR "bin" CACHE STRING "Binary output directory")
 
+# specify the C++ standard
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
@@ -87,13 +90,11 @@ if(APPLE)
 	# Set variables for generating the Info.plist file
 	set(MACOSX_BUNDLE_BUNDLE_VERSION "${VER_FULL}")
 	set(MACOSX_BUNDLE_EXECUTABLE ${PROJECT_NAME})
-	set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.GraalReborn.ListServer")
+	set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.OpenGraal.ListServer")
 	set(MACOSX_BUNDLE_NSMAIN_NIB_FILE "Application")
 	set(MACOSX_BUNDLE_ICON_FILE "carton")
 	set(MACOSX_BUNDLE_NAME ${PROJECT_NAME})
 	set(MACOSX_BUNDLE_SHORT_VERSION_STRING "${VER_FULL}")
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -std=gnu++17")
 elseif(WIN32)
 	# Visual C++ Compiler options
 	if(MSVC)
@@ -129,8 +130,7 @@ elseif(WIN32)
 	if( MINGW )
 		add_definitions(-D__STDC_FORMAT_MACROS)
 		add_definitions(-D__USE_MINGW_ANSI_STDIO=1)
-		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
+		add_compile_options(-Wno-deprecated-declarations)
 	endif()
 
 	# Prevent Windows.h from clashing with the Standard Template Library so we
@@ -145,8 +145,6 @@ else()
 	endif()
 
 	add_definitions(-D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=1)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99")
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
 	add_compile_options(-Wno-error -Wno-dev)
 endif()
 
@@ -188,8 +186,8 @@ else()
 endif()
 
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME_LOWER})
-set(CPACK_PACKAGE_VENDOR "Graal Reborn Team")
-set(CPACK_PACKAGE_CONTACT "graal.in")
+set(CPACK_PACKAGE_VENDOR "OpenGraal Team")
+set(CPACK_PACKAGE_CONTACT "opengraal")
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${VER_CPACK}")
 set(CPACK_PACKAGE_VERSION_MAJOR ${VER_X})
 set(CPACK_PACKAGE_VERSION_MINOR ${VER_Y})
@@ -200,7 +198,7 @@ set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${VER_CPACK}-src")
 set(CPACK_SOURCE_IGNORE_FILES "/build/;/.bzr/;~$;${CPACK_SOURCE_IGNORE_FILES}")
 include(CPack)
 
-add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/gs2lib)
+add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/gs2lib EXCLUDE_FROM_ALL)
 
 # Restore library suffixes
 if(STATIC)

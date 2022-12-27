@@ -653,7 +653,7 @@ bool ServerConnection::msgSVI_SETVERS(CString& pPacket)
 		{
 			if (ver.match("?.??.?") || ver.match("?.?.?"))
 				version = CString("Version: ") << ver;
-			else if (ver.match("?.??.?-beta") || ver.match("?.?.?-beta"))
+			else if (ver.match("?.??.?-beta") || ver.match("?.?.?-beta") || ver.match("?.?.?-beta *") || ver.match("?.??.?-beta *"))
 				version = CString("Beta Version: ") << ver.subString(0, ver.find('-'));
 			else if (ver.find("SVN") != -1)
 			{
@@ -1430,8 +1430,8 @@ bool ServerConnection::msgSVI_REQUESTLIST(CString& pPacket)
 						std::string channel = params[4].text();
 						std::string message = params[5].text();
 
-						ServerPlayer *fromPlayer = getPlayer(from);
-						if (fromPlayer)
+						//ServerPlayer *fromPlayer = getPlayer(from);
+						if (player)
 							_listServer->getIrcServer()->sendTextToChannel(channel, message, player->getIrcStub());
 					}
 				}

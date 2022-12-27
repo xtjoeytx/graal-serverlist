@@ -3,6 +3,10 @@
 
 #pragma once
 
+#if defined(__MINGW32__) || defined(__MINGW64__)
+#define localtime_r(x, y) localtime_s(y, x);
+#endif
+
 #include <string>
 #include <mysql+++.h>
 #include "IDataBackend.h"

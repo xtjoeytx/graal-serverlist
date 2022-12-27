@@ -71,7 +71,7 @@ bool IrcConnection::doMain()
 		sockBuffer.write(data, size);
 	else if (_socket->getState() == SOCKET_STATE_DISCONNECTED)
 		return false;
-	
+
 	if (!sockBuffer.isEmpty())
 	{
 		// definitions
@@ -88,7 +88,7 @@ bool IrcConnection::doMain()
 
 			line = sockBuffer.subString(0, lineEnd + 1);
 			sockBuffer.removeI(0, line.length());
-				
+
 			if (!parsePacket(line))
 				return true;
 		} while (sockBuffer.bytesLeft());
@@ -132,7 +132,7 @@ void IrcConnection::sendCompress()
 		}
 		return;
 	}
-	
+
 	// add the send buffer to the out buffer
 	outBuffer << sendBuffer;
 
@@ -217,13 +217,13 @@ bool IrcConnection::msgIRCI_SENDTEXT(CString& pPacket)
 
 			_accountStatus = _listServer->verifyAccount(_player.getAccountName(), password.text());
 			sendPacket(":" + _player.getNickName() + " NICK " + _player.getAccountName());
-			
+
 			switch (_accountStatus)
 			{
 				case AccountStatus::Normal:
 					sendPacket(":" + _listServerAddress + " 001 " + _player.getNickName() + " :Welcome to " + _listServer->getSettings().getStr("name") + ", " + _player.getAccountName() + ".");
 					sendPacket(":" + _listServerAddress + " 001 " + _player.getNickName() + " :Your account: " + _player.getAccountName() + ", password: " + password);
-					
+
 					sendPacket(":" + _player.getNickName() + " JOIN #graal");
 					_listServer->addPlayerToChannel("#graal", &_player, this);
 					break;
@@ -377,7 +377,7 @@ bool IrcConnection::msgIRC_PART(CString& pPacket)
 	if (params.size() >= 0 && _accountStatus == AccountStatus::Normal)
 	{
  		_ircServer->removePlayerFromChannel(params[1].text(), &_ircStub);
- 		
+
 		//if (success) {
 		//	const CString message = pPacket.subString(pPacket.readString(":").length() + 1);
 		//	sendPacket(":" + _ircStub.getNickName() + " PART " + params[1] + " :" + message);
@@ -405,7 +405,7 @@ bool IrcConnection::msgIRC_PRIVMSG(CString& pPacket)
 bool IrcConnection::msgIRC_UNKNOWN(CString& pPacket)
 {
 	pPacket.setRead(0);
-	printf("Unknown Server Packet: %s\n", pPacket.text());
+	printf("Unknown IRC Packet: %s\n", pPacket.text());
 	return true;
 }
 

@@ -1,5 +1,12 @@
 #include <vector>
 #include "MySQLBackend.h"
+#if defined(__MINGW32__) || defined(__MINGW64__)
+extern "C" {
+	int strerror_r(int errno, char *buf, size_t len) {
+		return strerror_s(buf, len, errno);
+	}
+}
+#endif
 
 MySQLBackend::MySQLBackend(const std::string& host, unsigned int port, const std::string& socket,
 						   const std::string& user, const std::string& password, const std::string& database)
@@ -101,7 +108,7 @@ std::optional<int64_t> MySQLBackend::getDeviceId(const DeviceIdentity & ident)
 
 bool MySQLBackend::updateDeviceIdTime(int64_t deviceId)
 {
-	const std::string query = "UPDATE graal_pcids SET `lastconnected` = NOW() WHERE `id` = ? LIMIT 1";
+	const std::string query = "UPDATE graal_pcids SET `lastconnected` = NOW() WHERE `id` = ? COLLATE 'utf8mb4_general_ci' COLLATE 'utf8mb4_general_ci' LIMIT 1";
 
 	try {
 		daotk::mysql::prepared_stmt stmt(_connection, query);
@@ -120,7 +127,7 @@ bool MySQLBackend::updateDeviceIdTime(int64_t deviceId)
 AccountStatus MySQLBackend::verifyAccount(const std::string& account, const std::string& password)
 {
 	const std::string query = "SELECT account, activated, banned FROM graal_users WHERE " \
-		"`account` = ? AND password=MD5(CONCAT(MD5(?),`salt`)) LIMIT 1";
+		"`account` = ? AND password=MD5(CONCAT(MD5(?),`salt`)) COLLATE 'utf8mb4_general_ci' LIMIT 1";
 
 	// results
 	std::string acct;
@@ -156,8 +163,8 @@ GuildStatus MySQLBackend::verifyGuild(const std::string& account, const std::str
 {
 	const std::string query = "SELECT gm.nickname, gg.restrictnick " \
 		"FROM `graal_guilds_members` gm JOIN `graal_guilds` gg on gg.name = gm.guild " \
-		"WHERE gg.status = 1 and gg.name = ? and gm.account = ? LIMIT 1";
-	
+		"WHERE gg.status = 1 and gg.name = ? and gm.account = ? COLLATE 'utf8mb4_general_ci' LIMIT 1";
+
 	try {
 		std::string guildNick;
 		int restrictNick;
@@ -188,7 +195,7 @@ std::optional<PlayerProfile> MySQLBackend::getProfile(const std::string& account
 {
 	const std::string query = "SELECT profile_name, profile_age, profile_sex, profile_country, profile_icq, profile_email, profile_url, profile_hangout, profile_quote " \
 		"FROM graal_users " \
-		"WHERE `account` = ? LIMIT 1";
+		"WHERE `account` = ? COLLATE 'utf8mb4_general_ci' LIMIT 1";
 
 	// results
 	std::string profile_name, profile_sex, profile_country, profile_icq, profile_email, profile_url, profile_hangout, profile_quote;
@@ -227,7 +234,7 @@ bool MySQLBackend::setProfile(const PlayerProfile& profile)
 {
 	const std::string query = "UPDATE graal_users SET profile_name = ?, profile_age = ?, profile_sex = ?, profile_country = ?, " \
 		"profile_icq = ?, profile_email = ?, profile_url = ?, profile_hangout = ?, profile_quote = ? " \
-		"WHERE `account` = ? LIMIT 1";
+		"WHERE `account` = ? COLLATE 'utf8mb4_general_ci' LIMIT 1";
 
 	try {
 		daotk::mysql::prepared_stmt stmt(_connection, query);
@@ -247,8 +254,8 @@ bool MySQLBackend::setProfile(const PlayerProfile& profile)
 
 bool MySQLBackend::addBuddy(const std::string& account, const std::string& buddyAccount)
 {
-	const std::string query = "SELECT id FROM `graal_users` WHERE `account` = '%s' LIMIT 1";
-	
+	const std::string query = "SELECT id FROM `graal_users` WHERE `account` = '%s' COLLATE 'utf8mb4_general_ci' LIMIT 1";
+
 	try {
 		auto user_id = _connection.query(query, escapeStr(account).c_str()).get_value<std::optional<int>>();
 		auto buddy_id = _connection.query(query, escapeStr(buddyAccount).c_str()).get_value<std::optional<int>>();
@@ -273,7 +280,7 @@ bool MySQLBackend::addBuddy(const std::string& account, const std::string& buddy
 
 bool MySQLBackend::removeBuddy(const std::string& account, const std::string& buddyAccount)
 {
-	const std::string query = "SELECT id FROM `graal_users` WHERE `account` = '%s' LIMIT 1";
+	const std::string query = "SELECT id FROM `graal_users` WHERE `account` = '%s' COLLATE 'utf8mb4_general_ci' LIMIT 1";
 
 	try {
 		auto user_id = _connection.query(query, escapeStr(account).c_str()).get_value<std::optional<int>>();
@@ -281,7 +288,7 @@ bool MySQLBackend::removeBuddy(const std::string& account, const std::string& bu
 
 		if (user_id && buddy_id)
 		{
-			const std::string insertQuery = "DELETE FROM `graal_buddies` WHERE `users_id` = ? AND `friend_id` = ? LIMIT 1";
+			const std::string insertQuery = "DELETE FROM `graal_buddies` WHERE `users_id` = ? AND `friend_id` = ? COLLATE 'utf8mb4_general_ci' LIMIT 1";
 
 			daotk::mysql::prepared_stmt stmt(_connection, insertQuery);
 			stmt.bind_param(user_id.value(), buddy_id.value());
@@ -299,13 +306,13 @@ bool MySQLBackend::removeBuddy(const std::string& account, const std::string& bu
 
 std::optional<std::vector<std::string>> MySQLBackend::getBuddyList(const std::string& account)
 {
-	const std::string query = "SELECT id FROM `graal_users` WHERE `account` = '%s' LIMIT 1";
+	const std::string query = "SELECT id FROM `graal_users` WHERE `account` = '%s' COLLATE 'utf8mb4_general_ci' LIMIT 1";
 
 	try {
 		auto user_id = _connection.query(query, escapeStr(account).c_str()).get_value<std::optional<int>>();
 		if (user_id)
 		{
-			const std::string getBuddiesQuery = "select gu.account from graal_buddies gb join graal_users gu on gu.id = gb.friend_id where gb.users_id = ?";
+			const std::string getBuddiesQuery = "select gu.account from graal_buddies gb join graal_users gu on gu.id = gb.friend_id where gb.users_id = ? COLLATE 'utf8mb4_general_ci'";
 
 			std::string buddy;
 
