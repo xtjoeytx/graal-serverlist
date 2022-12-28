@@ -8,7 +8,7 @@
 #endif
 #include <windows.h>
 #else
-#include <unistd.h>
+	#include <unistd.h>
 	#include <dirent.h>
 	#ifndef SIGBREAK
 		#define SIGBREAK SIGQUIT
@@ -105,16 +105,17 @@ const char * getErrorString(InitializeError error)
 }
 
 std::unique_ptr<ListServer> listServer;
-std::atomic_bool daemonMode;
+std::atomic_bool daemonMode = false;
 std::thread listThread;
 
-int main(int argc, char *argv[])
+#ifndef NOMAIN
+int main(int argc, char* argv[])
 {
 	// Shut down the server if we get a kill signal.
-	signal(SIGABRT, (sighandler_t)shutdownServer);
-	signal(SIGBREAK, (sighandler_t)shutdownServer);
 	signal(SIGINT, (sighandler_t)shutdownServer);
 	signal(SIGTERM, (sighandler_t)shutdownServer);
+	signal(SIGBREAK, (sighandler_t)shutdownServer);
+	signal(SIGABRT, (sighandler_t)shutdownServer);
 
 	// Grab the base path to the server executable.
 	std::string homePath = getBaseHomePath();
@@ -131,7 +132,7 @@ int main(int argc, char *argv[])
 		listServer->getServerLog().setTimeStampsInCliEnabled(false);
 		listServer->getServerLog().out("[InitializeError] %s\n", getErrorString(err));
 		listServer->Cleanup();
-		return -1;
+		return ERR_SETTINGS;
 	}
 
 	listServer->getServerLog().setLogToCliEnabled(!daemonMode);
@@ -146,6 +147,9 @@ int main(int argc, char *argv[])
 		if (!daemonMode) {
 			std::cout << "Input Command: ";
 			std::cin >> command;
+		} else {
+			if (listThread.joinable())
+				listThread.join();
 		}
 
 		if (command == "quit")
@@ -158,8 +162,9 @@ int main(int argc, char *argv[])
 	if (listThread.joinable())
 		listThread.join();
 	listServer.reset();
-	return 0;
+	return ERR_SUCCESS;
 }
+#endif
 
 void shutdownServer(int signal)
 {
@@ -216,7 +221,7 @@ bool parseArgs(int argc, char* argv[])
 void printHelp(const char* pname)
 {
 	listServer->getServerLog().setTimeStampsInCliEnabled(false);
-	listServer->getServerLog().out("OpenGraal ListServer version %s\n", LISTSERVER_VERSION);
+	listServer->getServerLog().out("OpenGraal %s version %s\n", APP_NAME, APP_VERSION);
 
 	listServer->getServerLog().out("USAGE: %s [options]\n\n", pname);
 	listServer->getServerLog().out("Commands:\n\n");

@@ -19,8 +19,8 @@
 #  along with GS2Emu.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-cmake_minimum_required(VERSION 2.8.5)
-project(ListServer C CXX)
+cmake_minimum_required(VERSION 3.0.0)
+project(ListServer VERSION 3.0.0 DESCRIPTION "Graal Online v1.411 to v6.037 compatible server" LANGUAGES C CXX)
 
 set(CMAKE_DEBUG_POSTFIX _d)
 
@@ -32,7 +32,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/${BIN_DIR})
+set(CPACK_PACKAGE_DIRECTORY ${PROJECT_SOURCE_DIR}/dist)
+
 
 # Second, for multi-config builds (e.g. msvc)
 foreach( OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES} )
@@ -54,39 +56,99 @@ string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
 
 # Version number in format X.YY.ZZ
-set(VER_X 3)
-set(VER_Y 0)
-set(VER_Z 0)
-set(VER_EXTRA " GIT" CACHE STRING "Extra version")
+string(REPLACE "." ";" VERSION_LIST ${PROJECT_VERSION})
+list(GET VERSION_LIST 0 VER_X)
+list(GET VERSION_LIST 1 VER_Y)
+list(GET VERSION_LIST 2 VER_Z)
+set(VER_EXTRA "-beta" CACHE STRING "Extra version")
+
+# Build date Information
+string(TIMESTAMP VER_YEAR "%Y")
+string(TIMESTAMP VER_MONTH "%m")
+string(TIMESTAMP VER_DAY "%d")
+string(TIMESTAMP VER_HOUR "%H")
+string(TIMESTAMP VER_MINUTE "%M")
+
+set(VER_EXTRA "${VER_EXTRA} (${VER_YEAR}-${VER_MONTH}-${VER_DAY} ${VER_HOUR}:${VER_MINUTE})")
+
+
 set(VER_FULL "${VER_X}.${VER_Y}.${VER_Z}${VER_EXTRA}")
 
+set(APP_CREDITS "Joey, Nalin, and Cadavre")
+
 STRING(REGEX REPLACE " " "-" VER_CPACK ${VER_FULL})
+STRING(REGEX REPLACE "[\(]" "" VER_CPACK ${VER_CPACK})
+STRING(REGEX REPLACE "[\)]" "" VER_CPACK ${VER_CPACK})
+STRING(REGEX REPLACE "(-[0-9]+:[0-9]+)" "" VER_CPACK ${VER_CPACK})
 
 # Generate version header from the above
 configure_file(
-	${PROJECT_SOURCE_DIR}/server/include/IConfig.h.in
-	${PROJECT_BINARY_DIR}/server/include/IConfig.h
+		${PROJECT_SOURCE_DIR}/server/include/IConfig.h.in
+		${PROJECT_BINARY_DIR}/server/include/IConfig.h
 )
 
 option(STATIC "Compile as a static runtime." ON)
-if(NOT STATIC)
-	message("Don't compile as a static runtime.")
-	set(BUILD_SHARED_LIBS TRUE CACHE BOOL "-" FORCE)
-else()
-	message("Compile as static runtime.")
+if(STATIC)
+	message("Compile as static runtime")
 	add_definitions(-DSTATICLIB)
 	set(BUILD_SHARED_LIBS FALSE CACHE BOOL "-" FORCE)
+else()
+	message("Don't compile as a static runtime")
+	set(BUILD_SHARED_LIBS TRUE CACHE BOOL "-" FORCE)
 endif()
 
 option(MYSQL "Compile with MySQL support." ON)
-if(NOT MYSQL)
+if(MYSQL)
+	message("Compile with MySQL support.")
+else()
 	message("Don't compile with MySQL support.")
 	add_definitions(-DNO_MYSQL)
-else()
-	message("Compile with MySQL support.")
 endif()
 
+# Packaging
 if(APPLE)
+	set(CPACK_GENERATOR DragNDrop)
+	set(CPACK_DMG_VOLUME_NAME "${PROJECT_NAME} ${VER_FULL}")
+	set(
+			CPACK_DMG_DS_STORE_SETUP_SCRIPT
+			${PROJECT_SOURCE_DIR}/resources/packaging/osx/DMGSetup.scpt
+	)
+	set(
+			CPACK_DMG_BACKGROUND_IMAGE
+			${PROJECT_SOURCE_DIR}/resources/packaging/osx/DMGBackground.tif
+	)
+elseif(WIN32)
+	set(CPACK_GENERATOR "ZIP")
+elseif(AMIGA)
+	set(CPACK_GENERATOR LHA)
+else()
+	set(CPACK_GENERATOR TGZ)
+endif()
+
+set(CPACK_PACKAGE_NAME ${PROJECT_NAME_LOWER})
+set(CPACK_PACKAGE_VENDOR "OpenGraal Team")
+set(CPACK_PACKAGE_CONTACT "opengraal")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${VER_CPACK}")
+set(CPACK_PACKAGE_VERSION_MAJOR ${VER_X})
+set(CPACK_PACKAGE_VERSION_MINOR ${VER_Y})
+set(CPACK_PACKAGE_VERSION_PATCH ${VER_Z}${VER_EXTRA})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY ${PROJECT_DESCRIPTION})
+set(CPACK_PACKAGE_DESCRIPTION_FILE ${PROJECT_SOURCE_DIR}/README.md)
+set(CPACK_RESOURCE_FILE_README ${PROJECT_SOURCE_DIR}/README.md)
+set(CPACK_RESOURCE_FILE_LICENSE ${PROJECT_SOURCE_DIR}/LICENSE.md)
+set(CPACK_SOURCE_GENERATOR TGZ)
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${VER_CPACK}-src")
+set(CPACK_SOURCE_IGNORE_FILES "/build/;/.bzr/;~$;${CPACK_SOURCE_IGNORE_FILES}")
+include(CPack)
+
+# Generate version header from the above
+configure_file(
+		${PROJECT_SOURCE_DIR}/server/include/IConfig.h.in
+		${PROJECT_BINARY_DIR}/server/include/IConfig.h
+)
+
+if(APPLE)
+	set(MAKE_TESTS OFF)
 	# Set variables for generating the Info.plist file
 	set(MACOSX_BUNDLE_BUNDLE_VERSION "${VER_FULL}")
 	set(MACOSX_BUNDLE_EXECUTABLE ${PROJECT_NAME})
@@ -96,6 +158,7 @@ if(APPLE)
 	set(MACOSX_BUNDLE_NAME ${PROJECT_NAME})
 	set(MACOSX_BUNDLE_SHORT_VERSION_STRING "${VER_FULL}")
 elseif(WIN32)
+	set(MAKE_TESTS OFF)
 	# Visual C++ Compiler options
 	if(MSVC)
 		# Suppress secure string function warnings
@@ -120,11 +183,26 @@ elseif(WIN32)
 		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
 		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
 		set(
-			CMAKE_CXX_FLAGS_RELWITHDEBINFO
-			"${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MTd"
+				CMAKE_CXX_FLAGS_RELWITHDEBINFO
+				"${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MTd"
 		)
 		set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} /MT")
 		cmake_policy(SET CMP0043 NEW)
+
+		# hack to fix clion + msvc together
+		if (CLIONHAX)
+			set(CompilerFlags
+					CMAKE_CXX_FLAGS
+					CMAKE_CXX_FLAGS_DEBUG
+					CMAKE_CXX_FLAGS_RELEASE
+					CMAKE_C_FLAGS
+					CMAKE_C_FLAGS_DEBUG
+					CMAKE_C_FLAGS_RELEASE
+					)
+			foreach(CompilerFlag ${CompilerFlags})
+				string(REPLACE "/MD" "/MT" ${CompilerFlag} "${${CompilerFlag}}")
+			endforeach()
+		endif()
 	endif()
 
 	if( MINGW )
@@ -136,12 +214,10 @@ elseif(WIN32)
 	# Prevent Windows.h from clashing with the Standard Template Library so we
 	# can use std::min/std::max (see https://support.microsoft.com/kb/143208)
 	add_definitions(-DNOMINMAX)
-
-elseif(AROS)
-elseif(AMIGA)
 else()
+	set(MAKE_TESTS ON)
 	if(STATIC)
-	#	SET(CMAKE_EXE_LINKER_FLAGS "-static")
+		#	SET(CMAKE_EXE_LINKER_FLAGS "-static")
 	endif()
 
 	add_definitions(-D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=1)
@@ -155,6 +231,7 @@ if(STATIC)
 endif()
 
 if(MYSQL)
+	# Always compile ourselves so we know the library is compatible
 	#find_package(MySQL 5.7)
 	if(NOT MYSQL_FOUND)
 		message("MySQL not found, building ourselves")
@@ -163,47 +240,21 @@ if(MYSQL)
 	endif()
 endif()
 
-find_package(Threads REQUIRED)
 
-# Packaging
-if(APPLE)
-	set(CPACK_GENERATOR DragNDrop)
-	set(CPACK_DMG_VOLUME_NAME "${PROJECT_NAME} ${VER_FULL}")
-	set(
-			CPACK_DMG_DS_STORE_SETUP_SCRIPT
-			${PROJECT_SOURCE_DIR}/resources/packaging/osx/DMGSetup.scpt
-	)
-	set(
-			CPACK_DMG_BACKGROUND_IMAGE
-			${PROJECT_SOURCE_DIR}/resources/packaging/osx/DMGBackground.tif
-	)
-elseif(WIN32)
-	set(CPACK_GENERATOR ZIP)
-elseif(AMIGA)
-	set(CPACK_GENERATOR LHA)
-else()
-	set(CPACK_GENERATOR TGZ)
+if(NOT WIN32)
+	find_package(Threads REQUIRED)
 endif()
-
-set(CPACK_PACKAGE_NAME ${PROJECT_NAME_LOWER})
-set(CPACK_PACKAGE_VENDOR "OpenGraal Team")
-set(CPACK_PACKAGE_CONTACT "opengraal")
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${VER_CPACK}")
-set(CPACK_PACKAGE_VERSION_MAJOR ${VER_X})
-set(CPACK_PACKAGE_VERSION_MINOR ${VER_Y})
-set(CPACK_PACKAGE_VERSION_PATCH ${VER_Z}${VER_EXTRA})
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Graal Online v1.411 to v5 compatible listserver")
-set(CPACK_SOURCE_GENERATOR TGZ)
-set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${VER_CPACK}-src")
-set(CPACK_SOURCE_IGNORE_FILES "/build/;/.bzr/;~$;${CPACK_SOURCE_IGNORE_FILES}")
-include(CPack)
-
-add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/gs2lib EXCLUDE_FROM_ALL)
 
 # Restore library suffixes
 if(STATIC)
 	set(CMAKE_FIND_LIBRARY_SUFFIXES ${SUFFIXES_ORIG})
 endif()
 
+add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/gs2lib EXCLUDE_FROM_ALL)
+
 add_subdirectory(${PROJECT_SOURCE_DIR}/bin)
 add_subdirectory(${PROJECT_SOURCE_DIR}/server)
+
+enable_testing()
+
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})

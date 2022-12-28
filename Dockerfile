@@ -30,4 +30,4 @@ WORKDIR /listserver
 #VOLUME [ "/listserver/settings.ini", "/listserver/ipbans.txt" ]
 ENTRYPOINT ["./listserver"]
 EXPOSE 14900 14922 14923 6667
-CMD []
+CMD ["-d"]
