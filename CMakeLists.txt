@@ -75,6 +75,7 @@ set(VER_EXTRA "${VER_EXTRA} (${VER_YEAR}-${VER_MONTH}-${VER_DAY} ${VER_HOUR}:${V
 set(VER_FULL "${VER_X}.${VER_Y}.${VER_Z}${VER_EXTRA}")
 
 set(APP_CREDITS "Joey, Nalin, and Cadavre")
+set(APP_VENDOR "OpenGraal")
 
 STRING(REGEX REPLACE " " "-" VER_CPACK ${VER_FULL})
 STRING(REGEX REPLACE "[\(]" "" VER_CPACK ${VER_CPACK})
@@ -100,6 +101,14 @@ endif()
 option(MYSQL "Compile with MySQL support." ON)
 if(MYSQL)
 	message("Compile with MySQL support.")
+
+	# Always compile ourselves so we know the library is compatible
+	#find_package(MySQL 5.7)
+	if(NOT MYSQL_FOUND)
+		message("MySQL not found, building ourselves")
+		set(INSTALL_PLUGINDIR /tmp)
+		add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient EXCLUDE_FROM_ALL)
+	endif()
 else()
 	message("Don't compile with MySQL support.")
 	add_definitions(-DNO_MYSQL)
@@ -119,8 +128,6 @@ if(APPLE)
 	)
 elseif(WIN32)
 	set(CPACK_GENERATOR "ZIP")
-elseif(AMIGA)
-	set(CPACK_GENERATOR LHA)
 else()
 	set(CPACK_GENERATOR TGZ)
 endif()
@@ -207,7 +214,7 @@ elseif(WIN32)
 
 	if( MINGW )
 		add_definitions(-D__STDC_FORMAT_MACROS)
-		add_definitions(-D__USE_MINGW_ANSI_STDIO=1)
+		add_definitions(-D__USE_MINGW_ANSI_STDIO=1 -D_BSD_SOURCE=1)
 		add_compile_options(-Wno-deprecated-declarations)
 	endif()
 
@@ -230,17 +237,6 @@ if(STATIC)
 	set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif()
 
-if(MYSQL)
-	# Always compile ourselves so we know the library is compatible
-	#find_package(MySQL 5.7)
-	if(NOT MYSQL_FOUND)
-		message("MySQL not found, building ourselves")
-		set(INSTALL_PLUGINDIR /tmp)
-		add_subdirectory(${PROJECT_SOURCE_DIR}/dependencies/mysqlclient EXCLUDE_FROM_ALL)
-	endif()
-endif()
-
-
 if(NOT WIN32)
 	find_package(Threads REQUIRED)
 endif()
@@ -256,5 +252,6 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/bin)
 add_subdirectory(${PROJECT_SOURCE_DIR}/server)
 
 enable_testing()
+add_subdirectory(${PROJECT_SOURCE_DIR}/Catch_tests)
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})

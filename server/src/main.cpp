@@ -105,7 +105,7 @@ const char * getErrorString(InitializeError error)
 }
 
 std::unique_ptr<ListServer> listServer;
-std::atomic_bool daemonMode = false;
+std::atomic_bool daemonMode{ false };
 std::thread listThread;
 
 #ifndef NOMAIN
@@ -221,7 +221,7 @@ bool parseArgs(int argc, char* argv[])
 void printHelp(const char* pname)
 {
 	listServer->getServerLog().setTimeStampsInCliEnabled(false);
-	listServer->getServerLog().out("OpenGraal %s version %s\n", APP_NAME, APP_VERSION);
+	listServer->getServerLog().out("%s %s version %s\n", APP_VENDOR, APP_NAME, APP_VERSION);
 
 	listServer->getServerLog().out("USAGE: %s [options]\n\n", pname);
 	listServer->getServerLog().out("Commands:\n\n");

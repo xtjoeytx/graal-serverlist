@@ -58,15 +58,6 @@ set(
 	include/ServerHQ.h
 	include/ClientType.h)
 
-check_symbol_exists(inet_pton "ws2tcpip.h" HAVE_INET_PTON)
-if (NOT HAVE_INET_PTON)
-	check_function_exists(inet_pton HAVE_INET_PTON)
-endif()
-
-if (HAVE_INET_PTON)
-	add_definition(-DHAVE_INET_PTON)
-endif()
-
 
 if(MYSQL)
 	list(
@@ -208,55 +199,7 @@ if (MINGW)
 
 	# Transfer the value of ${MY_DEPENDENCY_PATHS} into the install script
 	install(CODE "set(MY_DEPENDENCY_PATHS \"${CMAKE_FIND_DLL_PATH}\")")
-	install(CODE [[
-        set(CMAKE_GET_RUNTIME_DEPENDENCIES_PLATFORM "windows+pe")
-        set(CMAKE_GET_RUNTIME_DEPENDENCIES_TOOL "objdump")
-        set(CMAKE_GET_RUNTIME_DEPENDENCIES_COMMAND "./objdump_unix2dos.sh")
 
-        write_file("./objdump_unix2dos.sh" "${CMAKE_OBJDUMP} $@ | unix2dos")
-        file(CHMOD "./objdump_unix2dos.sh" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
-
-	  function(install_library_with_deps LIBRARY)
-	  	  message("Getting dependencies for ${LIBRARY}")
-
-		file(INSTALL
-		  DESTINATION "${CMAKE_INSTALL_PREFIX}/"
-		  TYPE SHARED_LIBRARY
-		  FOLLOW_SYMLINK_CHAIN
-		  FILES "${LIBRARY}"
-		)
-		file(GET_RUNTIME_DEPENDENCIES
-		  LIBRARIES ${LIBRARY}
-		  RESOLVED_DEPENDENCIES_VAR RESOLVED_DEPS
-		  UNRESOLVED_DEPENDENCIES_VAR UNRESOLVED_DEPS
-		  DIRECTORIES ${MY_DEPENDENCY_PATHS}
-		)
-		foreach(FILE ${RESOLVED_DEPS})
-		  if(NOT IS_SYMLINK ${FILE})
-			install_library_with_deps(${FILE})
-		  else()
-		  	message( "Symlink ${LIBRARY}: ${FILE}")
-		  endif()
-		endforeach()
-		foreach(FILE ${UNRESOLVED_DEPS})
-		  message( "Unresolved from ${LIBRARY}: ${FILE}")
-		endforeach()
-	  endfunction()
-	  message("Getting dependencies for ${MY_EXE}")
-	  file(GET_RUNTIME_DEPENDENCIES
-			EXECUTABLES ${MY_EXE}
-		RESOLVED_DEPENDENCIES_VAR RESOLVED_DEPS
-		UNRESOLVED_DEPENDENCIES_VAR UNRESOLVED_DEPS
-		    DIRECTORIES ${MY_DEPENDENCY_PATHS}
-
-	  )
-	  foreach(FILE ${RESOLVED_DEPS})
-		install_library_with_deps(${FILE})
-	  endforeach()
-	  foreach(FILE ${UNRESOLVED_DEPS})
-		message( "Unresolved: ${FILE}")
-	  endforeach()
-	]])
 endif()
 
 
