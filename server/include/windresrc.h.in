@@ -1,0 +1,5 @@
+#ifndef LISTSERVER_WINDRESRC_H
+#define LISTSERVER_WINDRESRC_H
+#define IDR_MAINFRAME                   128
+
+#endif //LISTSERVER_WINDRESRC_H

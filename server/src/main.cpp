@@ -1,58 +1,238 @@
-#include <stdlib.h>
-#include <signal.h>
-#include <chrono>
+#include <csignal>
+#include <iostream>
 #include <thread>
-#include "main.h"
-#include "TPlayer.h"
-#include "TServer.h"
-#include "CLog.h"
-#include "CFileSystem.h"
-#include "IConfig.h"
 
 #ifdef _WIN32
-	#ifndef WIN32_LEAN_AND_MEAN
-		#define WIN32_LEAN_AND_MEAN
-	#endif
-	#include <windows.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #else
 	#include <unistd.h>
 	#include <dirent.h>
+	#ifndef SIGBREAK
+		#define SIGBREAK SIGQUIT
+	#endif
 #endif
+
+#include "ListServer.h"
+#include "PlayerConnection.h"
+#include "ServerConnection.h"
+
+#include "IConfig.h"
+#include "main.h"
+
 
 // Function pointer for signal handling.
 typedef void (*sighandler_t)(int);
 
-bool running = true;
-#ifndef NO_MYSQL
-	CMySQL *mySQL = NULL;
-	CMySQL *vBmySQL = NULL;
-#endif
-CSettings *settings = NULL;
-std::vector<TPlayer *> playerList;
-std::vector<TServer *> serverList;
-
-CLog serverlog( "serverlog.txt" );
-CLog clientlog( "clientlog.txt" );
-
-std::vector<CString> ipBans;
-std::vector<CString> serverTypes;
-
 // Home path of the serverlist.
-CString homepath;
-static void getBasePath();
+std::string getBaseHomePath()
+{
+	CString homePath;
 
-// Filesystem.
-CFileSystem filesystem[5];
+#if defined(_WIN32) || defined(_WIN64)
+	// Get the path.
+	char path[ MAX_PATH ];
+	GetModuleFileNameA(0, path, MAX_PATH);
 
-int main(int argc, char *argv[])
+	// Find the program exe and remove it from the path.
+	// Assign the path to homepath.
+	homePath = path;
+	int pos = homePath.findl('\\');
+	if (pos == -1) homePath.clear();
+	else if (pos != (homePath.length() - 1))
+		homePath.removeI(++pos, homePath.length());
+#elif __APPLE__
+	char path[255];
+	if (!getcwd(path, sizeof(path)))
+		printf("Error getting CWD\n");
+
+	homePath = path;
+	if (homePath[homepath.length() - 1] != '/')
+		homePath << '/';
+#else
+	// Get the path to the program.
+	char path[260];
+	memset((void*)path, 0, 260);
+	readlink("/proc/self/exe", path, sizeof(path));
+
+	// Assign the path to homepath.
+	char* end = strrchr(path, '/');
+	if (end != 0)
+	{
+		end++;
+		if (end != 0) *end = '\0';
+		homePath = path;
+	}
+#endif
+	return homePath.text();
+}
+
+const char * getErrorString(InitializeError error)
+{
+	switch (error)
+	{
+		case InitializeError::None:
+			return "Success";
+
+		case InitializeError::InvalidSettings:
+			return "Could not read settings";
+
+		case InitializeError::ServerSock_Init:
+			return "Could not initialize server socket";
+
+		case InitializeError::ServerSock_Listen:
+			return "Could not listen on server socket";
+
+		case InitializeError::PlayerSock_Init:
+			return "Could not initialize player socket";
+
+		case InitializeError::PlayerSock_Listen:
+			return "Could not listen on player socket";
+
+		case InitializeError::IrcSock_Init:
+			return "Could not initialize irc socket";
+
+		case InitializeError::IrcSock_Listen:
+			return "Could not listen on irc socket";
+
+		case InitializeError::Backend_Error:
+			return "Could not connect to backend";
+	}
+
+	return "Unknown Error";
+}
+
+std::unique_ptr<ListServer> listServer;
+std::atomic_bool daemonMode{ false };
+std::thread listThread;
+
+#ifndef NOMAIN
+int main(int argc, char* argv[])
 {
 	// Shut down the server if we get a kill signal.
-	signal( SIGINT, (sighandler_t) shutdownServer );
-	signal( SIGTERM, (sighandler_t) shutdownServer );
+	signal(SIGINT, (sighandler_t)shutdownServer);
+	signal(SIGTERM, (sighandler_t)shutdownServer);
+	signal(SIGBREAK, (sighandler_t)shutdownServer);
+	signal(SIGABRT, (sighandler_t)shutdownServer);
 
 	// Grab the base path to the server executable.
-	getBasePath();
+	std::string homePath = getBaseHomePath();
 
+	// Setup listserver
+	listServer = std::make_unique<ListServer>(homePath);
+
+	if (parseArgs(argc, argv))
+		return 1;
+
+	InitializeError err = listServer->Initialize();
+	if (err != InitializeError::None)
+	{
+		listServer->getServerLog().setTimeStampsInCliEnabled(false);
+		listServer->getServerLog().out("[InitializeError] %s\n", getErrorString(err));
+		listServer->Cleanup();
+		return ERR_SETTINGS;
+	}
+
+	listServer->getServerLog().setLogToCliEnabled(!daemonMode);
+	listServer->getClientLog().setLogToCliEnabled(!daemonMode);
+
+	listThread = std::thread(&ListServer::Main, listServer.get());
+
+	while (listServer)
+	{
+		std::string command;
+
+		if (!daemonMode) {
+			std::cout << "Input Command: ";
+			std::cin >> command;
+		} else {
+			if (listThread.joinable())
+				listThread.join();
+		}
+
+		if (command == "quit")
+		{
+			listServer->setRunning(false);
+			break;
+		}
+	}
+
+	if (listThread.joinable())
+		listThread.join();
+	listServer.reset();
+	return ERR_SUCCESS;
+}
+#endif
+
+void shutdownServer(int signal)
+{
+	if (listServer)
+	{
+		listServer->setRunning(false);
+		if (listThread.joinable())
+			listThread.join();
+		listServer.reset();
+		exit(0);
+	}
+}
+
+bool parseArgs(int argc, char* argv[])
+{
+	std::vector<CString> args;
+	bool useEnv = getenv("USE_ENV");
+
+	if (!useEnv) {
+		for ( int argPos = 0; argPos < argc; ++argPos )
+			args.emplace_back(argv[argPos]);
+
+		for ( auto argPos = args.begin(); argPos != args.end(); ++argPos ) {
+			if ((*argPos).find("--") == 0 ) {
+				CString key((*argPos).subString(2));
+				if ( key == "help" ) {
+					printHelp(args[0].text());
+					return true;
+				} else if ( key == "daemon" ) {
+					daemonMode = true;
+				}
+			} else if ((*argPos)[0] == '-' ) {
+				for ( int j = 1; j < (*argPos).length(); ++j ) {
+					if ((*argPos)[j] == 'h' ) {
+						printHelp(args[0].text());
+						return true;
+					}
+					if ((*argPos)[j] == 'd' ) {
+						daemonMode = true;
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		if ( getenv("DAEMON") )
+			daemonMode = true;
+	}
+
+	return false;
+}
+
+void printHelp(const char* pname)
+{
+	listServer->getServerLog().setTimeStampsInCliEnabled(false);
+	listServer->getServerLog().out("%s %s version %s\n", APP_VENDOR, APP_NAME, APP_VERSION);
+
+	listServer->getServerLog().out("USAGE: %s [options]\n\n", pname);
+	listServer->getServerLog().out("Commands:\n\n");
+	listServer->getServerLog().out(" -h, --help\t\tPrints out this help text.\n");
+	listServer->getServerLog().out(" -d, --daemon\tStarts the ListServer in daemon mode, with no output to console\n");
+
+	listServer->getServerLog().out("\n");
+	listServer->getServerLog().setTimeStampsInCliEnabled(true);
+}
+
+/*
 	// Initialize data directory.
 	filesystem[0].addDir("global");
 	filesystem[1].addDir("global/heads");
@@ -200,9 +380,9 @@ int main(int argc, char *argv[])
 		}
 
 		// Server Sockets
-		for ( std::vector<TServer*>::iterator iter = serverList.begin(); iter != serverList.end() ; )
+		for ( std::vector<ServerConnection*>::iterator iter = serverList.begin(); iter != serverList.end() ; )
 		{
-			TServer* server = (TServer*)*iter;
+			ServerConnection* server = (ServerConnection*)*iter;
 			// THIS SHOULD NOT BE CALLED ANYMORE, AND CAN LIKELY BE REMOVED.
 			if (server == 0)
 			{
@@ -230,7 +410,7 @@ int main(int argc, char *argv[])
 				iter = serverList.erase(iter);
 				continue;
 			}
-			
+
 			++iter;
 		}
 
@@ -252,9 +432,9 @@ int main(int argc, char *argv[])
 
 	// Remove all servers.
 	// This guarantees the server deconstructors are called.
-	for ( std::vector<TServer*>::iterator iter = serverList.begin(); iter != serverList.end() ; )
+	for ( std::vector<ServerConnection*>::iterator iter = serverList.begin(); iter != serverList.end() ; )
 	{
-		TServer* server = (TServer*)*iter;
+		ServerConnection* server = (ServerConnection*)*iter;
 		delete server;
 		iter = serverList.erase( iter );
 	}
@@ -287,13 +467,10 @@ void acceptSock(CSocket& pSocket, int pType)
 	//newSock->setOptions( SOCKET_OPTION_NONBLOCKING );
 	serverlog.out(CString() << "New Connection: " << CString(newSock->getRemoteIp()) << " -> " << ((pType == SOCK_PLAYER) ? "Player" : "Server") << "\n");
 	if (pType == SOCK_PLAYER || pType == SOCK_PLAYEROLD)
-		playerList.push_back(new TPlayer(newSock, (pType == SOCK_PLAYEROLD ? true : false)));
-	else serverList.push_back(new TServer(newSock));
+		playerList.push_back(new PlayerConnection(nullptr, newSock, (pType == SOCK_PLAYEROLD ? true : false)));
+	else serverList.push_back(new ServerConnection(newSock));
 }
 
-/*
-	Extra-Cool Functions :D
-*/
 CString getAccountError(int pErrorId)
 {
 	switch (pErrorId)
@@ -327,9 +504,9 @@ CString getServerList(int PLVER, const CString& pIp)
 	packet.writeGChar(serverList.size());
 
 	// get servers
-	for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+	for (std::vector<ServerConnection*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
 	{
-		TServer* server = (TServer*)*i;
+		ServerConnection* server = (ServerConnection*)*i;
 		if (server == 0) continue;
 
 		if (server->getName().length() != 0)
@@ -347,9 +524,9 @@ CString getServerPlayers(CString& servername)
 	//packet.writeGChar(serverList.size());
 
 	// get servers
-	for (std::vector<TServer*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
+	for (std::vector<ServerConnection*>::iterator i = serverList.begin(); i != serverList.end(); ++i)
 	{
-		TServer* server = (TServer*)*i;
+		ServerConnection* server = (ServerConnection*)*i;
 		if (server == 0) continue;
 
 		if (server->getName() == servername)
@@ -384,7 +561,7 @@ CString getOwnedServers(CString& pAccount)
 		return "";
 	else
 	{
-		TServer * srv;
+		ServerConnection * srv;
 		CString srv1;
 		for (unsigned int i = 0; i < result.size(); i++)
 		{
@@ -424,7 +601,7 @@ CString getOwnedServersPM(CString& pAccount)
 		return "";
 	else
 	{
-		TServer * srv;
+		ServerConnection * srv;
 		CString srv1;
 		for (unsigned int i = 0; i < result.size(); i++)
 		{
@@ -608,156 +785,121 @@ int verifyGuild(const CString& pAccount, const CString& pNickname, const CString
 	return GUILDSTAT_DISALLOWED;
 #endif
 }
+*/
 
-void shutdownServer( int signal )
-{
-	serverlog.out( "Server is now shutting down...\n" );
-	running = false;
-}
+//// 2002-05-07 by Markus Ewald
+//CString CString_Base64_Encode(const CString& input)
+//{
+//	static const char *EncodeTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+//
+//	CString retVal;
+//
+//	for (int i = 0; i < input.length(); i++)
+//	{
+//		char pCode;
+//
+//		pCode = (input[i] >> 2) & 0x3f;
+//		retVal.writeChar(EncodeTable[pCode]);
+//
+//		pCode = (input[i] << 4) & 0x3f;
+//		if (i++ < input.length())
+//			pCode |= (input[i] >> 4) & 0x0f;
+//		retVal.writeChar(EncodeTable[pCode]);
+//
+//		if (i < input.length())
+//		{
+//			pCode = (input[i] << 2) & 0x3f;
+//			if (i++ < input.length())
+//				pCode |= (input[i] >> 6) & 0x03;
+//			retVal.writeChar(EncodeTable[pCode]);
+//		}
+//		else
+//		{
+//			i++;
+//			retVal.writeChar('=');
+//		}
+//
+//		if (i < input.length())
+//		{
+//			pCode = input[i] & 0x3f;
+//			retVal.writeChar(EncodeTable[pCode]);
+//		}
+//		else
+//		{
+//			retVal.writeChar('=');
+//		}
+//	}
+//
+//	return retVal;
+//}
+//
+//CString CString_Base64_Decode(const CString& input)
+//{
+//	static const int DecodeTable[] = {
+//		// 0   1   2   3   4   5   6   7   8   9
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //   0 -   9
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //  10 -  19
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //  20 -  29
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //  30 -  39
+//		-1, -1, -1, 62, -1, -1, -1, 63, 52, 53,  //  40 -  49
+//		54, 55, 56, 57, 58, 59, 60, 61, -1, -1,  //  50 -  59
+//		-1, -1, -1, -1, -1,  0,  1,  2,  3,  4,  //  60 -  69
+//		 5,  6,  7,  8,  9, 10, 11, 12, 13, 14,  //  70 -  79
+//		15, 16, 17, 18, 19, 20, 21, 22, 23, 24,  //  80 -  89
+//		25, -1, -1, -1, -1, -1, -1, 26, 27, 28,  //  90 -  99
+//		29, 30, 31, 32, 33, 34, 35, 36, 37, 38,  // 100 - 109
+//		39, 40, 41, 42, 43, 44, 45, 46, 47, 48,  // 110 - 119
+//		49, 50, 51, -1, -1, -1, -1, -1, -1, -1,  // 120 - 129
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 130 - 139
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 140 - 149
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 150 - 159
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 160 - 169
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 170 - 179
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 180 - 189
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 190 - 199
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 200 - 209
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 210 - 219
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 220 - 229
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 230 - 239
+//		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 240 - 249
+//		-1, -1, -1, -1, -1, -1				   // 250 - 256
+//	};
+//
+//	CString retVal;
+//
+//	for (int i = 0; i < input.length(); i++)
+//	{
+//		unsigned char c1, c2;
+//
+//		c1 = (char)DecodeTable[(unsigned char)input[i]];
+//		i++;
+//		c2 = (char)DecodeTable[(unsigned char)input[i]];
+//		c1 = (c1 << 2) | ((c2 >> 4) & 0x3);
+//		retVal.writeChar(c1);
+//
+//		if (i++ < input.length())
+//		{
+//			c1 = input[i];
+//			if (c1 == '=')
+//				break;
+//
+//			c1 = (char)DecodeTable[(unsigned char)input[i]];
+//			c2 = ((c2 << 4) & 0xf0) | ((c1 >> 2) & 0xf);
+//			retVal.writeChar(c2);
+//		}
+//
+//		if (i++ < input.length())
+//		{
+//			c2 = input[i];
+//			if (c2 == '=')
+//				break;
+//
+//			c2 = (char)DecodeTable[(unsigned char)input[i]];
+//			c1 = ((c1 << 6) & 0xc0) | c2;
+//			retVal.writeChar(c1);
+//		}
+//	}
+//
+//	return retVal;
+//}
 
-void getBasePath()
-{
-#if defined(_WIN32) || defined(_WIN64)
-	// Get the path.
-	char path[ MAX_PATH ];
-	GetModuleFileNameA(0, path, MAX_PATH);
-
-	// Find the program exe and remove it from the path.
-	// Assign the path to homepath.
-	homepath = path;
-	int pos = homepath.findl('\\');
-	if (pos == -1) homepath.clear();
-	else if (pos != (homepath.length() - 1))
-		homepath.removeI(++pos, homepath.length());
-#else
-	// Get the path to the program.
-	char path[260];
-	memset((void*)path, 0, 260);
-	readlink("/proc/self/exe", path, sizeof(path));
-
-	// Assign the path to homepath.
-	char* end = strrchr(path, '/');
-	if (end != 0)
-	{
-		end++;
-		if (end != 0) *end = '\0';
-		homepath = path;
-	}
-#endif
-}
-
-// 2002-05-07 by Markus Ewald
-CString CString_Base64_Encode(const CString& input)
-{
-	static const char *EncodeTable = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-	CString retVal;
-
-	for (int i = 0; i < input.length(); i++)
-	{
-		char pCode;
-
-		pCode = (input[i] >> 2) & 0x3f;
-		retVal.writeChar(EncodeTable[pCode]);
-
-		pCode = (input[i] << 4) & 0x3f;
-		if (i++ < input.length())
-			pCode |= (input[i] >> 4) & 0x0f;
-		retVal.writeChar(EncodeTable[pCode]);
-
-		if (i < input.length())
-		{
-			pCode = (input[i] << 2) & 0x3f;
-			if (i++ < input.length())
-				pCode |= (input[i] >> 6) & 0x03;
-			retVal.writeChar(EncodeTable[pCode]);
-		}
-		else
-		{
-			i++;
-			retVal.writeChar('=');
-		}
-
-		if (i < input.length())
-		{
-			pCode = input[i] & 0x3f;
-			retVal.writeChar(EncodeTable[pCode]);
-		}
-		else
-		{
-			retVal.writeChar('=');
-		}
-	}
-
-	return retVal;
-}
-
-CString CString_Base64_Decode(const CString& input)
-{
-	static const int DecodeTable[] = {
-		// 0   1   2   3   4   5   6   7   8   9
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //   0 -   9
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //  10 -  19
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //  20 -  29
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  //  30 -  39
-		-1, -1, -1, 62, -1, -1, -1, 63, 52, 53,  //  40 -  49
-		54, 55, 56, 57, 58, 59, 60, 61, -1, -1,  //  50 -  59
-		-1, -1, -1, -1, -1,  0,  1,  2,  3,  4,  //  60 -  69
-		 5,  6,  7,  8,  9, 10, 11, 12, 13, 14,  //  70 -  79
-		15, 16, 17, 18, 19, 20, 21, 22, 23, 24,  //  80 -  89
-		25, -1, -1, -1, -1, -1, -1, 26, 27, 28,  //  90 -  99
-		29, 30, 31, 32, 33, 34, 35, 36, 37, 38,  // 100 - 109
-		39, 40, 41, 42, 43, 44, 45, 46, 47, 48,  // 110 - 119
-		49, 50, 51, -1, -1, -1, -1, -1, -1, -1,  // 120 - 129
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 130 - 139
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 140 - 149
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 150 - 159
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 160 - 169
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 170 - 179
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 180 - 189
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 190 - 199
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 200 - 209
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 210 - 219
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 220 - 229
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 230 - 239
-		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  // 240 - 249
-		-1, -1, -1, -1, -1, -1				   // 250 - 256
-	};
-
-	CString retVal;
-
-	for (int i = 0; i < input.length(); i++)
-	{
-		unsigned char c1, c2;
-
-		c1 = (char)DecodeTable[(unsigned char)input[i]];
-		i++;
-		c2 = (char)DecodeTable[(unsigned char)input[i]];
-		c1 = (c1 << 2) | ((c2 >> 4) & 0x3);
-		retVal.writeChar(c1);
-
-		if (i++ < input.length())
-		{
-			c1 = input[i];
-			if (c1 == '=')
-				break;
-
-			c1 = (char)DecodeTable[(unsigned char)input[i]];
-			c2 = ((c2 << 4) & 0xf0) | ((c1 >> 2) & 0xf);
-			retVal.writeChar(c2);
-		}
-
-		if (i++ < input.length())
-		{
-			c2 = input[i];
-			if (c2 == '=')
-				break;
-
-			c2 = (char)DecodeTable[(unsigned char)input[i]];
-			c1 = ((c1 << 6) & 0xc0) | c2;
-			retVal.writeChar(c1);
-		}
-	}
-
-	return retVal;
-}
